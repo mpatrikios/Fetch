@@ -1,8 +1,10 @@
 from pymongo import MongoClient
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 import logging
+from dotenv import load_dotenv
 
+load_dotenv()
 connection_string = os.getenv("MONGODB_URL")
 
 client = MongoClient(connection_string)
@@ -66,3 +68,26 @@ def upsert_candidate(candidate_data: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e),
             "candidate_name": candidate_data.get('full_name', 'Unknown')
         }
+        
+# Example usage:
+candidate = {
+    "candidate_id": "cand_001",
+    "full_name": "John Smith",
+    "email": "john.smith@email.com",
+    "current_title": "Senior Software Engineer",
+    "years_of_experience": 5.5,
+    "skills": [
+        "Python",
+        "JavaScript",
+        "React",
+        "MongoDB",
+        "AWS"
+    ],
+    "embeddings": {
+        "resume_vector": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    }
+}
+
+if __name__ == "__main__":
+    result = upsert_candidate(candidate)
+    print(result)
