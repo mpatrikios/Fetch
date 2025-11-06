@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import time
+from datetime import datetime
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -14,8 +15,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
-
-
 
 def main():
     # Get the absolute path to the PDF file relative to this script
@@ -44,7 +43,8 @@ def main():
         timeout_seconds=60 * 60,
         polling_interval_seconds=1,
     )
-    json.dump(result, sys.stdout, indent=2)
+    output_dir = os.path.join('..', 'backend', 'src', 'json_output_files', 'Brian_P')
+    store_result_to_dir(result, output_dir)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -234,6 +234,23 @@ class AzureContentUnderstandingClient:
         headers["x-ms-useragent"] = x_ms_useragent
         return headers
 
+
+def store_result_to_dir(result_json: dict[str, Any], dir_path: str) -> None:
+    """Stores the JSON result to a directory.
+
+    Args:
+        result (dict): The result to store.
+        dir_path (str): The path to the directory where the result will be stored.
+    """
+    os.makedirs(dir_path, exist_ok=True)
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    json_filepath = os.path.join(dir_path, f'result_{timestamp}.json')
+
+    with open(json_filepath, 'w', encoding='utf-8') as f:
+        json.dump(result_json, f, indent=2, ensure_ascii=False)
+
+    print(f"JSON saved to: {json_filepath}")
 
 if __name__ == "__main__":
     main()
