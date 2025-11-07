@@ -43,7 +43,7 @@ def main():
         timeout_seconds=60 * 60,
         polling_interval_seconds=1,
     )
-    output_dir = os.path.join('..', 'backend', 'src', 'json_output_files', 'Brian_P')
+    output_dir = os.path.join('..', '..', 'json_output_files', 'Brian_P')
     store_result_to_dir(result, output_dir)
 
 
