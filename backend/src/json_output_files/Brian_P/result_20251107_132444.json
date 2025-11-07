@@ -1,10 +1,10 @@
 {
-  "id": "a6a88197-0e14-4854-8db3-ba36dad90cee",
+  "id": "bd02c9f9-6cb3-4f1f-b4d3-42b4e8839663",
   "status": "Succeeded",
   "result": {
     "analyzerId": "Resume_Parser_v1",
     "apiVersion": "2025-05-01-preview",
-    "createdAt": "2025-11-06T20:06:19Z",
+    "createdAt": "2025-11-07T18:24:13Z",
     "warnings": [],
     "contents": [
       {
