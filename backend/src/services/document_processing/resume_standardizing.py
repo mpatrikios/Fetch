@@ -1,7 +1,6 @@
 import json
 from datetime import datetime
 import os
-import pandas as pd
 import sys
 import mimetypes
 
@@ -67,6 +66,35 @@ def validate_file_type(filepath: str) -> bool:
         print(f"\n✓ Valid file type\n")
     return mime_type == valid_mime_types
 
+DESIRED_FIELD_KEYS = {"Location", "Summary", "WorkExperience", "Skills"}
+
+def extract_data(fields: dict) -> dict:
+    """Extract relevant fields from the input dictionary"""
+    extracted_data = {}
+
+    # Simple string fields
+    extracted_data["Location"] = extract_field_value(fields.get("Location"))
+    extracted_data["Summary"] = extract_field_value(fields.get("Summary"))
+
+    # Complex fields - Experience (array of objects)
+    if "WorkExperience" in fields:
+        work_exp_raw = extract_field_value(fields["WorkExperience"])
+        extracted_data["Experience"] = flatten_work_experience(work_exp_raw)
+    else:
+        extracted_data["Experience"] = []
+
+    # Complex fields - Skills (array of strings)
+    if "Skills" in fields:
+        skills_raw = extract_field_value(fields["Skills"])
+        extracted_data["Skills"] = flatten_skills(skills_raw)
+    else:
+        extracted_data["Skills"] = []
+
+    # Add metadata
+    extracted_data["extracted_at"] = datetime.now().isoformat()
+
+    return extracted_data
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: python script.py <filepath>")
@@ -78,51 +106,34 @@ def main():
     filepath = sys.argv[1]
     # Extract main fields
     with open(filepath, 'r', encoding='utf-8') as file:
-        fields = json.loads(file.read())
+        result_json = json.load(file)
+    
+    all_fields = result_json["result"]["contents"][0]["fields"]
+    # Filter only the desired field keys
+    filtered_fields = {k: v for k, v in all_fields.items() if k in DESIRED_FIELD_KEYS}
 
-    # extracted_data = {}
+    extracted_data = extract_data(filtered_fields)
 
-    # # Simple string fields
-    # extracted_data["Location"] = extract_field_value(fields.get("Location"))
-    # extracted_data["Summary"] = extract_field_value(fields.get("Summary"))
+    #  Build mongo-ready document (no normalization – use extracted values as-is)
+    mongo_doc = {
+        "Location": extracted_data.get("Location"),
+        "Summary": extracted_data.get("Summary"),
+        "Experience": extracted_data.get("Experience", []),
+        "Skills": extracted_data.get("Skills", []),
+        "extracted_at": extracted_data.get("extracted_at")
+    }
 
-    # # Complex fields - Experience (array of objects)
-    # if "Experience" in fields:
-    #     work_exp_raw = extract_field_value(fields["WorkExperience"])
-    #     extracted_data["Experience"] = flatten_work_experience(work_exp_raw)
-    # else:
-    #     extracted_data["Experience"] = []
+    # Save one Mongo-ready document per file as newline-delimited JSON (JSONL)
+    output_dir = os.path.join('..', '..', 'standardized_output_files')
+    os.makedirs(output_dir, exist_ok=True)
 
-    # # Complex fields - Skills (array of strings)
-    # if "Skills" in fields:
-    #     skills_raw = extract_field_value(fields["Skills"])
-    #     extracted_data["Skills"] = flatten_skills(skills_raw)
-    # else:
-    #     extracted_data["Skills"] = []
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    jsonl_filepath = os.path.join(output_dir, f'Brian_P_{timestamp}.jsonl')
 
-    # # Add metadata
-    # extracted_data["extracted_at"] = datetime.now().isoformat()
+    with open(jsonl_filepath, 'w', encoding='utf-8') as file:
+        file.write(json.dumps(mongo_doc, ensure_ascii=False) + '\n')
 
-    # # Build mongo-ready document (no normalization – use extracted values as-is)
-    # mongo_doc = {
-    #     "Location": extracted_data.get("Location"),
-    #     "Summary": extracted_data.get("Summary"),
-    #     "Experience": extracted_data.get("Experience", []),
-    #     "Skills": extracted_data.get("Skills", []),
-    #     "extracted_at": extracted_data.get("extracted_at")
-    # }
-
-    # # Save one Mongo-ready document per file as newline-delimited JSON (JSONL)
-    # output_dir = os.path.join('..', 'data', 'analysis-results')
-    # os.makedirs(output_dir, exist_ok=True)
-
-    # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    # jsonl_filepath = os.path.join(output_dir, f'mongo_ready_{timestamp}.jsonl')
-
-    # with open(jsonl_filepath, 'w', encoding='utf-8') as f:
-    #     f.write(json.dumps(mongo_doc, ensure_ascii=False) + '\n')
-
-    # print(f"\n✓ Mongo-ready JSONL saved to: {jsonl_filepath}")
+    print(f"\n✓ Mongo-ready JSONL saved to: {jsonl_filepath}")
 
 if __name__ == "__main__":
     main()
