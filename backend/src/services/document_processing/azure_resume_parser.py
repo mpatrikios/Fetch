@@ -32,7 +32,7 @@ def main():
         subscription_key=subscription_key,
         aad_token=None,
         # Insert the analyzer name.
-        analyzer_id="Resume_Parser_v1",
+        analyzer_id="resume_parser_v2",
         # Insert the supported file types of the analyzer.
         file_location=str(pdf_path),
     )
