@@ -103,10 +103,10 @@ def main():
         # Step 5: Generate and store embeddings
         print("Step 5: Generating embeddings for candidate profile")
         
-        # Check for OpenAI API key
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        # Check for Azure OpenAI API key
+        openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set")
+            raise ValueError("AZURE_OPENAI_API_KEY environment variable not set")
         
         embed_candidate_profile(candidate_doc)
         print("Embeddings generated and stored successfully")
