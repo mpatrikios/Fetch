@@ -59,6 +59,22 @@ def flatten_skills(skills_array):
     
     return skills
 
+def flatten_companies(companies_array):
+    """Flatten companies array into list of dicts"""
+    companies = []
+    
+    for company in companies_array:
+        if company.get("type") == "object":
+            value_obj = company.get("valueObject", {})
+            company_dict = {}
+            
+            for key, val in value_obj.items():
+                company_dict[key] = extract_field_value(val)
+            
+            companies.append(company_dict)
+    
+    return companies
+
 def validate_file_type(filepath: str) -> bool:
     """Validate if the file is a json based on its MIME type and malware free."""
     mime_type, _ = mimetypes.guess_type(filepath)
@@ -67,7 +83,7 @@ def validate_file_type(filepath: str) -> bool:
         print(f"\n✓ Valid file type\n")
     return mime_type == valid_mime_types
 
-DESIRED_FIELD_KEYS = {"Location", "Summary", "WorkExperience", "Skills"}
+DESIRED_FIELD_KEYS = {"Location", "Summary", "WorkExperience", "Skills", "Companies"}
 
 def standardize_resume(result_json: dict, candidate_name: str) -> dict:
     """Standardize resume JSON data from Azure into MongoDB-ready format.
@@ -92,6 +108,7 @@ def standardize_resume(result_json: dict, candidate_name: str) -> dict:
         "Summary": extracted_data.get("Summary"),
         "Experience": extracted_data.get("Experience", []),
         "Skills": extracted_data.get("Skills", []),
+        "Companies": extracted_data.get("Companies", []),
         "extracted_at": extracted_data.get("extracted_at")
     }
     
@@ -118,6 +135,13 @@ def extract_data(fields: dict) -> dict:
         extracted_data["Skills"] = flatten_skills(skills_raw)
     else:
         extracted_data["Skills"] = []
+
+    # Complex fields - Companies (array of objects)
+    if "Companies" in fields:
+        companies_raw = extract_field_value(fields["Companies"])
+        extracted_data["Companies"] = flatten_companies(companies_raw)
+    else:
+        extracted_data["Companies"] = []
 
     # Add metadata
     extracted_data["extracted_at"] = datetime.now().isoformat()

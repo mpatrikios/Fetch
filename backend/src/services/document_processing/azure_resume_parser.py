@@ -23,6 +23,7 @@ subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
 
 def main():
     # Get the absolute path to the PDF file relative to this script
+    # USING BRIAN P RESUME FOR TESTING. ALSO INCLUDED IN PATH
     script_dir = Path(__file__).parent
     pdf_path = script_dir.parent.parent / "testing_files" / "Brian P.pdf"
     settings = Settings(
@@ -32,7 +33,7 @@ def main():
         subscription_key=subscription_key,
         aad_token=None,
         # Insert the analyzer name.
-        analyzer_id="Resume_Parser_v1",
+        analyzer_id="resume_parser_v3",
         # Insert the supported file types of the analyzer.
         file_location=str(pdf_path),
     )
