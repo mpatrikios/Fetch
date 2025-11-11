@@ -1,3 +1,6 @@
+"""
+This file is responsible for standardizing the JSON output from Azure Content Understanding
+"""
 import json
 from datetime import datetime
 import os
