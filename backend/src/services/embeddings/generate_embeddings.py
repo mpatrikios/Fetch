@@ -50,13 +50,13 @@ def embed_candidate_profile(candidate_doc):
            " ".join([exp.get('role', '') for exp in candidate_doc.get('Experience', []) if exp]) + " " + \
            " ".join([comp.get('companyName', '') for comp in candidate_doc.get('Companies', []) if comp])
     embedding = generate_embedding(text)
-    insert_embedding(candidate_doc["_id"], "candidates", "profile_embedding", embedding)
+    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "profile_embedding", embedding)
 
 # generate and store candidate location embeddings
 def embed_candidate_location(candidate_doc):
     location_text = candidate_doc.get("Location", "")
     embedding = generate_embedding(location_text)
-    insert_embedding(candidate_doc["_id"], "candidates", "location_embedding", embedding)
+    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
 
 # function for generating and storing candidate embeddings of cultural index
 

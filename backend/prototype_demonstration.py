@@ -19,7 +19,7 @@ from azure_resume_parser import (
 )
 from resume_standardizing import standardize_resume
 from insert_to_mongo import upsert_candidate, get_candidate
-from generate_embeddings import embed_candidate_profile
+from generate_embeddings import embed_candidate_profile, embed_candidate_location
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -101,7 +101,7 @@ def main():
             raise Exception(f"Failed to retrieve candidate document: {candidate_name}")
         
         # Step 5: Generate and store embeddings
-        print("Step 5: Generating embeddings for candidate profile")
+        print("Step 5: Generating embeddings for candidate profile and location")
         
         # Check for Azure OpenAI API key
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -109,18 +109,35 @@ def main():
             raise ValueError("AZURE_OPENAI_API_KEY environment variable not set")
         
         embed_candidate_profile(candidate_doc)
-        print("Embeddings generated and stored successfully")
+        print("Profile embedding generated and stored successfully")
+        
+        embed_candidate_location(candidate_doc)
+        print("Location embedding generated and stored successfully")
         
         # Step 6: Verify embeddings were stored
         print("Step 6: Verifying embeddings in database")
         updated_candidate = get_candidate(candidate_name)
         
-        if updated_candidate and "profile_embedding" in updated_candidate:
-            embedding_dimensions = len(updated_candidate['profile_embedding'])
-            print(f"Embedding verification successful - dimensions: {embedding_dimensions}")
-            print(f"Pipeline completed successfully for {candidate_name}")
+        if updated_candidate:
+            profile_check = "profile_embedding" in updated_candidate
+            location_check = "location_embedding" in updated_candidate
+            
+            if profile_check and location_check:
+                profile_dims = len(updated_candidate['profile_embedding'])
+                location_dims = len(updated_candidate['location_embedding'])
+                print(f"Embedding verification successful:")
+                print(f"  - Profile embedding: {profile_dims} dimensions")
+                print(f"  - Location embedding: {location_dims} dimensions")
+                print(f"Pipeline completed successfully for {candidate_name}")
+            else:
+                missing = []
+                if not profile_check:
+                    missing.append("profile_embedding")
+                if not location_check:
+                    missing.append("location_embedding")
+                print(f"Warning: Missing embeddings: {', '.join(missing)}")
         else:
-            print("Warning: Could not verify embeddings were stored")
+            print("Warning: Could not retrieve candidate for verification")
             
     except Exception as e:
         print(f"Pipeline failed: {str(e)}")
