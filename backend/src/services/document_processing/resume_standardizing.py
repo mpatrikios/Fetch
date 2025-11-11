@@ -76,7 +76,7 @@ def flatten_companies(companies_array):
     return companies
 
 def validate_file_type(filepath: str) -> bool:
-    """Validate if the file is a json based on its MIME type and malware free."""
+    """Validate if the file is a json based on its MIME type."""
     mime_type, _ = mimetypes.guess_type(filepath)
     valid_mime_types = "application/json"
     if mime_type == valid_mime_types:
