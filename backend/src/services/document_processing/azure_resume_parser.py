@@ -2,6 +2,7 @@ import json
 import logging
 import sys
 import time
+from datetime import datetime
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -12,13 +13,17 @@ import requests
 import os
 from dotenv import load_dotenv
 
+# Import standardization and MongoDB functions
+from resume_standardizing import standardize_resume
+sys.path.append('../../database')
+from insert_to_mongo import upsert_candidate
+
 load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
 
-
-
 def main():
     # Get the absolute path to the PDF file relative to this script
+    # USING BRIAN P RESUME FOR TESTING. ALSO INCLUDED IN PATH
     script_dir = Path(__file__).parent
     pdf_path = script_dir.parent.parent / "testing_files" / "Brian P.pdf"
     settings = Settings(
@@ -28,7 +33,7 @@ def main():
         subscription_key=subscription_key,
         aad_token=None,
         # Insert the analyzer name.
-        analyzer_id="Resume_Parser_v1",
+        analyzer_id="resume_parser_v3",
         # Insert the supported file types of the analyzer.
         file_location=str(pdf_path),
     )
@@ -38,13 +43,40 @@ def main():
         subscription_key=settings.subscription_key,
         token_provider=settings.token_provider,
     )
+    # Extract candidate name from PDF filename (e.g., "Brian P.pdf" -> "Brian P")
+    candidate_name = pdf_path.stem
+    
+    print(f"Processing resume for: {candidate_name}")
     response = client.begin_analyze(settings.analyzer_id, settings.file_location)
     result = client.poll_result(
         response,
         timeout_seconds=60 * 60,
         polling_interval_seconds=1,
     )
-    json.dump(result, sys.stdout, indent=2)
+    
+    # Optionally store raw result for debugging
+    # output_dir = os.path.join('..', '..', 'json_output_files', candidate_name.replace(' ', '_'))
+    # store_result_to_dir(result, output_dir)
+    
+    # Standardize the resume data
+    print(f"\nStandardizing resume data...")
+    standardized_doc = standardize_resume(result, candidate_name)
+    
+    # Insert into MongoDB
+    print(f"\nInserting into MongoDB...")
+    mongo_result = upsert_candidate(standardized_doc)
+    
+    # Print results
+    if mongo_result.get("success", False):
+        if mongo_result.get("operation") == "inserted":
+            print(f"\n✓ Successfully inserted new candidate: {candidate_name}")
+            if mongo_result.get("document_id"):
+                print(f"  Document ID: {mongo_result['document_id']}")
+        else:
+            print(f"\n✓ Successfully updated candidate: {candidate_name}")
+            print(f"  Matched: {mongo_result.get('matched_count', 0)}, Modified: {mongo_result.get('modified_count', 0)}")
+    else:
+        print(f"\n✗ Failed to upsert candidate: {mongo_result.get('error', 'Unknown error')}")
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -234,6 +266,23 @@ class AzureContentUnderstandingClient:
         headers["x-ms-useragent"] = x_ms_useragent
         return headers
 
+
+def store_result_to_dir(result_json: dict[str, Any], dir_path: str) -> None:
+    """Stores the JSON result to a directory.
+
+    Args:
+        result (dict): The result to store.
+        dir_path (str): The path to the directory where the result will be stored.
+    """
+    os.makedirs(dir_path, exist_ok=True)
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    json_filepath = os.path.join(dir_path, f'result_{timestamp}.json')
+
+    with open(json_filepath, 'w', encoding='utf-8') as f:
+        json.dump(result_json, f, indent=2, ensure_ascii=False)
+
+    print(f"JSON saved to: {json_filepath}")
 
 if __name__ == "__main__":
     main()
