@@ -126,8 +126,6 @@ def main():
                 profile_dims = len(updated_candidate['profile_embedding'])
                 location_dims = len(updated_candidate['location_embedding'])
                 print(f"Embedding verification successful:")
-                print(f"  - Profile embedding: {profile_dims} dimensions")
-                print(f"  - Location embedding: {location_dims} dimensions")
                 print(f"Pipeline completed successfully for {candidate_name}")
             else:
                 missing = []
