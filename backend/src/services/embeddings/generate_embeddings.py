@@ -47,9 +47,12 @@ def generate_embedding(text, model="text-embedding-ada-002"):
 def embed_candidate_profile(candidate_doc):
     text = f"{candidate_doc.get('Summary', '')} " + \
            " ".join(candidate_doc.get('Skills', [])) + " " + \
-           " ".join([exp.get('role', '') for exp in candidate_doc.get('Experience', []) if exp]) + " " + \
-           " ".join([comp.get('companyName', '') for comp in candidate_doc.get('Companies', []) if comp])
+           " ".join([exp.get('role', '') for exp in (candidate_doc.get('Experience') or []) if exp]) + " " + \
+           " ".join([comp.get('companyName', '') for comp in (candidate_doc.get('Companies') or []) if comp])
     embedding = generate_embedding(text)
+    if embedding is None:
+        print(f"Failed to generate profile embedding for candidate {candidate_doc.get('_id')}")
+        return
     insert_embedding(candidate_doc["_id"], "CandidatesTesting", "profile_embedding", embedding)
 
 # generate and store candidate location embeddings
