@@ -56,8 +56,10 @@ def embed_candidate_profile(candidate_doc):
 def embed_candidate_location(candidate_doc):
     location_text = candidate_doc.get("Location", "")
     embedding = generate_embedding(location_text)
+    if embedding is None:
+        print(f"Failed to generate location embedding for candidate {candidate_doc.get('_id')}")
+        return
     insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
-
 # function for generating and storing candidate embeddings of cultural index
 
 # function for generating and storing job description embeddings 
