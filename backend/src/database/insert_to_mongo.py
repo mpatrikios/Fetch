@@ -96,7 +96,7 @@ def get_candidate(full_name: str) -> Dict[str, Any] | None:
         logging.error(f"Error retrieving candidate {full_name}: {str(e)}")
         return None
 
-def insert_embedding(doc_id, collection_name, field_name, embedding):
+def insert_embedding(doc_id: Any, collection_name: str, field_name: str, embedding: List[float]) -> None:
     database[collection_name].update_one(
         {"_id": doc_id},
         {"$set": {field_name: embedding}}
