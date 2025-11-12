@@ -6,7 +6,7 @@ from openai import OpenAI
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
-from insert_to_mongo import insert_embedding
+from ...database.insert_to_mongo import insert_embedding
 
 load_dotenv()
 connection_string = os.getenv("MONGODB_URL")
