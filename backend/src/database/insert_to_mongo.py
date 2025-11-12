@@ -1,3 +1,6 @@
+"""
+This file is responsible for interfacing with MongoDB to insert and update documents
+"""
 from pymongo import MongoClient
 import os
 from typing import Dict, Any, List
@@ -70,26 +73,31 @@ def upsert_candidate(candidate_data: Dict[str, Any]) -> Dict[str, Any]:
             "error": str(e),
             "candidate_name": candidate_data.get('full_name', 'Unknown')
         }
-        
-# Example usage:
-candidate = {
-    "candidate_id": "cand_001",
-    "full_name": "John Smith",
-    "email": "john.smith@email.com",
-    "current_title": "Senior Software Engineer",
-    "years_of_experience": 5.5,
-    "skills": [
-        "Python",
-        "JavaScript",
-        "React",
-        "MongoDB",
-        "AWS"
-    ],
-    "embeddings": {
-        "resume_vector": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    }
-}
 
-if __name__ == "__main__":
-    result = upsert_candidate(candidate)
-    print(result)
+def get_candidate(full_name: str) -> Dict[str, Any] | None:
+    """
+    Retrieve candidate document from MongoDB by full_name.
+    
+    Args:
+        full_name: The full name of the candidate
+        
+    Returns:
+        Dictionary containing the candidate document or None if not found
+    """
+    try:
+        candidate = collection.find_one({"full_name": full_name})
+        if candidate:
+            logging.info(f"Retrieved candidate: {full_name}")
+            return candidate
+        else:
+            logging.warning(f"Candidate not found: {full_name}")
+            return None
+    except Exception as e:
+        logging.error(f"Error retrieving candidate {full_name}: {str(e)}")
+        return None
+
+def insert_embedding(doc_id: Any, collection_name: str, field_name: str, embedding: List[float]) -> None:
+    database[collection_name].update_one(
+        {"_id": doc_id},
+        {"$set": {field_name: embedding}}
+    )
