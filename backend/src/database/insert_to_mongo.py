@@ -16,6 +16,7 @@ client = MongoClient(connection_string)
 
 database = client.get_database("FetchTestingDB")
 collection = database.get_collection("CandidatesTesting")
+job_descriptions_collection = database.get_collection("JobDescriptionsTesting")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -101,3 +102,74 @@ def insert_embedding(doc_id: Any, collection_name: str, field_name: str, embeddi
         {"_id": doc_id},
         {"$set": {field_name: embedding}}
     )
+
+def insert_job_description(job_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Insert job description document in MongoDB.
+    
+    Args:
+        job_data: Dictionary containing job description information 
+        
+    Returns:
+        Dictionary with operation result
+    """
+    try:
+        company_name = job_data.get("companyName")
+        job_title = job_data.get("JobTitle", "Unknown Position")
+        
+        if not company_name:
+            raise ValueError("companyName is required for job description insertion")
+        
+        result = job_descriptions_collection.insert_one(job_data)
+        
+        logging.info(f"New job description created: {company_name} - {job_title}")
+        return {
+            "success": True,
+            "operation": "inserted",
+            "company_name": company_name,
+            "job_title": job_title,
+            "document_id": str(result.inserted_id)
+        }
+            
+    except Exception as e:
+        logging.error(f"Error inserting job description {job_data.get('companyName', 'Unknown')} - {job_data.get('JobTitle', 'Unknown')}: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e),
+            "company_name": job_data.get('companyName', 'Unknown'),
+            "job_title": job_data.get('JobTitle', 'Unknown')
+        }
+
+def get_job_description(company_name: str, job_title: str = None) -> Dict[str, Any] | List[Dict[str, Any]] | None:
+    """
+    Retrieve job description document(s) from MongoDB by companyName and optionally JobTitle.
+    
+    Args:
+        company_name: The company name
+        job_title: The job title (optional)
+        
+    Returns:
+        Dictionary containing the job description document, list of documents, or None if not found
+    """
+    try:
+        query = {"companyName": company_name}
+        if job_title:
+            query["JobTitle"] = job_title
+            job_description = job_descriptions_collection.find_one(query)
+            if job_description:
+                logging.info(f"Retrieved job description: {company_name} - {job_title}")
+                return job_description
+            else:
+                logging.warning(f"Job description not found: {company_name} - {job_title}")
+                return None
+        else:
+            job_descriptions = list(job_descriptions_collection.find(query))
+            if job_descriptions:
+                logging.info(f"Retrieved {len(job_descriptions)} job descriptions for company: {company_name}")
+                return job_descriptions
+            else:
+                logging.warning(f"No job descriptions found for company: {company_name}")
+                return None
+    except Exception as e:
+        logging.error(f"Error retrieving job description(s) for {company_name}: {str(e)}")
+        return None
