@@ -7,7 +7,6 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import sys
-import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
 
