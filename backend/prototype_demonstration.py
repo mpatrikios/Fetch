@@ -38,9 +38,13 @@ from job_description_standardizing import standardize_job_description
 from dotenv import load_dotenv
 load_dotenv()
 
-def process_job_description(pdf_path: str):
+def process_job_description(pdf_path: str, company_name: str = "Unknown Company"):
     """
     Process a job description PDF and insert it into MongoDB
+    
+    Args:
+        pdf_path: Path to the job description PDF file
+        company_name: Name of the company (optional, defaults to "Unknown Company")
     """
     print(f"Starting job description pipeline with PDF: {pdf_path}")
     
@@ -50,18 +54,7 @@ def process_job_description(pdf_path: str):
         if not pdf_file.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
         
-        # Extract company name and job title from path
-        # Expected path structure: .../company_name/job_title/filename.pdf
-        path_parts = str(pdf_file.parent).split(os.sep)
-        if len(path_parts) >= 2:
-            job_title = path_parts[-1].replace('_', ' ')
-            company_name = path_parts[-2].replace('_', ' ')
-        else:
-            # Fallback to extracting from filename
-            company_name = "Unknown Company"
-            job_title = pdf_file.stem.replace('_', ' ')
-        
-        print(f"Processing job description for: {company_name} - {job_title}")
+        print(f"Processing job description for company: {company_name}")
         
         # Step 1: Azure job description parser
         print("Step 1: Parsing job description with Azure Content Understanding")
@@ -266,21 +259,34 @@ def main():
     
     Usage:
         python prototype_demonstration.py --resume <pdf_path>
-        python prototype_demonstration.py --job-description <pdf_path>
-        python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>
+        python prototype_demonstration.py --job-description <pdf_path> [--company <company_name>]
+        python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]
     """
     if len(sys.argv) < 3:
         print("Usage:")
         print("  python prototype_demonstration.py --resume <pdf_path>")
-        print("  python prototype_demonstration.py --job-description <pdf_path>")
-        print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
+        print("  python prototype_demonstration.py --job-description <pdf_path> [--company <company_name>]")
+        print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]")
         print("\nExamples:")
         print("  python prototype_demonstration.py --resume 'src/testing_files/Brian P.pdf'")
-        print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG/Head_of_Technology/jd.pdf'")
-        print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf'")
+        print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG Head of Technology.pdf' --company 'MLG'")
+        print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf' --company 'MLG'")
         sys.exit(1)
     
     command = sys.argv[1]
+    
+    # Parse company name from arguments if provided
+    company_name = "Unknown Company"
+    if "--company" in sys.argv:
+        try:
+            company_idx = sys.argv.index("--company")
+            if company_idx + 1 < len(sys.argv):
+                company_name = sys.argv[company_idx + 1]
+            else:
+                print("Error: --company flag requires a company name")
+                sys.exit(1)
+        except ValueError:
+            pass
     
     try:
         if command == "--resume":
@@ -295,12 +301,12 @@ def main():
                 print("Error: --job-description requires a PDF path")
                 sys.exit(1)
             pdf_path = sys.argv[2]
-            process_job_description(pdf_path)
+            process_job_description(pdf_path, company_name)
             
         elif command == "--both":
             if len(sys.argv) < 4:
                 print("Error: --both requires both resume and job description PDF paths")
-                print("Usage: python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
+                print("Usage: python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]")
                 sys.exit(1)
             resume_pdf = sys.argv[2]
             job_pdf = sys.argv[3]
@@ -314,7 +320,7 @@ def main():
             print("\n" + "="*60)
             print("PROCESSING JOB DESCRIPTION")
             print("="*60)
-            process_job_description(job_pdf)
+            process_job_description(job_pdf, company_name)
             
             print("\n" + "="*60)
             print("BOTH DOCUMENTS PROCESSED SUCCESSFULLY")

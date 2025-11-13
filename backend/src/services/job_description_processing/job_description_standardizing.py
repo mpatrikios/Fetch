@@ -84,7 +84,7 @@ def validate_file_type(filepath: str) -> bool:
     return mime_type == valid_mime_types
 
 # --- Main standardization function ---
-def standardize_job_description(result_json: dict, company_name: str) -> dict:
+def standardize_job_description(result_json: dict, company_name: str = "Unknown Company") -> dict:
     """Standardize job description JSON data from Azure into MongoDB-ready format.
     
     Args:
