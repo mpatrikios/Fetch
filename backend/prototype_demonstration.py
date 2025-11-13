@@ -11,6 +11,7 @@ from datetime import datetime
 sys.path.append('src/services/document_processing')
 sys.path.append('src/services/job_description_processing')
 sys.path.append('src/services/embeddings')
+sys.path.append('src/services/matching')
 sys.path.append('src/database')
 
 # Import Azure resume parser components
@@ -26,6 +27,10 @@ from generate_embeddings import (
     embed_job_description_profile,
     embed_job_description_location
 )
+
+# Import matching components
+from job_candidate_matcher import find_best_candidates_for_job_by_profile
+from vector_indexes import ensure_candidate_profile_vector_index
 
 # Import job description parser components
 from azure_job_description_parser import (
