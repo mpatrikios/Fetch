@@ -20,23 +20,6 @@ from dotenv import load_dotenv
 load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
 
-def store_json_result_to_dir(result_json: dict[str, Any], dir_path: str, file_prefix: str) -> None:
-    """Stores the JSON result to a directory.
-
-    Args:
-        result (dict): The result to store.
-        dir_path (str): The path to the directory where the result will be stored.
-    """
-    os.makedirs(dir_path, exist_ok=True)
-
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    json_filepath = os.path.join(dir_path, f'{file_prefix}_{timestamp}.json')
-
-    with open(json_filepath, 'w', encoding='utf-8') as f:
-        json.dump(result_json, f, indent=2, ensure_ascii=False)
-
-    print(f"JSON saved to: {json_filepath}")
-
 def azure_resume_parser(pdf_path: str) -> dict:
     """
     Function to parse resume using Azure Content Understanding
@@ -79,8 +62,6 @@ def main():
         candidate_name = Path(pdf_path).stem.replace(" ", "_")
         result = azure_resume_parser(pdf_path=sys.argv[1])
         result_path = os.path.join("..", "..", "..", "json_output_files", candidate_name)
-        # Logging for Unit Testing Purpose
-        store_json_result_to_dir(result, result_path, "resume_parsed")
 
 @dataclass(frozen=True, kw_only=True)
 class Settings:
