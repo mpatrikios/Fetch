@@ -100,7 +100,7 @@ def process_job_description(pdf_path: str):
         mongo_result = insert_job_description(standardized_data)
         
         if mongo_result.get("success"):
-            operation = mongo_result.get("operation", "unknown")
+            pass
         else:
             raise Exception(f"MongoDB operation failed: {mongo_result.get('error')}")
         
