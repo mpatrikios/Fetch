@@ -1,7 +1,3 @@
-"""
-This file is responsible for interfacing with Azure Content Understanding
-to parse resumes. It takes a pdf file and outputs JSON data. 
-"""
 import json
 import logging
 import sys
@@ -19,40 +15,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
+if not subscription_key:
+    raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
 
 def main():
-    # Get the absolute path to the PDF file relative to this script
-    # USING BRIAN P RESUME FOR TESTING. ALSO INCLUDED IN PATH
-    script_dir = Path(__file__).parent
-    pdf_path = script_dir.parent.parent / "testing_files" / "Brian P.pdf"
-    settings = Settings(
-        endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
-        api_version="2025-05-01-preview",
-        # Either subscription_key or aad_token must be provided. Subscription Key is more prioritized.
-        subscription_key=subscription_key,
-        aad_token=None,
-        # Insert the analyzer name.
-        analyzer_id="resume_parser_v3",
-        # Insert the supported file types of the analyzer.
-        file_location=str(pdf_path),
-    )
-    client = AzureContentUnderstandingClient(
-        settings.endpoint,
-        settings.api_version,
-        subscription_key=settings.subscription_key,
-        token_provider=settings.token_provider,
-    )
-    # Extract candidate name from PDF filename (e.g., "Brian P.pdf" -> "Brian P")
-    candidate_name = pdf_path.stem
-    
-    print(f"Processing resume for: {candidate_name}")
-    response = client.begin_analyze(settings.analyzer_id, settings.file_location)
-    result = client.poll_result(
-        response,
-        timeout_seconds=60 * 60,
-        polling_interval_seconds=1,
-    )
-    
+    azure_job_description_parser("../../testing_files/MLG Head of Technology.pdf")
+
+
 @dataclass(frozen=True, kw_only=True)
 class Settings:
     endpoint: str
@@ -91,7 +60,7 @@ class AzureContentUnderstandingClient:
         endpoint: str,
         api_version: str,
         subscription_key: str | None = None,
-        token_provider: Callable[[], str] | None = None, 
+        token_provider: Callable[[], str] | None = None,
         x_ms_useragent: str = "cu-sample-code",
     ) -> None:
         if not subscription_key and token_provider is None:
@@ -165,7 +134,7 @@ class AzureContentUnderstandingClient:
         response: requests.Response,
         timeout_seconds: int = 120,
         polling_interval_seconds: int = 2,
-    ) -> dict[str, Any]:  
+    ) -> dict[str, Any]:  # pyright: ignore[reportExplicitAny]
         """
         Polls the result of an asynchronous operation until it completes or times out.
 
@@ -240,3 +209,76 @@ class AzureContentUnderstandingClient:
         headers["x-ms-useragent"] = x_ms_useragent
         return headers
 
+
+def store_result_to_dir(result_json: dict[str, Any], dir_path: str) -> None:
+    """Stores the JSON result to a directory.
+
+    Args:
+        result (dict): The result to store.
+        dir_path (str): The path to the directory where the result will be stored.
+    """
+    os.makedirs(dir_path, exist_ok=True)
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    json_filepath = os.path.join(dir_path, f'jd_result_{timestamp}.json')
+
+    with open(json_filepath, 'w', encoding='utf-8') as f:
+        json.dump(result_json, f, indent=2, ensure_ascii=False)
+
+    print(f"JSON saved to: {json_filepath}")
+
+def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
+
+    """
+    Parses a job description PDF file using Azure Content Understanding service.
+
+    Args:
+        pdf_path (str): The path to the PDF file to be analyzed.
+
+    Returns:
+        dict[str, Any] | None: The parsed job description as a dictionary, or None if an error occurs.
+
+    Raises:
+        FileNotFoundError: If the specified PDF file does not exist.
+        ValueError: If the Azure Content Understanding settings are invalid.
+        RuntimeError: If the analysis request fails.
+    """
+    script_dir = Path(__file__).parent
+    pdf_path =  os.path.join(script_dir.parent.parent, "testing_files", "MLG Head of Technology.pdf")
+    # Check if file exists
+    if not os.path.isfile(pdf_path):
+        raise FileNotFoundError(f"The file {pdf_path} does not exist.")
+
+    settings = Settings(
+        endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
+        api_version="2025-05-01-preview",
+        # Either subscription_key or aad_token must be provided. Subscription Key is more prioritized.
+        subscription_key=subscription_key,
+        aad_token=None,
+        # Insert the analyzer name.
+        analyzer_id="job_description_parser_v1",
+        # Insert the supported file types of the analyzer.
+        file_location=str(pdf_path),
+    )
+    client = AzureContentUnderstandingClient(
+        settings.endpoint,
+        settings.api_version,
+        subscription_key=settings.subscription_key,
+        token_provider=settings.token_provider,
+    )
+    # # Extract company name from PDF filename (e.g., "Brian P.pdf" -> "Brian P")
+    # company_name = pdf_path.stem
+    ### Placeholders
+    company_name = "MLG"
+    job_name = "Head of Technology"
+    print(f"Processing job description for: {company_name}-{job_name}")
+    response = client.begin_analyze(settings.analyzer_id, settings.file_location)
+    result_json = client.poll_result(
+        response,
+        timeout_seconds=60 * 60,
+        polling_interval_seconds=1,
+    )
+    return result_json
+
+if __name__ == "__main__":
+    main()
