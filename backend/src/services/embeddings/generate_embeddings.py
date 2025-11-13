@@ -72,9 +72,9 @@ def embed_candidate_location(candidate_doc):
 def embed_job_description_profile(job_doc):
     text = f"{job_doc.get('JobTitle', '')} " + \
            f"{job_doc.get('Summary', '')} " + \
-           " ".join(job_doc.get('Skills', [])) + " " + \
-           " ".join(job_doc.get('Responsibilities', [])) + " " + \
-           " ".join(job_doc.get('Qualifications', []))
+           " ".join(job_doc.get('Skills') or []) + " " + \
+           " ".join(job_doc.get('Responsibilities') or []) + " " + \
+           " ".join(job_doc.get('Qualifications') or [])
     embedding = generate_embedding(text)
     if embedding is None:
         print(f"Failed to generate profile embedding for job description {job_doc.get('_id')}")
