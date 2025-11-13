@@ -53,11 +53,6 @@ def main():
         polling_interval_seconds=1,
     )
     
-    # Optionally store raw result for debugging
-    # output_dir = os.path.join('..', '..', 'json_output_files', candidate_name.replace(' ', '_'))
-    # store_result_to_dir(result, output_dir)
-
-
 @dataclass(frozen=True, kw_only=True)
 class Settings:
     endpoint: str
