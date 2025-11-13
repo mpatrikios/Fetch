@@ -38,13 +38,9 @@ from job_description_standardizing import standardize_job_description
 from dotenv import load_dotenv
 load_dotenv()
 
-def process_job_description(pdf_path: str, company_name: str = "Unknown Company"):
+def process_job_description(pdf_path: str):
     """
     Process a job description PDF and insert it into MongoDB
-    
-    Args:
-        pdf_path: Path to the job description PDF file
-        company_name: Name of the company (optional, defaults to "Unknown Company")
     """
     print(f"Starting job description pipeline with PDF: {pdf_path}")
     
@@ -54,10 +50,20 @@ def process_job_description(pdf_path: str, company_name: str = "Unknown Company"
         if not pdf_file.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
         
-        print(f"Processing job description for company: {company_name}")
+        # Extract company name and job title from path
+        # Expected path structure: .../company_name/job_title/filename.pdf
+        path_parts = str(pdf_file.parent).split(os.sep)
+        if len(path_parts) >= 2:
+            job_title = path_parts[-1].replace('_', ' ')
+            company_name = path_parts[-2].replace('_', ' ')
+        else:
+            # Fallback to extracting from filename
+            company_name = "Unknown Company"
+            job_title = pdf_file.stem.replace('_', ' ')
+        
+        print(f"Processing job description for: {company_name} - {job_title}")
         
         # Step 1: Azure job description parser
-        print("Step 1: Parsing job description with Azure Content Understanding")
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
@@ -87,7 +93,6 @@ def process_job_description(pdf_path: str, company_name: str = "Unknown Company"
         )
         
         # Step 2: Standardize job description data
-        print("Step 2: Standardizing job description data")
         standardized_data = standardize_job_description(azure_result, company_name)
         
         # Step 3: Insert to MongoDB
@@ -96,20 +101,16 @@ def process_job_description(pdf_path: str, company_name: str = "Unknown Company"
         
         if mongo_result.get("success"):
             operation = mongo_result.get("operation", "unknown")
-            print(f"MongoDB operation completed: {operation}")
-            print(f"Document ID: {mongo_result.get('document_id', 'N/A')}")
         else:
             raise Exception(f"MongoDB operation failed: {mongo_result.get('error')}")
         
         # Step 4: Retrieve job description document from MongoDB
-        print("Step 4: Retrieving job description document from MongoDB")
         job_doc = get_job_description(company_name, standardized_data.get("JobTitle"))
         
         if not job_doc:
-            raise Exception(f"Failed to retrieve job description: {company_name} - {job_title}")
+            raise Exception("Failed to retrieve job description")
         
         # Step 5: Generate and store embeddings
-        print("Step 5: Generating embeddings for job description profile and location")
         
         # Check for Azure OpenAI API key
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -117,13 +118,9 @@ def process_job_description(pdf_path: str, company_name: str = "Unknown Company"
             raise ValueError("AZURE_OPENAI_API_KEY environment variable not set")
         
         embed_job_description_profile(job_doc)
-        print("Profile embedding generated and stored successfully")
-        
         embed_job_description_location(job_doc)
-        print("Location embedding generated and stored successfully")
         
         # Step 6: Verify embeddings were stored
-        print("Step 6: Verifying embeddings in database")
         updated_job = get_job_description(company_name, standardized_data.get("JobTitle"))
         
         if updated_job:
@@ -132,7 +129,6 @@ def process_job_description(pdf_path: str, company_name: str = "Unknown Company"
             
             if profile_check and location_check:
                 print(f"Embedding verification successful")
-                print(f"Job description pipeline completed successfully for {company_name} - {job_title}")
             else:
                 missing = []
                 if not profile_check:
@@ -161,10 +157,8 @@ def process_resume(pdf_path: str):
         
         # Extract candidate name from filename
         candidate_name = pdf_file.stem
-        print(f"Processing resume for: {candidate_name}")
         
         # Step 1: Azure resume parser
-        print("Step 1: Parsing resume with Azure Content Understanding")
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
@@ -194,28 +188,23 @@ def process_resume(pdf_path: str):
         )
         
         # Step 2: Standardize resume data
-        print("Step 2: Standardizing resume data")
         standardized_data = standardize_resume(azure_result, candidate_name)
         
         # Step 3: Insert to MongoDB
-        print("Step 3: Inserting into MongoDB")
         mongo_result = upsert_candidate(standardized_data)
         
         if mongo_result.get("success"):
             operation = mongo_result.get("operation", "unknown")
-            print(f"MongoDB operation completed: {operation}")
         else:
             raise Exception(f"MongoDB operation failed: {mongo_result.get('error')}")
         
         # Step 4: Retrieve candidate document from MongoDB
-        print("Step 4: Retrieving candidate document from MongoDB")
         candidate_doc = get_candidate(candidate_name)
         
         if not candidate_doc:
             raise Exception(f"Failed to retrieve candidate document: {candidate_name}")
         
         # Step 5: Generate and store embeddings
-        print("Step 5: Generating embeddings for candidate profile and location")
         
         # Check for Azure OpenAI API key
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -223,13 +212,10 @@ def process_resume(pdf_path: str):
             raise ValueError("AZURE_OPENAI_API_KEY environment variable not set")
         
         embed_candidate_profile(candidate_doc)
-        print("Profile embedding generated and stored successfully")
         
         embed_candidate_location(candidate_doc)
-        print("Location embedding generated and stored successfully")
         
         # Step 6: Verify embeddings were stored
-        print("Step 6: Verifying embeddings in database")
         updated_candidate = get_candidate(candidate_name)
         
         if updated_candidate:
@@ -238,7 +224,6 @@ def process_resume(pdf_path: str):
             
             if profile_check and location_check:
                 print(f"Embedding verification successful")
-                print(f"Resume pipeline completed successfully for {candidate_name}")
             else:
                 missing = []
                 if not profile_check:
@@ -259,34 +244,21 @@ def main():
     
     Usage:
         python prototype_demonstration.py --resume <pdf_path>
-        python prototype_demonstration.py --job-description <pdf_path> [--company <company_name>]
-        python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]
+        python prototype_demonstration.py --job-description <pdf_path>
+        python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>
     """
     if len(sys.argv) < 3:
         print("Usage:")
         print("  python prototype_demonstration.py --resume <pdf_path>")
-        print("  python prototype_demonstration.py --job-description <pdf_path> [--company <company_name>]")
-        print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]")
+        print("  python prototype_demonstration.py --job-description <pdf_path>")
+        print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
         print("\nExamples:")
         print("  python prototype_demonstration.py --resume 'src/testing_files/Brian P.pdf'")
-        print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG Head of Technology.pdf' --company 'MLG'")
-        print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf' --company 'MLG'")
+        print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG/Head_of_Technology/jd.pdf'")
+        print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf'")
         sys.exit(1)
     
     command = sys.argv[1]
-    
-    # Parse company name from arguments if provided
-    company_name = "Unknown Company"
-    if "--company" in sys.argv:
-        try:
-            company_idx = sys.argv.index("--company")
-            if company_idx + 1 < len(sys.argv):
-                company_name = sys.argv[company_idx + 1]
-            else:
-                print("Error: --company flag requires a company name")
-                sys.exit(1)
-        except ValueError:
-            pass
     
     try:
         if command == "--resume":
@@ -301,30 +273,21 @@ def main():
                 print("Error: --job-description requires a PDF path")
                 sys.exit(1)
             pdf_path = sys.argv[2]
-            process_job_description(pdf_path, company_name)
+            process_job_description(pdf_path)
             
         elif command == "--both":
             if len(sys.argv) < 4:
                 print("Error: --both requires both resume and job description PDF paths")
-                print("Usage: python prototype_demonstration.py --both <resume_pdf> <job_description_pdf> [--company <company_name>]")
+                print("Usage: python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
                 sys.exit(1)
             resume_pdf = sys.argv[2]
             job_pdf = sys.argv[3]
             
             # Process resume first
-            print("="*60)
-            print("PROCESSING RESUME")
-            print("="*60)
             process_resume(resume_pdf)
             
-            print("\n" + "="*60)
-            print("PROCESSING JOB DESCRIPTION")
-            print("="*60)
-            process_job_description(job_pdf, company_name)
-            
-            print("\n" + "="*60)
-            print("BOTH DOCUMENTS PROCESSED SUCCESSFULLY")
-            print("="*60)
+            # Process job description next
+            process_job_description(job_pdf)
             
         else:
             print(f"Invalid command: {command}")
