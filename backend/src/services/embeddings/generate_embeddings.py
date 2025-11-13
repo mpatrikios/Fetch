@@ -6,7 +6,9 @@ from openai import OpenAI
 from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
-from ...database.insert_to_mongo import insert_embedding
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from database.insert_to_mongo import insert_embedding
 
 load_dotenv()
 connection_string = os.getenv("MONGODB_URL")
@@ -65,6 +67,27 @@ def embed_candidate_location(candidate_doc):
     insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
 # function for generating and storing candidate embeddings of cultural index
 
-# function for generating and storing job description embeddings 
+# generate and store job description profile embeddings
+def embed_job_description_profile(job_doc):
+    text = f"{job_doc.get('JobTitle', '')} " + \
+           f"{job_doc.get('Summary', '')} " + \
+           " ".join(job_doc.get('Skills') or []) + " " + \
+           " ".join(job_doc.get('Responsibilities') or []) + " " + \
+           " ".join(job_doc.get('Qualifications') or [])
+    embedding = generate_embedding(text)
+    if embedding is None:
+        print(f"Failed to generate profile embedding for job description {job_doc.get('_id')}")
+        return
+    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "profile_embedding", embedding)
+
+# generate and store job description location embeddings
+def embed_job_description_location(job_doc):
+    locations = job_doc.get("Locations", [])
+    location_text = " ".join(locations) if isinstance(locations, list) else str(locations)
+    embedding = generate_embedding(location_text)
+    if embedding is None:
+        print(f"Failed to generate location embedding for job description {job_doc.get('_id')}")
+        return
+    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_embedding", embedding)
 
 # function for generating and storing job cultural index embeddings
