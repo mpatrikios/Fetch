@@ -262,16 +262,10 @@ def main():
     
     try:
         if command == "--resume":
-            if len(sys.argv) < 3:
-                print("Error: --resume requires a PDF path")
-                sys.exit(1)
             pdf_path = sys.argv[2]
             process_resume(pdf_path)
             
         elif command == "--job-description":
-            if len(sys.argv) < 3:
-                print("Error: --job-description requires a PDF path")
-                sys.exit(1)
             pdf_path = sys.argv[2]
             process_job_description(pdf_path)
             
