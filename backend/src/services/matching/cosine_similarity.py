@@ -97,6 +97,14 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
 
 # python based explanation builder, using only keyword overlap and role analysis
 def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
+    """
+    Build a structured explanation for why a candidate matches a job based on:
+      - skill overlap,
+      - keyword overlap in job responsibilities and candidate experience,
+      - relevant senior/leadership roles in candidate experience,
+      - companies worked at by candidate.
+    Returns a dict with these fields for further processing or display.
+    """
     # Skill overlap analysis
     job_skills_raw = job_doc.get("Skills") or job_doc.get("skills") or []
     cand_skills_raw = cand_doc.get("Skills") or cand_doc.get("skills") or []
