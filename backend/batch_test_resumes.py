@@ -27,8 +27,9 @@ def store_json_result_to_dir(result_json: dict[str, Any], dir_path: str, file_pr
     """Stores the JSON result to a directory.
 
     Args:
-        result (dict): The result to store.
+        result_json (dict): The result to store.
         dir_path (str): The path to the directory where the result will be stored.
+        file_prefix (str): The prefix to use for the saved JSON file's name.
     """
     os.makedirs(dir_path, exist_ok=True)
 
