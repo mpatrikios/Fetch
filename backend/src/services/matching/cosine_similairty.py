@@ -195,19 +195,23 @@ Write 3–5 short bullet points explaining:
 
 Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not supported above.
 """
-    try:
-        response = client.chat.completions.create(
-            model=os.environ.get("AZURE_OPENAI_MATCH_EXPLAIN_MODEL", deployment_name),
-            messages=[
-                {"role": "system", "content": "You are an assistant that explains job–candidate matches for recruiters in clear, concise bullet points."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-        )
-        summary_text = response.choices[0].message.content
-    except Exception as e:
-        # Fallback: if LLM call fails, just return structured info without summary
-        summary_text = f"Explanation generation failed: {e}"
+    if client is None:
+        # Fallback: OpenAI client not initialized
+        summary_text = "Explanation generation failed: OpenAI client not initialized."
+    else:
+        try:
+            response = client.chat.completions.create(
+                model=os.environ.get("AZURE_OPENAI_MATCH_EXPLAIN_MODEL", deployment_name),
+                messages=[
+                    {"role": "system", "content": "You are an assistant that explains job–candidate matches for recruiters in clear, concise bullet points."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
+            summary_text = response.choices[0].message.content
+        except Exception as e:
+            # Fallback: if LLM call fails, just return structured info without summary
+            summary_text = f"Explanation generation failed: {e}"
 
     # Attach LLM summary to structured features
     features["summary"] = summary_text
