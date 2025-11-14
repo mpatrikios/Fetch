@@ -49,7 +49,7 @@ def extract_keywords(text: str) -> set[str]:
     return {t for t in tokens if t not in STOPWORDS and len(t) > 4}
 
 
-# simple cosine similarity between two vectors
+# Calculates simple cosine similarity between two vectors
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     if a.shape != b.shape:
         raise ValueError("Vectors must have the same shape")
