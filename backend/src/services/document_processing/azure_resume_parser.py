@@ -22,39 +22,47 @@ subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
 if not subscription_key:
     raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
 
+def azure_resume_parser(pdf_path: str) -> dict:
+    """
+    Function to parse resume using Azure Content Understanding
+    """
+    try:
+        settings = Settings(
+                    endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
+                    api_version="2025-05-01-preview",
+                    subscription_key=subscription_key,
+                    aad_token=None,
+                    analyzer_id="resume_parser_v3",
+                    file_location=str(pdf_path)
+                )
+                
+        client = AzureContentUnderstandingClient(
+            settings.endpoint,
+            settings.api_version,
+            subscription_key=settings.subscription_key,
+            token_provider=settings.token_provider,
+        )
+        
+        response = client.begin_analyze(settings.analyzer_id, settings.file_location)
+        result = client.poll_result(
+            response,
+            timeout_seconds=60 * 60,
+            polling_interval_seconds=1,
+        )
+        return result
+    except Exception as e:
+        raise Exception(f"Azure resume parsing failed: {str(e)}")
+
 def main():
     # Get the absolute path to the PDF file relative to this script
     # USING BRIAN P RESUME FOR TESTING. ALSO INCLUDED IN PATH
-    script_dir = Path(__file__).parent
-    pdf_path = script_dir.parent.parent / "testing_files" / "Brian P.pdf"
-    settings = Settings(
-        endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
-        api_version="2025-05-01-preview",
-        # Either subscription_key or aad_token must be provided. Subscription Key is more prioritized.
-        subscription_key=subscription_key,
-        aad_token=None,
-        # Insert the analyzer name.
-        analyzer_id="resume_parser_v3",
-        # Insert the supported file types of the analyzer.
-        file_location=str(pdf_path),
-    )
-    client = AzureContentUnderstandingClient(
-        settings.endpoint,
-        settings.api_version,
-        subscription_key=settings.subscription_key,
-        token_provider=settings.token_provider,
-    )
-    # Extract candidate name from PDF filename (e.g., "Brian P.pdf" -> "Brian P")
-    candidate_name = pdf_path.stem
-    
-    print(f"Processing resume for: {candidate_name}")
-    response = client.begin_analyze(settings.analyzer_id, settings.file_location)
-    result = client.poll_result(
-        response,
-        timeout_seconds=60 * 60,
-        polling_interval_seconds=1,
-    )
-    
+    if len(sys.argv) != 2:
+        print("Usage: python azure_resume_parser.py <pdf_path>")
+        sys.exit(1)
+    else:
+        pdf_path = sys.argv[1]
+        candidate_name = Path(pdf_path).stem.replace(" ", "_")
+        result = azure_resume_parser(pdf_path=sys.argv[1])
 @dataclass(frozen=True, kw_only=True)
 class Settings:
     endpoint: str
