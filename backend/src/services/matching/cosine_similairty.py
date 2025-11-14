@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-azure_base_url = os.getenv("AZURE_OPENAI_BASE_URL")
+azure_base_url = os.getenv("AZURE_OPENAI_EXPLANATION_BASE_URL")
 deployment_name = "Explanation-LLM"
 
 # initialize OpenAI client
