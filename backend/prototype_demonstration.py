@@ -35,7 +35,7 @@ from generate_embeddings import (
 )
 
 # Import matching components
-from cosine_similairty import profile_matching_candidate
+from cosine_similarity import profile_matching_candidate
 
 # Import job description parser components
 from azure_job_description_parser import (
