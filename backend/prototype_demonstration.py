@@ -308,21 +308,78 @@ def main():
             
             # Find matching candidates
             matches = profile_matching_candidate(database, job_doc, top_k=10)
-            print(f"Top matching candidates for {company_name} - {job_title}:")
-            for match in matches:
+            
+            # Print header
+            print("\n" + "="*80)
+            print(f"TOP MATCHING CANDIDATES FOR: {company_name.upper()} - {job_title.upper()}")
+            print("="*80 + "\n")
+            
+            for rank, match in enumerate(matches, 1):
                 candidate = match["candidate"]
                 score = match["similarity_score"]
                 explanation = match.get("explanation", {})
-                overlap_skills = explanation.get("overlap_skills") or []
-                missing_skills = explanation.get("missing_skills") or []
-                keyword_overlap = explanation.get("keyword_overlap") or []
-                relevant_roles = explanation.get("relevant_roles") or []
                 
-                print(f"- Candidate: {candidate.get('full_name')} | Similarity Score: {score:.4f}")
-                print(f"  Overlap Skills: {', '.join(overlap_skills) if overlap_skills else '(none)'}")
-                print(f"  Missing Skills: {', '.join(missing_skills) if missing_skills else '(none)'}")
-                print(f"  Overlapping Keywords: {', '.join(keyword_overlap[:8]) if keyword_overlap else '(none)'}")
-                print(f"  Relevant Roles: {', '.join(relevant_roles) if relevant_roles else '(none)'}")
+                # Extract fields from explanation
+                skill_overlap = explanation.get("skill_overlap", [])
+                skill_missing = explanation.get("skill_missing", [])
+                keyword_overlap = explanation.get("keyword_overlap", [])
+                relevant_roles = explanation.get("relevant_roles", [])
+                candidate_companies = explanation.get("candidate_companies", [])
+                summary = explanation.get("summary", "No summary available")
+                
+                # Print candidate header
+                print(f"#{rank} CANDIDATE: {candidate.get('full_name', 'Unknown')}")
+                print("-" * 60)
+                
+                # Score and location
+                print(f" Match Score: {score:.1%}")
+                if candidate.get('Location'):
+                    print(f"Location: {candidate.get('Location')}")
+                
+                # Companies
+                if candidate_companies:
+                    print(f" Companies: {', '.join(candidate_companies[:3])}")
+                
+                # Skills analysis
+                print(f"\nMatching Skills ({len(skill_overlap)}): ", end="")
+                if skill_overlap:
+                    print(', '.join(skill_overlap[:8]))
+                else:
+                    print("None identified")
+                
+                if skill_missing:
+                    print(f" Missing Skills ({len(skill_missing)}): ", end="")
+                    print(', '.join(skill_missing[:5]))
+                
+                # Relevant experience
+                if relevant_roles:
+                    print(f"\n💼 Relevant Leadership Roles:")
+                    for role in relevant_roles[:3]:
+                        print(f"   • {role}")
+                
+                # Key overlapping terms
+                if keyword_overlap:
+                    print(f"\n Key Overlapping Terms: {', '.join(keyword_overlap[:10])}")
+                
+                # AI-generated summary
+                print(f"\n AI Analysis:")
+                if summary and summary != "No summary available":
+                    # Format the summary as indented bullet points
+                    summary_lines = summary.strip().split('\n')
+                    for line in summary_lines:
+                        line = line.strip()
+                        if line:
+                            # Ensure consistent bullet formatting
+                            if line.startswith(('•', '-', '*', '1.', '2.', '3.', '4.', '5.')):
+                                # Remove existing bullet and add consistent spacing
+                                line = line.lstrip('•-*1234567890. ')
+                                print(f"   • {line}")
+                            else:
+                                print(f"   {line}")
+                else:
+                    print("   No AI analysis available")
+                
+                print("\n" + "="*80 + "\n")
         else:
             print(f"Invalid command: {command}")
             print("Valid commands: --resume, --job-description, --both")

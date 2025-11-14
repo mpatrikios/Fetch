@@ -5,8 +5,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-azure_base_url = os.getenv("AZURE_OPENAI_BASE_URL")
+azure_base_url = "https://fetch-embeddinggen.openai.azure.com/openai/v1/"
+deployment_name = "Explanation-LLM"
 
 # Only initialize client if we have the required environment variables
 client = None
@@ -19,7 +21,7 @@ if openai_api_key and azure_base_url:
     except Exception as e:
         print(f"Failed to initialize OpenAI client: {e}")
         client = None
-
+        
 STOPWORDS = {
     "the", "and", "with", "for", "from", "that", "this", "your", "their",
     "they", "them", "our", "into", "through", "will", "have", "has", "are",
@@ -63,14 +65,17 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
     return scored[:top_k]
 
 def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
-    # ---------- 1. Skill overlap ----------
-    job_skills = set(job_doc.get("Skills", []))
-    cand_skills = set(cand_doc.get("Skills", []))
+    # ---- 1. Skill overlap (case-insensitive, handle Skills/skills) ----
+    job_skills_raw = job_doc.get("Skills") or job_doc.get("skills") or []
+    cand_skills_raw = cand_doc.get("Skills") or cand_doc.get("skills") or []
+
+    job_skills = {s.strip().lower() for s in job_skills_raw}
+    cand_skills = {s.strip().lower() for s in cand_skills_raw}
 
     skill_overlap = list(job_skills & cand_skills)
     skill_missing = list(job_skills - cand_skills)
 
-    # ---------- 2. Text overlap (summary + responsibilities + qualifications) ----------
+    # ---- 2. Text overlap ----
     job_text = (
         job_doc.get("Summary", "") + " " +
         " ".join(job_doc.get("Responsibilities", [])) + " " +
@@ -184,7 +189,7 @@ Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not s
 """
     try:
         response = client.chat.completions.create(
-            model=os.environ.get("AZURE_OPENAI_MATCH_EXPLAIN_MODEL", "gpt-4o-mini"),
+            model=os.environ.get("AZURE_OPENAI_MATCH_EXPLAIN_MODEL", deployment_name),
             messages=[
                 {"role": "system", "content": "You are an assistant that explains job–candidate matches for recruiters in clear, concise bullet points."},
                 {"role": "user", "content": prompt},
