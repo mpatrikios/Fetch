@@ -340,7 +340,7 @@ def main():
                 
                 # Companies
                 if candidate_companies:
-                    print(f" Companies: {', '.join(candidate_companies[:3])}")
+                    print(f"Companies: {', '.join(candidate_companies[:3])}")
                 
                 # Skills analysis
                 print(f"\nMatching Skills ({len(skill_overlap)}): ", end="")
@@ -350,12 +350,12 @@ def main():
                     print("None identified")
                 
                 if skill_missing:
-                    print(f" Missing Skills ({len(skill_missing)}): ", end="")
+                    print(f"Missing Skills ({len(skill_missing)}): ", end="")
                     print(', '.join(skill_missing[:5]))
                 
                 # Relevant experience
                 if relevant_roles:
-                    print(f"\n💼 Relevant Leadership Roles:")
+                    print(f"\nRelevant Leadership Roles:")
                     for role in relevant_roles[:3]:
                         print(f"   • {role}")
                 
