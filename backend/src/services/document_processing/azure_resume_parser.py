@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
+if not subscription_key:
+    raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
 
 def azure_resume_parser(pdf_path: str) -> dict:
     """

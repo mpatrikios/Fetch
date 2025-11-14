@@ -11,7 +11,15 @@ from datetime import datetime
 sys.path.append('src/services/document_processing')
 sys.path.append('src/services/job_description_processing')
 sys.path.append('src/services/embeddings')
+sys.path.append('src/services/matching')
 sys.path.append('src/database')
+
+# Import database components
+from connection import mongo_connection
+from insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
+
+# Access the database
+database = mongo_connection.database
 
 # Import Azure resume parser components
 from azure_resume_parser import (
@@ -19,13 +27,15 @@ from azure_resume_parser import (
     Settings
 )
 from resume_standardizing import standardize_resume
-from insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
 from generate_embeddings import (
     embed_candidate_profile, 
     embed_candidate_location,
     embed_job_description_profile,
     embed_job_description_location
 )
+
+# Import matching components
+from cosine_similarity import profile_matching_candidate
 
 # Import job description parser components
 from azure_job_description_parser import (
@@ -247,15 +257,18 @@ def main():
         python prototype_demonstration.py --job-description <pdf_path>
         python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>
     """
+    
     if len(sys.argv) < 3:
         print("Usage:")
         print("  python prototype_demonstration.py --resume <pdf_path>")
         print("  python prototype_demonstration.py --job-description <pdf_path>")
         print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
+        print("  python prototype_demonstration.py --find-matches <company_name> <job_title>")
         print("\nExamples:")
         print("  python prototype_demonstration.py --resume 'src/testing_files/Brian P.pdf'")
         print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG/Head_of_Technology/jd.pdf'")
         print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf'")
+        print("  python prototype_demonstration.py --find-matches 'MLG' 'Head of Technology'")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -282,7 +295,93 @@ def main():
             
             # Process job description next
             process_job_description(job_pdf)
+        elif command == "--find-matches":
+            if len(sys.argv) < 4:
+                print("Error: --find-matches requires company name and job title")
+                print("Usage: python prototype_demonstration.py --find-matches <company_name> <job_title>")
+                sys.exit(1)
+            company_name = sys.argv[2]
+            job_title = sys.argv[3]
             
+            # Retrieve job description document
+            job_doc = get_job_description(company_name, job_title)
+            if not job_doc:
+                raise Exception(f"Job description not found for {company_name} - {job_title}")
+            
+            # Find matching candidates
+            matches = profile_matching_candidate(database, job_doc, top_k=10)
+            
+            # Print header - output made pretty by Claude Code <3
+            print("\n" + "="*80)
+            print(f"TOP MATCHING CANDIDATES FOR: {company_name.upper()} - {job_title.upper()}")
+            print("="*80 + "\n")
+            
+            for rank, match in enumerate(matches, 1):
+                candidate = match["candidate"]
+                score = match["similarity_score"]
+                explanation = match.get("explanation", {})
+                
+                # Extract fields from explanation
+                skill_overlap = explanation.get("skill_overlap", [])
+                skill_missing = explanation.get("skill_missing", [])
+                keyword_overlap = explanation.get("keyword_overlap", [])
+                relevant_roles = explanation.get("relevant_roles", [])
+                candidate_companies = explanation.get("candidate_companies", [])
+                summary = explanation.get("summary", "No summary available")
+                
+                # Print candidate header
+                print(f"#{rank} CANDIDATE: {candidate.get('full_name', 'Unknown')}")
+                print("-" * 60)
+                
+                # Score and location
+                print(f" Match Score: {score:.1%}")
+                if candidate.get('Location'):
+                    print(f"Location: {candidate.get('Location')}")
+                
+                # Companies
+                if candidate_companies:
+                    print(f"Companies: {', '.join(candidate_companies[:3])}")
+                
+                # Skills analysis
+                print(f"\nMatching Skills ({len(skill_overlap)}): ", end="")
+                if skill_overlap:
+                    print(', '.join(skill_overlap[:8]))
+                else:
+                    print("None identified")
+                
+                if skill_missing:
+                    print(f"Missing Skills ({len(skill_missing)}): ", end="")
+                    print(', '.join(skill_missing[:5]))
+                
+                # Relevant experience
+                if relevant_roles:
+                    print(f"\nRelevant Leadership Roles:")
+                    for role in relevant_roles[:3]:
+                        print(f"   • {role}")
+                
+                # Key overlapping terms
+                if keyword_overlap:
+                    print(f"\n Key Overlapping Terms: {', '.join(keyword_overlap[:10])}")
+                
+                # AI-generated summary
+                print(f"\n AI Analysis:")
+                if summary and summary != "No summary available":
+                    # Format the summary as indented bullet points
+                    summary_lines = summary.strip().split('\n')
+                    for line in summary_lines:
+                        line = line.strip()
+                        if line:
+                            # Ensure consistent bullet formatting
+                            if line.startswith(('•', '-', '*', '1.', '2.', '3.', '4.', '5.')):
+                                # Remove existing bullet and add consistent spacing
+                                line = line.lstrip('•-*1234567890. ')
+                                print(f"   • {line}")
+                            else:
+                                print(f"   {line}")
+                else:
+                    print("   No AI analysis available")
+                
+                print("\n" + "="*80 + "\n")
         else:
             print(f"Invalid command: {command}")
             print("Valid commands: --resume, --job-description, --both")
