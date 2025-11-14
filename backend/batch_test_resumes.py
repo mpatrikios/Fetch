@@ -86,7 +86,6 @@ def main():
             print("Step 1: Parsing resume with Azure Content Understanding")
             azure_result = azure_resume_parser(pdf_path)
             azure_result_path = script_dir / "src" / "json_output_files" / candidate_name.replace(" ", "_")
-            store_json_result_to_dir(azure_result, azure_result_path, "resume_parsed")
             
             # Step 2: Standardize resume data
             print("Step 2: Standardizing resume data")
