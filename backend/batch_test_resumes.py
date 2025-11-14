@@ -45,13 +45,19 @@ def store_json_result_to_dir(result_json: dict[str, Any], dir_path: str, file_pr
 
 def main():
     """
-    Main function that implements the complete pipeline
+    Main function to run the batch test pipeline for resume parsing and standardizing.
+    1. Parse resumes from a specific directory or command line using Azure Content Understanding.
+    2. Standardize the parsed resume data.
+    3. Store the results in JSON files.
+    4. Print the time taken for each resume processing.
+    5. Handle exceptions and print error messages if any step fails.
     """
     if (len(sys.argv) < 1):
         print("Usage : python batch_test_resumes.py")
         # print("Usage: python batch_test_resumes.py <pdf_path1>,<pdf_path2>, ...")
         sys.exit(1)
-    # naually entered file path and run manually in sequence
+        
+    # manually entered file path and run manually in sequence
     # script_dir = Path(__file__).parent
     # pdf_path = script_dir / "src" / "testing_files" / "Bart L.pdf"
 
