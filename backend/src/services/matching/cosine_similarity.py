@@ -61,6 +61,20 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 # Find top-k candidate matches for a job based on profile embeddings
 def profile_matching_candidate(db, job_doc, top_k: int = 10):
+    """
+    Finds the top-k candidate matches for a given job document based on cosine similarity of profile embeddings.
+
+    Args:
+        db: The database connection object, expected to have a "CandidatesTesting" collection.
+        job_doc (dict): The job document containing a "profile_embedding" key.
+        top_k (int, optional): The number of top candidates to return. Defaults to 10.
+
+    Returns:
+        list of dict: A list of dictionaries, each containing:
+            - "similarity_score": The cosine similarity score between the job and candidate embeddings.
+            - "candidate": The candidate document.
+            - "explanation": An explanation of the match.
+    """
     job_vec = np.array(job_doc["profile_embedding"], dtype=float)
 
     candidates_cursor = db["CandidatesTesting"].find(
