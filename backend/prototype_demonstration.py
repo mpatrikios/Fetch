@@ -263,10 +263,12 @@ def main():
         print("  python prototype_demonstration.py --resume <pdf_path>")
         print("  python prototype_demonstration.py --job-description <pdf_path>")
         print("  python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>")
+        print(" python prototype_demonstration.py --find-matches <company_name> <job_title>")
         print("\nExamples:")
         print("  python prototype_demonstration.py --resume 'src/testing_files/Brian P.pdf'")
         print("  python prototype_demonstration.py --job-description 'src/testing_files/MLG/Head_of_Technology/jd.pdf'")
         print("  python prototype_demonstration.py --both 'src/testing_files/Brian P.pdf' 'src/testing_files/MLG Head of Technology.pdf'")
+        print("  python prototype_demonstration.py --find-matches 'MLG' 'Head of Technology'")
         sys.exit(1)
     
     command = sys.argv[1]
@@ -309,7 +311,7 @@ def main():
             # Find matching candidates
             matches = profile_matching_candidate(database, job_doc, top_k=10)
             
-            # Print header
+            # Print header - output made pretty by Claude Code <3
             print("\n" + "="*80)
             print(f"TOP MATCHING CANDIDATES FOR: {company_name.upper()} - {job_title.upper()}")
             print("="*80 + "\n")

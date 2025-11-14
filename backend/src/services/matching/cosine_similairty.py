@@ -10,7 +10,7 @@ openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 azure_base_url = "https://fetch-embeddinggen.openai.azure.com/openai/v1/"
 deployment_name = "Explanation-LLM"
 
-# Only initialize client if we have the required environment variables
+# initialize OpenAI client
 client = None
 if openai_api_key and azure_base_url:
     try:
@@ -21,7 +21,8 @@ if openai_api_key and azure_base_url:
     except Exception as e:
         print(f"Failed to initialize OpenAI client: {e}")
         client = None
-        
+ 
+# Common English stopwords to exclude from keyword extraction       
 STOPWORDS = {
     "the", "and", "with", "for", "from", "that", "this", "your", "their",
     "they", "them", "our", "into", "through", "will", "have", "has", "are",
@@ -29,11 +30,13 @@ STOPWORDS = {
     "into", "also", "using", "based", "able", "experience", "years"
 }
 
+# Extract keywords from text by tokenizing, lowercasing, and removing stopwords
 def extract_keywords(text: str) -> set[str]:
     tokens = re.findall(r"[A-Za-z]+", text.lower())
     return {t for t in tokens if t not in STOPWORDS and len(t) > 4}
 
 
+# simple cosine similarity between two vectors
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     if a.shape != b.shape:
         raise ValueError("Vectors must have the same shape")
@@ -43,6 +46,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(a.dot(b) / denom)
 
 
+# Find top-k candidate matches for a job based on profile embeddings
 def profile_matching_candidate(db, job_doc, top_k: int = 10):
     job_vec = np.array(job_doc["profile_embedding"], dtype=float)
 
@@ -64,8 +68,9 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
     scored.sort(key=lambda x: x["similarity_score"], reverse=True)
     return scored[:top_k]
 
+# python based explanation builder, using only keyword overlap and role analysis
 def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
-    # ---- 1. Skill overlap (case-insensitive, handle Skills/skills) ----
+    # Skill overlap analysis
     job_skills_raw = job_doc.get("Skills") or job_doc.get("skills") or []
     cand_skills_raw = cand_doc.get("Skills") or cand_doc.get("skills") or []
 
@@ -75,13 +80,14 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     skill_overlap = list(job_skills & cand_skills)
     skill_missing = list(job_skills - cand_skills)
 
-    # ---- 2. Text overlap ----
+    # Full job text for keyword extraction
     job_text = (
         job_doc.get("Summary", "") + " " +
         " ".join(job_doc.get("Responsibilities", [])) + " " +
         " ".join(job_doc.get("Qualifications", []))
     )
 
+    # Candidate experience text
     cand_roles_text = " ".join(
         exp.get("role", "") for exp in cand_doc.get("Experience", [])
     )
@@ -95,16 +101,18 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
         cand_resp_text
     )
 
+    # Extract keywords from job and candidate texts
+    # Find overlapping keywords
     job_kw = extract_keywords(job_text)
     cand_kw = extract_keywords(cand_text)
     keyword_overlap = sorted(job_kw & cand_kw)
  
 
-    # ---------- 3. Leadership / role alignment ----------
+    # Tokens indicating leadership/senior roles
     job_title = (job_doc.get("JobTitle") or "").lower()
     leadership_tokens = {"head", "director", "cto", "chief", "lead", "leader", "architect"}
     
-    
+    # Find relevant senior/leadership roles in candidate experience
     relevant_roles = []
     for exp in cand_doc.get("Experience", []):
         role = (exp.get("role") or "").strip()
@@ -112,17 +120,16 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
         if any(tok in rl for tok in leadership_tokens) or any(tok in job_title.split() for tok in rl.split()):
             relevant_roles.append(role)
 
-    # ---------- 4. Company context ----------
+    # Companies worked at by candidate
     candidate_companies = [
         c.get("companyName")
         for c in cand_doc.get("Companies", [])
         if c.get("companyName")
     ]
 
-    # ---------- 5. Experience alignment (very rough) ----------
-    # Example: "MinYears": "10+ years"
+    # rough seniority estimate from job min years and candidate role count
     job_min_years = job_doc.get("MinYears", "")
-    # For now, approximate candidate seniority by number of roles
+    # For now, approximate candidate seniority by number of roles, probably need to sum up years in future?
     cand_role_count = len(cand_doc.get("Experience", []))
 
     return {
@@ -135,6 +142,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
         "candidate_num_roles": cand_role_count,
     }
 
+# LLM-enhanced explanation builder with OpenAI
 def build_match_explanation_llm(job_doc: dict, cand_doc: dict, similarity_score: float) -> dict:
     """
     Build an explanation for the match using:
@@ -156,7 +164,7 @@ def build_match_explanation_llm(job_doc: dict, cand_doc: dict, similarity_score:
     cand_location = cand_doc.get("Location", "")
 
     prompt = f"""
-You are assisting a recruiter at The Marcus-Levi Group (MLG) by explaining why a candidate matches a job.
+You are assisting a recruiter by explaining why a candidate matches a job.
 
 JOB
 - Company: {job_company}
