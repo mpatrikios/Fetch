@@ -52,11 +52,7 @@ def main():
     4. Print the time taken for each resume processing.
     5. Handle exceptions and print error messages if any step fails.
     """
-    if (len(sys.argv) < 1):
-        print("Usage : python batch_test_resumes.py")
-        # print("Usage: python batch_test_resumes.py <pdf_path1>,<pdf_path2>, ...")
-        sys.exit(1)
-        
+            
     # manually entered file path and run manually in sequence
     # script_dir = Path(__file__).parent
     # pdf_path = script_dir / "src" / "testing_files" / "Bart L.pdf"
@@ -87,11 +83,10 @@ def main():
             # Extract candidate name from filename
             candidate_name = Path(pdf_path).stem
             print(f"Processing resume for: {candidate_name}")
-            start = -time.perf_counter()
+            time_taken = -time.perf_counter()
             # Step 1: Azure resume parser
             print("Step 1: Parsing resume with Azure Content Understanding")
             azure_result = azure_resume_parser(pdf_path)
-            azure_result_path = script_dir / "src" / "json_output_files" / candidate_name.replace(" ", "_")
             
             # Step 2: Standardize resume data
             print("Step 2: Standardizing resume data")
@@ -99,8 +94,8 @@ def main():
             standardized_data_path = script_dir / "src" / "standardized_output_files" / candidate_name.replace(" ", "_")
             store_json_result_to_dir(standardized_data, standardized_data_path, "resume_standardized")
             print(f"Pipeline completed successfully for {candidate_name}.\n")
-            start += time.perf_counter()
-            print(f"Total time taken: {start:.2f} seconds")
+            time_taken += time.perf_counter()
+            print(f"Total time taken: {time_taken:.2f} seconds")
         except Exception as e:
             print(f"Pipeline failed: {str(e)}")
             sys.exit(1)

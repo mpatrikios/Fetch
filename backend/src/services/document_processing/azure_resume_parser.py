@@ -56,15 +56,13 @@ def azure_resume_parser(pdf_path: str) -> dict:
 def main():
     # Get the absolute path to the PDF file relative to this script
     # USING BRIAN P RESUME FOR TESTING. ALSO INCLUDED IN PATH
-    if (len(sys.argv) <= 2):
-        print("Usage : python azure_resume_parser.py <pdf_path>")
+    if len(sys.argv) != 2:
+        print("Usage: python azure_resume_parser.py <pdf_path>")
         sys.exit(1)
     else:
         pdf_path = sys.argv[1]
         candidate_name = Path(pdf_path).stem.replace(" ", "_")
         result = azure_resume_parser(pdf_path=sys.argv[1])
-        result_path = os.path.join("..", "..", "..", "json_output_files", candidate_name)
-
 @dataclass(frozen=True, kw_only=True)
 class Settings:
     endpoint: str
