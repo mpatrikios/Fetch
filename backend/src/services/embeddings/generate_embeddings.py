@@ -3,15 +3,14 @@ This file is responsible for generating embeddings using OpenAI API
 """
 
 from openai import OpenAI
-from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
+from database.connection import mongo_connection
 
 load_dotenv()
-connection_string = os.getenv("MONGODB_URL")
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 azure_base_url = os.getenv("AZURE_OPENAI_BASE_URL")
 
@@ -26,8 +25,9 @@ if openai_api_key and azure_base_url:
     except Exception as e:
         print(f"Failed to initialize OpenAI client: {e}")
         client = None
-mongo_client = MongoClient(connection_string)
-db = mongo_client["FetchTestingDB"]
+
+# Use centralized MongoDB connection
+db = mongo_connection.database
 
 def generate_embedding(text, model="text-embedding-ada-002"):
     if client is None:

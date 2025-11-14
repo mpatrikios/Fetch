@@ -14,13 +14,19 @@ sys.path.append('src/services/embeddings')
 sys.path.append('src/services/matching')
 sys.path.append('src/database')
 
+# Import database components
+from connection import mongo_connection
+from insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
+
+# Access the database
+database = mongo_connection.database
+
 # Import Azure resume parser components
 from azure_resume_parser import (
     AzureContentUnderstandingClient,
     Settings
 )
 from resume_standardizing import standardize_resume
-from insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
 from generate_embeddings import (
     embed_candidate_profile, 
     embed_candidate_location,
@@ -29,8 +35,7 @@ from generate_embeddings import (
 )
 
 # Import matching components
-from job_candidate_matcher import find_best_candidates_for_job_by_profile
-from vector_indexes import ensure_candidate_profile_vector_index
+from cosine_similairty import profile_matching_candidate
 
 # Import job description parser components
 from azure_job_description_parser import (
@@ -252,6 +257,7 @@ def main():
         python prototype_demonstration.py --job-description <pdf_path>
         python prototype_demonstration.py --both <resume_pdf> <job_description_pdf>
     """
+    
     if len(sys.argv) < 3:
         print("Usage:")
         print("  python prototype_demonstration.py --resume <pdf_path>")
@@ -287,7 +293,36 @@ def main():
             
             # Process job description next
             process_job_description(job_pdf)
+        elif command == "--find-matches":
+            if len(sys.argv) < 4:
+                print("Error: --find-matches requires company name and job title")
+                print("Usage: python prototype_demonstration.py --find-matches <company_name> <job_title>")
+                sys.exit(1)
+            company_name = sys.argv[2]
+            job_title = sys.argv[3]
             
+            # Retrieve job description document
+            job_doc = get_job_description(company_name, job_title)
+            if not job_doc:
+                raise Exception(f"Job description not found for {company_name} - {job_title}")
+            
+            # Find matching candidates
+            matches = profile_matching_candidate(database, job_doc, top_k=10)
+            print(f"Top matching candidates for {company_name} - {job_title}:")
+            for match in matches:
+                candidate = match["candidate"]
+                score = match["similarity_score"]
+                explanation = match.get("explanation", {})
+                overlap_skills = explanation.get("overlap_skills") or []
+                missing_skills = explanation.get("missing_skills") or []
+                keyword_overlap = explanation.get("keyword_overlap") or []
+                relevant_roles = explanation.get("relevant_roles") or []
+                
+                print(f"- Candidate: {candidate.get('full_name')} | Similarity Score: {score:.4f}")
+                print(f"  Overlap Skills: {', '.join(overlap_skills) if overlap_skills else '(none)'}")
+                print(f"  Missing Skills: {', '.join(missing_skills) if missing_skills else '(none)'}")
+                print(f"  Overlapping Keywords: {', '.join(keyword_overlap[:8]) if keyword_overlap else '(none)'}")
+                print(f"  Relevant Roles: {', '.join(relevant_roles) if relevant_roles else '(none)'}")
         else:
             print(f"Invalid command: {command}")
             print("Valid commands: --resume, --job-description, --both")
