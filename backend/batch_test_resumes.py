@@ -22,9 +22,6 @@ from resume_standardizing import standardize_resume
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
-subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
-if not subscription_key:
-    raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
 
 def store_json_result_to_dir(result_json: dict[str, Any], dir_path: str, file_prefix: str) -> None:
     """Stores the JSON result to a directory.
