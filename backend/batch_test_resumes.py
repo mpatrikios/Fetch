@@ -63,7 +63,7 @@ def main():
     # if (len(sys.argv) > 1):
     #     pdf_paths = sys.argv[1].split(',')
 
-    # # Use default test files
+    # Use default test files
     script_dir = Path(__file__).parent
     test_dir = str(script_dir / "src" / "testing_files")
     for name in os.listdir(test_dir):
