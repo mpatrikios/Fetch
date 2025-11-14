@@ -1,22 +1,14 @@
 """
 This file is responsible for interfacing with MongoDB to insert and update documents
 """
-from pymongo import MongoClient
-import os
 from typing import Dict, Any, List
 import logging
-from dotenv import load_dotenv
-import json
-import sys
+from connection import mongo_connection
 
-load_dotenv()
-connection_string = os.getenv("MONGODB_URL")
-
-client = MongoClient(connection_string)
-
-database = client.get_database("FetchTestingDB")
-collection = database.get_collection("CandidatesTesting")
-job_descriptions_collection = database.get_collection("JobDescriptionsTesting")
+# Get database and collections from centralized connection
+database = mongo_connection.database
+collection = mongo_connection.candidates_collection
+job_descriptions_collection = mongo_connection.job_descriptions_collection
 
 logging.basicConfig(level=logging.INFO)
 
