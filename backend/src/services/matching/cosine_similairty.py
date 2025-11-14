@@ -27,7 +27,7 @@ STOPWORDS = {
     "the", "and", "with", "for", "from", "that", "this", "your", "their",
     "they", "them", "our", "into", "through", "will", "have", "has", "are",
     "was", "were", "been", "being", "over", "such", "than", "then", "about",
-    "into", "also", "using", "based", "able", "experience", "years"
+    "also", "using", "based", "able", "experience", "years"
 }
 
 # Extract keywords from text by tokenizing, lowercasing, and removing stopwords
