@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
-from database.connection import mongo_connection
+from .connection import mongo_connection
 
 load_dotenv()
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
