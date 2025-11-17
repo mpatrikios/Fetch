@@ -22,13 +22,23 @@ def calculate_haversine_distance(coord1: Dict[str, float], coord2: Dict[str, flo
     if not all(key in coord2 for key in ['lat', 'lon']):
         return None
     
+    # Validate coordinate bounds
+    lat1_val = coord1['lat']
+    lon1_val = coord1['lon']
+    lat2_val = coord2['lat']
+    lon2_val = coord2['lon']
+    if not (-90 <= lat1_val <= 90 and -90 <= lat2_val <= 90):
+        return None
+    if not (-180 <= lon1_val <= 180 and -180 <= lon2_val <= 180):
+        return None
+
     # Earth's radius in kilometers
     R = 6371.0
-    
-    lat1 = radians(coord1['lat'])
-    lon1 = radians(coord1['lon'])
-    lat2 = radians(coord2['lat'])
-    lon2 = radians(coord2['lon'])
+
+    lat1 = radians(lat1_val)
+    lon1 = radians(lon1_val)
+    lat2 = radians(lat2_val)
+    lon2 = radians(lon2_val)
     
     dlat = lat2 - lat1
     dlon = lon2 - lon1
