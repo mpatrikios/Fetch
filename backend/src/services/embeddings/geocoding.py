@@ -26,9 +26,8 @@ def geocode_location(location_string: str, retry_count: int = 3) -> Optional[Dic
     
     for attempt in range(retry_count):
         try:
-            # Add a small delay to respect rate limits
-            if attempt > 0:
-                time.sleep(1)
+            # Add a small delay to respect Nominatim rate limits (1 request per second)
+            time.sleep(1)
             
             location = geocoder.geocode(location_string, timeout=10)
             
