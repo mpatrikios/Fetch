@@ -151,7 +151,7 @@ def process_job_description(pdf_path: str):
         print(f"Job description pipeline failed: {str(e)}")
         raise
 
-# parsing and embeddings for candidate resumes
+# Parsing and embeddings for candidate resumes
 def process_resume(pdf_path: str):
     """
     Process a resume PDF and insert it into MongoDB
