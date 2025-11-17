@@ -3,6 +3,7 @@ import re
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from location_matching import is_candidate_commutable, calculate_haversine_distance
 
 load_dotenv()
 
@@ -59,14 +60,15 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(a.dot(b) / denom)
 
 
-# Find top-k candidate matches for a job based on profile embeddings
+# Find top-k candidate matches for a job based on profile embeddings and location
 def profile_matching_candidate(db, job_doc, top_k: int = 10):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile embeddings.
+    Only includes candidates within reasonable commute distance (80km).
 
     Args:
         db: The database connection object, expected to have a "CandidatesTesting" collection.
-        job_doc (dict): The job document containing a "profile_embedding" key.
+        job_doc (dict): The job document containing a "profile_embedding" key and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
 
     Returns:
@@ -74,8 +76,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
             - "similarity_score": The cosine similarity score between the job and candidate embeddings.
             - "candidate": The candidate document.
             - "explanation": An explanation of the match.
+            - "distance_km": Distance in kilometers (if coordinates available).
     """
     job_vec = np.array(job_doc["profile_embedding"], dtype=float)
+    job_coords = job_doc.get("location_coordinates")
 
     candidates_cursor = db["CandidatesTesting"].find(
         {"profile_embedding": {"$exists": True, "$ne": []}}
@@ -83,11 +87,27 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
 
     scored = []
     for cand in candidates_cursor:
+        # Check if candidate is within commutable distance
+        is_commutable = is_candidate_commutable(job_doc, cand)
+        
+        # If we have location data and candidate is not commutable, skip them
+        if is_commutable is False:
+            continue  # Skip candidates beyond reasonable commute distance
+        
+        # Calculate profile similarity
         cand_vec = np.array(cand["profile_embedding"], dtype=float)
-        score = cosine_similarity(job_vec, cand_vec)
-        explanation = build_match_explanation_llm(job_doc, cand, score)
+        similarity_score = cosine_similarity(job_vec, cand_vec)
+        
+        # Calculate distance if coordinates available
+        distance_km = None
+        if job_coords and cand.get("location_coordinates"):
+            distance_km = calculate_haversine_distance(job_coords, cand["location_coordinates"])
+        
+        explanation = build_match_explanation_llm(job_doc, cand, similarity_score)
+        
         scored.append({
-            "similarity_score": score,
+            "similarity_score": similarity_score,
+            "distance_km": distance_km,
             "candidate": cand,
             "explanation": explanation
         })
