@@ -6,6 +6,7 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import sys
+import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
 from connection import mongo_connection
@@ -154,6 +155,8 @@ def embed_job_description_location(job_doc):
                 coord = geocode_location(loc)
                 if coord:
                     all_coordinates.append(coord)
+                # Add 1 second delay to respect Nominatim rate limits
+                time.sleep(1)
             if all_coordinates:
                 insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "all_location_coordinates", all_coordinates)
     else:
