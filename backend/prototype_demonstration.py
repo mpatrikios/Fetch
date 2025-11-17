@@ -74,7 +74,6 @@ def process_job_description(pdf_path: str):
         print(f"Processing job description for: {company_name} - {job_title}")
         
         # Step 1: Azure job description parser
-        
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
             raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
@@ -116,7 +115,6 @@ def process_job_description(pdf_path: str):
         
         # Step 4: Retrieve job description document from MongoDB
         job_doc = get_job_description(company_name, standardized_data.get("JobTitle"))
-        
         if not job_doc:
             raise Exception("Failed to retrieve job description")
         
@@ -153,6 +151,7 @@ def process_job_description(pdf_path: str):
         print(f"Job description pipeline failed: {str(e)}")
         raise
 
+# Parsing and embeddings for candidate resumes
 def process_resume(pdf_path: str):
     """
     Process a resume PDF and insert it into MongoDB
@@ -169,7 +168,6 @@ def process_resume(pdf_path: str):
         candidate_name = pdf_file.stem
         
         # Step 1: Azure resume parser
-        
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
             raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
@@ -295,6 +293,8 @@ def main():
             
             # Process job description next
             process_job_description(job_pdf)
+            
+        # find matching candidates for a job description
         elif command == "--find-matches":
             if len(sys.argv) < 4:
                 print("Error: --find-matches requires company name and job title")
@@ -319,6 +319,7 @@ def main():
             for rank, match in enumerate(matches, 1):
                 candidate = match["candidate"]
                 score = match["similarity_score"]
+                distance_km = match.get("distance_km")
                 explanation = match.get("explanation", {})
                 
                 # Extract fields from explanation
@@ -334,9 +335,12 @@ def main():
                 print("-" * 60)
                 
                 # Score and location
-                print(f" Match Score: {score:.1%}")
+                print(f"Match Score: {score:.1%}")
                 if candidate.get('Location'):
-                    print(f"Location: {candidate.get('Location')}")
+                    location_info = f"Location: {candidate.get('Location')}"
+                    if distance_km is not None:
+                        location_info += f" ({distance_km:.1f} km from job)"
+                    print(location_info)
                 
                 # Companies
                 if candidate_companies:
@@ -388,6 +392,7 @@ def main():
             sys.exit(1)
     except Exception as e:
         print(f"Pipeline failed: {str(e)}")
+        
         sys.exit(1)
 
 if __name__ == "__main__":

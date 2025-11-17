@@ -6,9 +6,12 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import sys
+import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
 from connection import mongo_connection
+from geocoding import geocode_location
+from typing import Optional, Dict
 
 load_dotenv()
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -44,6 +47,36 @@ def generate_embedding(text, model="text-embedding-ada-002"):
         print(f"Embedding generation failed: {e}")
         return None
 
+def create_location_embedding(coordinates: Optional[Dict[str, float]]) -> Optional[list]:
+    """
+    Create a normalized coordinate vector from geographical coordinates.
+    Note: This is not a semantic embedding like text embeddings, but a simple
+    normalized representation of latitude and longitude.
+
+    Args:
+        coordinates: Dict with 'lat' and 'lon' keys
+
+    Returns:
+        List with normalized coordinates [lat/90, lon/180] or None if invalid
+    """
+    if not coordinates:
+        return None
+    
+    lat = coordinates.get('lat')
+    lon = coordinates.get('lon')
+    
+    if lat is None or lon is None:
+        return None
+    
+    # Normalize latitude (range -90 to 90) and longitude (range -180 to 180)
+    # This creates a 2D vector where both components are in [-1, 1]
+    normalized_lat = lat / 90.0
+    normalized_lon = lon / 180.0
+    
+    # Return as a list to match the format of text embeddings
+    # We'll pad this to match the dimensionality of text embeddings if needed
+    return [normalized_lat, normalized_lon]
+
 
 # generate and store candidate profile embeddings
 def embed_candidate_profile(candidate_doc):
@@ -60,10 +93,25 @@ def embed_candidate_profile(candidate_doc):
 # generate and store candidate location embeddings
 def embed_candidate_location(candidate_doc):
     location_text = candidate_doc.get("Location", "")
-    embedding = generate_embedding(location_text)
+    
+    # Geocode the location to get coordinates
+    coordinates = geocode_location(location_text)
+    
+    if coordinates:
+        # Create coordinate-based embedding
+        embedding = create_location_embedding(coordinates)
+        
+        # Also store the coordinates in the database for reference
+        insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_coordinates", coordinates)
+    else:
+        # Fallback to text embedding if geocoding fails
+        print(f"Geocoding failed for {location_text}, using text embedding as fallback")
+        embedding = generate_embedding(location_text)
+    
     if embedding is None:
         print(f"Failed to generate location embedding for candidate {candidate_doc.get('_id')}")
         return
+    
     insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
 # function for generating and storing candidate embeddings of cultural index
 
@@ -83,11 +131,44 @@ def embed_job_description_profile(job_doc):
 # generate and store job description location embeddings
 def embed_job_description_location(job_doc):
     locations = job_doc.get("Locations", [])
-    location_text = " ".join(locations) if isinstance(locations, list) else str(locations)
-    embedding = generate_embedding(location_text)
+    
+    # Handle multiple locations - use the first one for primary embedding
+    if isinstance(locations, list) and locations:
+        primary_location = locations[0]
+    else:
+        primary_location = str(locations) if locations else ""
+    
+    # Geocode the primary location
+    coordinates = geocode_location(primary_location)
+    
+    if coordinates:
+        # Create coordinate-based embedding
+        embedding = create_location_embedding(coordinates)
+        
+        # Store the coordinates in the database for reference
+        insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_coordinates", coordinates)
+        
+        # If there are multiple locations, store all coordinates
+        if isinstance(locations, list) and len(locations) > 1:
+            all_coordinates = [coordinates]  # Include the already-geocoded first location
+            for loc in locations[1:]:  # Start from second location
+                # Add 1 second delay to respect Nominatim rate limits
+                time.sleep(1)
+                coord = geocode_location(loc)
+                if coord:
+                    all_coordinates.append(coord)
+            if all_coordinates:
+                insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "all_location_coordinates", all_coordinates)
+    else:
+        # Fallback to text embedding if geocoding fails
+        location_text = " ".join(locations) if isinstance(locations, list) else str(locations)
+        print(f"Geocoding failed for {primary_location}, using text embedding as fallback")
+        embedding = generate_embedding(location_text)
+    
     if embedding is None:
         print(f"Failed to generate location embedding for job description {job_doc.get('_id')}")
         return
+    
     insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_embedding", embedding)
 
 # function for generating and storing job cultural index embeddings
