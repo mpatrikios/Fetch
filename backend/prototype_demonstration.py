@@ -294,7 +294,7 @@ def main():
             # Process job description next
             process_job_description(job_pdf)
             
-        # find matching candidates for a job description``
+        # find matching candidates for a job description
         elif command == "--find-matches":
             if len(sys.argv) < 4:
                 print("Error: --find-matches requires company name and job title")
