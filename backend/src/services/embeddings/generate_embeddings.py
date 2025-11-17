@@ -150,9 +150,9 @@ def embed_job_description_location(job_doc):
         
         # If there are multiple locations, store all coordinates
         if isinstance(locations, list) and len(locations) > 1:
-            all_coordinates = []
-            for loc in locations:
-                # Add 1 second delay to respect Nominatim rate limits (applies to all requests)
+            all_coordinates = [coordinates]  # Include the already-geocoded first location
+            for loc in locations[1:]:  # Start from second location
+                # Add 1 second delay to respect Nominatim rate limits
                 time.sleep(1)
                 coord = geocode_location(loc)
                 if coord:
