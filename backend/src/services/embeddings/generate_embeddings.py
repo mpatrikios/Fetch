@@ -49,15 +49,15 @@ def generate_embedding(text, model="text-embedding-ada-002"):
 
 def create_location_embedding(coordinates: Optional[Dict[str, float]]) -> Optional[list]:
     """
-    Create a simple embedding vector from coordinates.
-    Using normalized coordinates to create a 2D embedding vector.
-    
+    Create a normalized coordinate vector from geographical coordinates.
+    Note: This is not a semantic embedding like text embeddings, but a simple
+    normalized representation of latitude and longitude.
+
     Args:
         coordinates: Dict with 'lat' and 'lon' keys
-        
+
     Returns:
-        List representing the location as a normalized vector [lat/90, lon/180]
-        This normalizes latitude to [-1, 1] and longitude to [-1, 1]
+        List with normalized coordinates [lat/90, lon/180] or None if invalid
     """
     if not coordinates:
         return None
