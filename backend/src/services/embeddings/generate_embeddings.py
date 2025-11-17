@@ -152,11 +152,11 @@ def embed_job_description_location(job_doc):
         if isinstance(locations, list) and len(locations) > 1:
             all_coordinates = []
             for loc in locations:
+                # Add 1 second delay to respect Nominatim rate limits (applies to all requests)
+                time.sleep(1)
                 coord = geocode_location(loc)
                 if coord:
                     all_coordinates.append(coord)
-                # Add 1 second delay to respect Nominatim rate limits
-                time.sleep(1)
             if all_coordinates:
                 insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "all_location_coordinates", all_coordinates)
     else:
