@@ -63,26 +63,34 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 # Find top-k candidate matches for a job based on profile embeddings and location
 def profile_matching_candidate(db, job_doc, top_k: int = 10):
     """
-    Finds the top-k candidate matches for a given job document based on cosine similarity of profile embeddings.
+    Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
+    Uses 50/50 weighting between profile and culture similarity.
 
     Args:
         db: The database connection object, expected to have a "CandidatesTesting" collection.
-        job_doc (dict): The job document containing a "profile_embedding" key and optionally "location_coordinates".
+        job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
 
     Returns:
         list of dict: A list of dictionaries, each containing:
-            - "similarity_score": The cosine similarity score between the job and candidate embeddings.
+            - "combined_similarity_score": The weighted 50/50 combination of profile and culture similarity.
+            - "profile_similarity_score": The cosine similarity score for profile embeddings.
+            - "culture_similarity_score": The cosine similarity score for culture embeddings.
             - "candidate": The candidate document.
             - "explanation": An explanation of the match.
             - "distance_km": Distance in kilometers (if coordinates available).
     """
-    job_vec = np.array(job_doc["profile_embedding"], dtype=float)
+    job_profile_vec = np.array(job_doc["profile_embedding"], dtype=float)
+    job_culture_vec = np.array(job_doc.get("culture_embedding", []), dtype=float) if job_doc.get("culture_embedding") else None
     job_coords = job_doc.get("location_coordinates")
 
+    # Find candidates with both profile and culture embeddings
     candidates_cursor = db["CandidatesTesting"].find(
-        {"profile_embedding": {"$exists": True, "$ne": []}}
+        {
+            "profile_embedding": {"$exists": True, "$ne": []},
+            "culture_embedding": {"$exists": True, "$ne": []}
+        }
     )
 
     scored = []
@@ -95,24 +103,35 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
             continue  # Skip candidates beyond reasonable commute distance
         
         # Calculate profile similarity
-        cand_vec = np.array(cand["profile_embedding"], dtype=float)
-        similarity_score = cosine_similarity(job_vec, cand_vec)
+        cand_profile_vec = np.array(cand["profile_embedding"], dtype=float)
+        profile_similarity = cosine_similarity(job_profile_vec, cand_profile_vec)
+        
+        # Calculate culture similarity
+        culture_similarity = 0.0
+        if job_culture_vec is not None and cand.get("culture_embedding"):
+            cand_culture_vec = np.array(cand["culture_embedding"], dtype=float)
+            culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
+        
+        # Calculate combined score (50/50 weighting)
+        combined_similarity = (profile_similarity * 0.5) + (culture_similarity * 0.5)
         
         # Calculate distance if coordinates available
         distance_km = None
         if job_coords and cand.get("location_coordinates"):
             distance_km = calculate_haversine_distance(job_coords, cand["location_coordinates"])
         
-        explanation = build_match_explanation_llm(job_doc, cand, similarity_score)
+        explanation = build_match_explanation_llm(job_doc, cand, combined_similarity)
         
         scored.append({
-            "similarity_score": similarity_score,
+            "combined_similarity_score": combined_similarity,
+            "profile_similarity_score": profile_similarity,
+            "culture_similarity_score": culture_similarity,
             "distance_km": distance_km,
             "candidate": cand,
             "explanation": explanation
         })
 
-    scored.sort(key=lambda x: x["similarity_score"], reverse=True)
+    scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
     return scored[:top_k]
 
 # python based explanation builder, using only keyword overlap and role analysis
@@ -186,6 +205,17 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     job_min_years = job_doc.get("MinYears", "")
     # For now, approximate candidate seniority by number of roles, probably need to sum up years in future?
     cand_role_count = len(cand_doc.get("Experience", []))
+    
+    # Extract overlapping Clifton Strengths
+    job_strengths = job_doc.get("clifton_strengths", [])
+    cand_strengths = cand_doc.get("clifton_strengths", [])
+    
+    # Get strength names for comparison
+    job_strength_names = {s.get("name") for s in job_strengths if isinstance(s, dict) and "name" in s}
+    cand_strength_names = {s.get("name") for s in cand_strengths if isinstance(s, dict) and "name" in s}
+    
+    # Find overlapping strengths
+    strength_overlap = list(job_strength_names & cand_strength_names)
 
     return {
         "skill_overlap": skill_overlap,
@@ -195,10 +225,11 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
         "candidate_companies": candidate_companies,
         "job_min_years": job_min_years,
         "candidate_num_roles": cand_role_count,
+        "strength_overlap": strength_overlap,
     }
 
 # LLM-enhanced explanation builder with OpenAI
-def build_match_explanation_llm(job_doc: dict, cand_doc: dict, similarity_score: float) -> dict:
+def build_match_explanation_llm(job_doc: dict, cand_doc: dict, combined_score: float) -> dict:
     """
     Build an explanation for the match using:
       - structured keyword/role/skills analysis, and
@@ -237,7 +268,7 @@ CANDIDATE
 - Number of roles: {features.get('candidate_num_roles')}
 
 MATCH ANALYSIS (computed by the system)
-- Cosine similarity (embeddings): {similarity_score:.4f}
+- Combined similarity score: {combined_score:.4f}
 - Overlapping keywords in responsibilities/experience: {features.get('keyword_overlap')}
 - Senior / leadership roles that look aligned: {features.get('relevant_roles')}
 - Explicit job skills missing from candidate's skills list: {features.get('skill_missing')}

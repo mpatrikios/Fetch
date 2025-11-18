@@ -30,8 +30,10 @@ from resume_standardizing import standardize_resume
 from generate_embeddings import (
     embed_candidate_profile, 
     embed_candidate_location,
+    embed_candidate_culture,
     embed_job_description_profile,
-    embed_job_description_location
+    embed_job_description_location,
+    embed_job_description_culture
 )
 
 # Import matching components
@@ -127,6 +129,7 @@ def process_job_description(pdf_path: str):
         
         embed_job_description_profile(job_doc)
         embed_job_description_location(job_doc)
+        embed_job_description_culture(job_doc)
         
         # Step 6: Verify embeddings were stored
         updated_job = get_job_description(company_name, standardized_data.get("JobTitle"))
@@ -134,8 +137,9 @@ def process_job_description(pdf_path: str):
         if updated_job:
             profile_check = "profile_embedding" in updated_job
             location_check = "location_embedding" in updated_job
+            culture_check = "culture_embedding" in updated_job
             
-            if profile_check and location_check:
+            if profile_check and location_check and culture_check:
                 print(f"Embedding verification successful")
             else:
                 missing = []
@@ -143,6 +147,8 @@ def process_job_description(pdf_path: str):
                     missing.append("profile_embedding")
                 if not location_check:
                     missing.append("location_embedding")
+                if not culture_check:
+                    missing.append("culture_embedding")
                 print(f"Warning: Missing embeddings: {', '.join(missing)}")
         else:
             print("Warning: Could not retrieve job description for verification")
@@ -223,14 +229,17 @@ def process_resume(pdf_path: str):
         
         embed_candidate_location(candidate_doc)
         
+        embed_candidate_culture(candidate_doc)
+        
         # Step 6: Verify embeddings were stored
         updated_candidate = get_candidate(candidate_name)
         
         if updated_candidate:
             profile_check = "profile_embedding" in updated_candidate
             location_check = "location_embedding" in updated_candidate
+            culture_check = "culture_embedding" in updated_candidate
             
-            if profile_check and location_check:
+            if profile_check and location_check and culture_check:
                 print(f"Embedding verification successful")
             else:
                 missing = []
@@ -238,6 +247,8 @@ def process_resume(pdf_path: str):
                     missing.append("profile_embedding")
                 if not location_check:
                     missing.append("location_embedding")
+                if not culture_check:
+                    missing.append("culture_embedding")
                 print(f"Warning: Missing embeddings: {', '.join(missing)}")
         else:
             print("Warning: Could not retrieve candidate for verification")
@@ -318,7 +329,9 @@ def main():
             
             for rank, match in enumerate(matches, 1):
                 candidate = match["candidate"]
-                score = match["similarity_score"]
+                combined_score = match["combined_similarity_score"]
+                profile_score = match["profile_similarity_score"]
+                culture_score = match["culture_similarity_score"]
                 distance_km = match.get("distance_km")
                 explanation = match.get("explanation", {})
                 
@@ -328,14 +341,17 @@ def main():
                 keyword_overlap = explanation.get("keyword_overlap", [])
                 relevant_roles = explanation.get("relevant_roles", [])
                 candidate_companies = explanation.get("candidate_companies", [])
+                strength_overlap = explanation.get("strength_overlap", [])
                 summary = explanation.get("summary", "No summary available")
                 
                 # Print candidate header
                 print(f"#{rank} CANDIDATE: {candidate.get('full_name', 'Unknown')}")
                 print("-" * 60)
                 
-                # Score and location
-                print(f"Match Score: {score:.1%}")
+                # Score breakdown
+                print(f"Overall Match Score: {combined_score:.1%}")
+                print(f"  ├─ Profile Match: {profile_score:.1%}")
+                print(f"  └─ Culture Match: {culture_score:.1%}")
                 if candidate.get('Location'):
                     location_info = f"Location: {candidate.get('Location')}"
                     if distance_km is not None:
@@ -345,6 +361,13 @@ def main():
                 # Companies
                 if candidate_companies:
                     print(f"Companies: {', '.join(candidate_companies[:3])}")
+                
+                # Clifton Strengths overlap
+                print(f"\nOverlapping Clifton Strengths ({len(strength_overlap)}): ", end="")
+                if strength_overlap:
+                    print(', '.join(strength_overlap))
+                else:
+                    print("None")
                 
                 # Skills analysis
                 print(f"\nMatching Skills ({len(skill_overlap)}): ", end="")

@@ -113,7 +113,21 @@ def embed_candidate_location(candidate_doc):
         return
     
     insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
-# function for generating and storing candidate embeddings of cultural index
+def embed_candidate_culture(candidate_doc):
+    clifton_strengths = candidate_doc.get("clifton_strengths", [])
+    if not clifton_strengths:
+        print(f"No clifton_strengths found for candidate {candidate_doc.get('_id')}")
+        return
+    
+    # Extract strength names sorted by rank
+    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('rank', 999))
+    text = " ".join([strength['name'] for strength in sorted_strengths])
+    
+    embedding = generate_embedding(text)
+    if embedding is None:
+        print(f"Failed to generate culture embedding for candidate {candidate_doc.get('_id')}")
+        return
+    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "culture_embedding", embedding)
 
 # generate and store job description profile embeddings
 def embed_job_description_profile(job_doc):
@@ -171,4 +185,18 @@ def embed_job_description_location(job_doc):
     
     insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_embedding", embedding)
 
-# function for generating and storing job cultural index embeddings
+def embed_job_description_culture(job_doc):
+    clifton_strengths = job_doc.get("clifton_strengths", [])
+    if not clifton_strengths:
+        print(f"No clifton_strengths found for job description {job_doc.get('_id')}")
+        return
+    
+    # Extract strength names sorted by rank
+    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('rank', 999))
+    text = " ".join([strength['name'] for strength in sorted_strengths])
+    
+    embedding = generate_embedding(text)
+    if embedding is None:
+        print(f"Failed to generate culture embedding for job description {job_doc.get('_id')}")
+        return
+    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "culture_embedding", embedding)
