@@ -112,8 +112,8 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
             cand_culture_vec = np.array(cand["culture_embedding"], dtype=float)
             culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
         
-        # Calculate combined score (50/50 weighting)
-        combined_similarity = (profile_similarity * 0.5) + (culture_similarity * 0.5)
+        # Calculate combined score (60/40 weighting)
+        combined_similarity = (profile_similarity * 0.7) + (culture_similarity * 0.3)
         
         # Calculate distance if coordinates available
         distance_km = None
