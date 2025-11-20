@@ -9,8 +9,8 @@ import sys
 import time
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from database.insert_to_mongo import insert_embedding
-from connection import mongo_connection
-from geocoding import geocode_location
+from database.connection import mongo_connection
+from services.embeddings.geocoding import geocode_location
 from typing import Optional, Dict
 
 load_dotenv()
@@ -119,8 +119,8 @@ def embed_candidate_culture(candidate_doc):
         print(f"No clifton_strengths found for candidate {candidate_doc.get('_id')}")
         return
     
-    # Extract strength names sorted by rank
-    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('rank', 999))
+    # Extract strength names sorted alphabetically (ignoring rank to ensure position-independence)
+    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('name', ''))
     text = " ".join([strength['name'] for strength in sorted_strengths])
     
     embedding = generate_embedding(text)
@@ -191,8 +191,8 @@ def embed_job_description_culture(job_doc):
         print(f"No clifton_strengths found for job description {job_doc.get('_id')}")
         return
     
-    # Extract strength names sorted by rank
-    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('rank', 999))
+    # Extract strength names sorted alphabetically (ignoring rank to ensure position-independence)
+    sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('name', ''))
     text = " ".join([strength['name'] for strength in sorted_strengths])
     
     embedding = generate_embedding(text)

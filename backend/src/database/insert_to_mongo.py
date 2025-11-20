@@ -3,7 +3,7 @@ This file is responsible for interfacing with MongoDB to insert and update docum
 """
 from typing import Dict, Any, List
 import logging
-from connection import mongo_connection
+from .connection import mongo_connection
 
 # Get database and collections from centralized connection
 database = mongo_connection.database

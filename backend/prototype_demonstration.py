@@ -15,8 +15,8 @@ sys.path.append('src/services/matching')
 sys.path.append('src/database')
 
 # Import database components
-from connection import mongo_connection
-from insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
+from src.database.connection import mongo_connection
+from src.database.insert_to_mongo import upsert_candidate, get_candidate, insert_job_description, get_job_description
 
 # Access the database
 database = mongo_connection.database
