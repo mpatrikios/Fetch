@@ -336,12 +336,9 @@ def main():
                 explanation = match.get("explanation", {})
                 
                 # Extract fields from explanation
-                skill_overlap = explanation.get("skill_overlap", [])
-                skill_missing = explanation.get("skill_missing", [])
                 keyword_overlap = explanation.get("keyword_overlap", [])
                 relevant_roles = explanation.get("relevant_roles", [])
                 candidate_companies = explanation.get("candidate_companies", [])
-                strength_overlap = explanation.get("strength_overlap", [])
                 summary = explanation.get("summary", "No summary available")
                 
                 # Print candidate header
@@ -362,23 +359,18 @@ def main():
                 if candidate_companies:
                     print(f"Companies: {', '.join(candidate_companies[:3])}")
                 
-                # Clifton Strengths overlap
-                print(f"\nOverlapping Clifton Strengths ({len(strength_overlap)}): ", end="")
-                if strength_overlap:
-                    print(', '.join(strength_overlap))
+                # Clifton Strengths
+                candidate_strengths = candidate.get("clifton_strengths", [])
+                if candidate_strengths:
+                    print(f"\nClifton Strengths:")
+                    for i, strength in enumerate(candidate_strengths[:5], 1):
+                        if isinstance(strength, dict) and "name" in strength:
+                            print(f"   {i}. {strength['name']}")
+                        elif isinstance(strength, str):
+                            print(f"   {i}. {strength}")
                 else:
-                    print("None")
+                    print(f"\nClifton Strengths: Not available")
                 
-                # Skills analysis
-                print(f"\nMatching Skills ({len(skill_overlap)}): ", end="")
-                if skill_overlap:
-                    print(', '.join(skill_overlap[:8]))
-                else:
-                    print("None identified")
-                
-                if skill_missing:
-                    print(f"Missing Skills ({len(skill_missing)}): ", end="")
-                    print(', '.join(skill_missing[:5]))
                 
                 # Relevant experience
                 if relevant_roles:

@@ -138,21 +138,11 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
 def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     """
     Build a structured explanation for why a candidate matches a job based on:
-      - skill overlap,
       - keyword overlap in job responsibilities and candidate experience,
       - relevant senior/leadership roles in candidate experience,
       - companies worked at by candidate.
     Returns a dict with these fields for further processing or display.
     """
-    # Skill overlap analysis
-    job_skills_raw = job_doc.get("Skills") or job_doc.get("skills") or []
-    cand_skills_raw = cand_doc.get("Skills") or cand_doc.get("skills") or []
-
-    job_skills = {s.strip().lower() for s in job_skills_raw}
-    cand_skills = {s.strip().lower() for s in cand_skills_raw}
-
-    skill_overlap = list(job_skills & cand_skills)
-    skill_missing = list(job_skills - cand_skills)
 
     # Full job text for keyword extraction
     job_text = (
@@ -206,26 +196,13 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     # For now, approximate candidate seniority by number of roles, probably need to sum up years in future?
     cand_role_count = len(cand_doc.get("Experience", []))
     
-    # Extract overlapping Clifton Strengths
-    job_strengths = job_doc.get("clifton_strengths", [])
-    cand_strengths = cand_doc.get("clifton_strengths", [])
-    
-    # Get strength names for comparison
-    job_strength_names = {s.get("name") for s in job_strengths if isinstance(s, dict) and "name" in s}
-    cand_strength_names = {s.get("name") for s in cand_strengths if isinstance(s, dict) and "name" in s}
-    
-    # Find overlapping strengths
-    strength_overlap = list(job_strength_names & cand_strength_names)
 
     return {
-        "skill_overlap": skill_overlap,
-        "skill_missing": skill_missing,
         "keyword_overlap": keyword_overlap[:15],  # cap for readability
         "relevant_roles": relevant_roles,
         "candidate_companies": candidate_companies,
         "job_min_years": job_min_years,
         "candidate_num_roles": cand_role_count,
-        "strength_overlap": strength_overlap,
     }
 
 # LLM-enhanced explanation builder with OpenAI
@@ -271,13 +248,12 @@ MATCH ANALYSIS (computed by the system)
 - Combined similarity score: {combined_score:.4f}
 - Overlapping keywords in responsibilities/experience: {features.get('keyword_overlap')}
 - Senior / leadership roles that look aligned: {features.get('relevant_roles')}
-- Explicit job skills missing from candidate's skills list: {features.get('skill_missing')}
 
 TASK
 Write 3–5 short bullet points explaining:
 1. Why this candidate is a strong or weak match for this job.
 2. Which aspects of their background align well (architecture, cloud, leadership, modernization, etc.).
-3. Any important gaps or risks (skills the job wants that aren't obvious in the candidate profile).
+3. Any important gaps or risks that aren't obvious in the candidate profile.
 
 Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not supported above.
 """
