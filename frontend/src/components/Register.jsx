@@ -5,9 +5,10 @@ import {
   TextField,
   Button,
   Typography,
-  Paper,
   Alert,
-  Link
+  Link,
+  Grid,
+  Card
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../utils/api';

@@ -1,15 +1,11 @@
-import { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, Avatar } from '@mui/material';
 import PetsIcon from '@mui/icons-material/Pets';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function Header() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [userType, setUserType] = useState(localStorage.getItem('userType') || null);
 
   const handleUserTypeSelect = (type) => {
-    setUserType(type);
     localStorage.setItem('userType', type);
     navigate('/login');
   };
@@ -18,7 +14,6 @@ function Header() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('userType');
-    setUserType(null);
     navigate('/');
   };
 
