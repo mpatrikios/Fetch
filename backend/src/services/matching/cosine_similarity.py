@@ -3,7 +3,7 @@ import re
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from location_matching import is_candidate_commutable, calculate_haversine_distance
+from src.services.matching.location_matching import is_candidate_commutable, calculate_haversine_distance
 
 load_dotenv()
 
