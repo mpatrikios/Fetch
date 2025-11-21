@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import {
-  Container,
   Box,
   TextField,
   Button,
   Typography,
-  Paper,
   Alert,
-  Link
+  Link,
+  Grid,
+  Container,
+  Card
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../utils/api';
@@ -55,77 +56,135 @@ function Login() {
     }
   };
 
+  const userType = localStorage.getItem('userType');
+  const isRecruiter = userType === 'mlg-recruiter';
+
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            Sign In
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-            Welcome back to Fetch Recruitment
-          </Typography>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit} noValidate>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              autoFocus
-              value={formData.email}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={formData.password}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading || !formData.email || !formData.password}
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#FFFFFF', pt: 0, position: 'relative' }}>
+      <Container maxWidth="xl" sx={{ height: '100vh', py: 10, position: 'relative' }}>
+        <Grid container spacing={6} sx={{ height: '100%' }}>
+          {/* Left side content */}
+          <Grid item xs={12} md={6} sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'center',
+            alignItems: 'flex-start',
+            px: 4
+          }}>
+            <Typography 
+              variant="h2" 
+              sx={{ 
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 700,
+                mb: 3,
+                color: '#343434',
+                fontSize: { xs: '2.5rem', md: '3.5rem' },
+                lineHeight: 1.2
+              }}
             >
-              {loading ? 'Signing In...' : 'Sign In'}
-            </Button>
-            
-            <Box sx={{ textAlign: 'center' }}>
-              <Link href="/register" variant="body2" sx={{ textDecoration: 'none' }}>
-                {"Don't have an account? Sign Up"}
-              </Link>
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    </Container>
+              {isRecruiter ? 'MLG Recruiters' : 'Executives'}
+            </Typography>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                fontFamily: 'Petrona, serif',
+                color: 'rgba(52,52,52,0.7)',
+                lineHeight: 1.6,
+                fontWeight: 400,
+                fontSize: { xs: '1.25rem', md: '1.5rem' }
+              }}
+            >
+              {isRecruiter 
+                ? 'Access your recruiting dashboard and candidate pipeline.'
+                : 'Join our exclusive talent pool today.'}
+            </Typography>
+          </Grid>
+
+          {/* Empty right side for spacing */}
+          <Grid item xs={12} md={6} />
+        </Grid>
+
+        {/* Login form positioned absolutely on the right */}
+        <Card sx={{ 
+          width: 420,
+          p: 4,
+          position: 'fixed',
+          right: { xs: 20, md: 80 },
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10
+        }}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 3 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Box component="form" onSubmit={handleSubmit} noValidate>
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  id="email"
+                  placeholder="Email"
+                  name="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={loading}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  margin="normal"
+                  required
+                  fullWidth
+                  name="password"
+                  placeholder="Password"
+                  type="password"
+                  id="password"
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={loading}
+                  sx={{ mb: 3 }}
+                />
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  disabled={loading || !formData.email || !formData.password}
+                  sx={{ 
+                    py: 1.5,
+                    mb: 3,
+                    fontSize: '1rem'
+                  }}
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                </Button>
+                
+                {!isRecruiter && (
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Link 
+                      href="/register" 
+                      sx={{ 
+                        color: '#FF5A5A',
+                        textDecoration: 'none',
+                        fontFamily: 'Petrona, serif',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      Create account
+                    </Link>
+                  </Box>
+                )}
+              </Box>
+        </Card>
+      </Container>
+    </Box>
   );
 }
 
