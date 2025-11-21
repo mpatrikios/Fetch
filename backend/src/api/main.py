@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from src.api.routes import resume_routes, job_routes, matching_routes
+from src.api.routes import resume_routes, job_routes, matching_routes, auth_routes
 from src.database.connection import mongo_connection
 
 logging.basicConfig(level=logging.INFO)
@@ -69,6 +69,7 @@ async def health_check():
     }
 
 # Include API routers
+app.include_router(auth_routes.router, prefix="/api", tags=["authentication"])
 app.include_router(resume_routes.router, prefix="/api", tags=["resumes"])
 app.include_router(job_routes.router, prefix="/api", tags=["jobs"])
 app.include_router(matching_routes.router, prefix="/api", tags=["matching"])

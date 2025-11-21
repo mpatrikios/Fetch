@@ -11,7 +11,11 @@ const api = axios.create({
 // Request interceptor for auth or logging
 api.interceptors.request.use(
   (config) => {
-    // Add auth token if needed in future
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -64,6 +68,23 @@ export const matchingAPI = {
       job_title: jobTitle,
       top_k: topK,
     }),
+};
+
+// Authentication endpoints
+export const authAPI = {
+  login: (email, password) =>
+    api.post('/auth/login', { email, password }),
+  
+  register: (userData) =>
+    api.post('/auth/register', userData),
+  
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return api.post('/auth/logout');
+  },
+  
+  getCurrentUser: () => api.get('/auth/me'),
 };
 
 // Health check
