@@ -5,32 +5,20 @@ import {
   Typography,
   Button,
   Alert,
-  Chip,
   CircularProgress,
-  Avatar,
-  List,
-  ListItem,
-  ListItemText,
-  Card,
-  CardContent,
   IconButton,
   LinearProgress,
 } from '@mui/material';
 import {
   CloudUpload,
-  CheckCircle,
   Delete,
   Description,
-  Email,
-  LocationOn,
-  Psychology,
 } from '@mui/icons-material';
 import { resumeAPI } from '../utils/api';
 
-const ResumeUpload = () => {
+const ResumeUpload = ({ onSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -61,7 +49,6 @@ const ResumeUpload = () => {
     
     setFile(selectedFile);
     setError(null);
-    setResult(null);
   };
 
   const handleDrag = (e) => {
@@ -95,8 +82,10 @@ const ResumeUpload = () => {
     
     try {
       const response = await resumeAPI.upload(file);
-      setResult(response.data);
       setFile(null);
+      if (onSuccess) {
+        onSuccess(response.data);
+      }
     } catch (err) {
       setError(err.response?.data?.detail || err.message || 'Something went wrong');
     } finally {
@@ -104,85 +93,6 @@ const ResumeUpload = () => {
     }
   };
 
-  const reset = () => {
-    setFile(null);
-    setResult(null);
-    setError(null);
-  };
-
-  if (result) {
-    return (
-      <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto', textAlign: 'center' }}>
-        <Avatar sx={{ bgcolor: 'secondary.main', width: 80, height: 80, mx: 'auto', mb: 3 }}>
-          <CheckCircle sx={{ fontSize: 40 }} />
-        </Avatar>
-        
-        <Typography variant="h4" gutterBottom color="primary">
-          Resume Uploaded Successfully!
-        </Typography>
-        
-        <Card sx={{ mt: 3, textAlign: 'left' }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom align="center" color="primary">
-              {result.candidate.name}
-            </Typography>
-            
-            <List dense>
-              {result.candidate.email && (
-                <ListItem>
-                  <Email sx={{ mr: 2, color: 'text.secondary' }} />
-                  <ListItemText primary={result.candidate.email} />
-                </ListItem>
-              )}
-              
-              {result.candidate.location && (
-                <ListItem>
-                  <LocationOn sx={{ mr: 2, color: 'text.secondary' }} />
-                  <ListItemText primary={result.candidate.location} />
-                </ListItem>
-              )}
-            </List>
-            
-            {result.candidate.skills && result.candidate.skills.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Psychology sx={{ mr: 1, fontSize: 20 }} />
-                  Top Skills
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                  {result.candidate.skills.map((skill, index) => (
-                    <Chip
-                      key={index}
-                      label={skill}
-                      color="primary"
-                      size="small"
-                      variant="outlined"
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-            
-            {result.candidate.has_embeddings && (
-              <Alert severity="success" sx={{ mt: 2 }}>
-                AI embeddings generated successfully
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={reset}
-          sx={{ mt: 3 }}
-          size="large"
-        >
-          Upload Another Resume
-        </Button>
-      </Paper>
-    );
-  }
 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>

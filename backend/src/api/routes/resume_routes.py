@@ -1,8 +1,7 @@
 # API routes for uploading and processing resume documents, and fetching candidate data.
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from typing import List
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from typing import List, Dict
 import os
-from pathlib import Path
 import sys
 import logging
 
@@ -19,15 +18,19 @@ from src.services.embeddings.generate_embeddings import (
 )
 from src.api.models import CandidateResponse, CandidateListResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
+from src.api.routes.auth_routes import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # API endpoint to upload and process a resume document
 @router.post("/resume/upload", response_model=CandidateResponse)
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(
+    file: UploadFile = File(...),
+    current_user: Dict = Depends(get_current_user)
+):
     """
-    Upload a resume document.
+    Upload a resume document for the authenticated user.
     Accepts PDF, DOC, and DOCX files.
     """
     
@@ -43,7 +46,11 @@ async def upload_resume(file: UploadFile = File(...)):
     # try block to process the document with Azure Content Understanding
     try:
         tmp_file_path = await save_upload_file_tmp(file)
-        candidate_name = Path(file.filename).stem
+        
+        # Use the authenticated user's information
+        user_id = current_user["_id"]
+        user_name = current_user["name"]
+        user_email = current_user["email"]
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
@@ -73,13 +80,20 @@ async def upload_resume(file: UploadFile = File(...)):
         )
         
         # standardize and upsert candidate data
-        standardized_data = standardize_resume(azure_result, candidate_name)
+        standardized_data = standardize_resume(azure_result, user_name)
         
-        mongo_result = upsert_candidate(standardized_data)
+        # Add authenticated user's information
+        standardized_data["full_name"] = user_name  
+        standardized_data["Email"] = user_email  
+        standardized_data["status"] = "uploaded_resume"  # Update status
+        
+        # Use existing upsert_candidate function with user_id parameter
+        mongo_result = upsert_candidate(standardized_data, user_id=user_id)
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
         
-        candidate_doc = get_candidate(candidate_name)
+        # Use existing get_candidate function with user_id parameter
+        candidate_doc = get_candidate(user_id=user_id)
         if not candidate_doc:
             raise HTTPException(status_code=500, detail="Failed to retrieve candidate after insertion")
         
@@ -91,7 +105,7 @@ async def upload_resume(file: UploadFile = File(...)):
             try:
                 embed_candidate_profile(candidate_doc)
                 embed_candidate_location(candidate_doc)
-                candidate_doc = get_candidate(candidate_name)
+                candidate_doc = get_candidate(user_id=user_id)
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
         
@@ -100,7 +114,7 @@ async def upload_resume(file: UploadFile = File(...)):
             success=True,
             message=f"Resume processed successfully",
             candidate={
-                "name": candidate_doc.get("full_name", candidate_name),
+                "name": candidate_doc.get("full_name", user_name),
                 "email": candidate_doc.get("Email"),
                 "location": candidate_doc.get("Location"),
                 "skills": candidate_doc.get("Skills", [])[:10],

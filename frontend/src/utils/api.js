@@ -85,6 +85,10 @@ export const authAPI = {
   },
   
   getCurrentUser: () => api.get('/auth/me'),
+  
+  updateStatus: (status) => api.put('/auth/update-status', null, {
+    params: { status }
+  }),
 };
 
 // Health check
