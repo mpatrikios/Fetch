@@ -80,7 +80,7 @@ async def upload_resume(
         )
         
         # standardize and upsert candidate data
-        standardized_data = standardize_resume(azure_result, user_name)
+        standardized_data = standardize_resume(azure_result)
         
         # Add authenticated user's information
         standardized_data["full_name"] = user_name  
