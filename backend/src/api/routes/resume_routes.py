@@ -1,6 +1,6 @@
 # API routes for uploading and processing resume documents, and fetching candidate data.
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from typing import List, Dict
+from typing import Dict
 import os
 import sys
 import logging
