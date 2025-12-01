@@ -60,7 +60,7 @@ async def health_check():
     try:
         mongo_connection.client.server_info()
         db_status = "connected"
-    except:
+    except Exception:
         db_status = "disconnected"
     
     return {
