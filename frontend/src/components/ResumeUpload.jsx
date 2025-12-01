@@ -26,7 +26,7 @@ const ResumeUpload = ({ onSuccess }) => {
     if (!selectedFile) return { valid: false, error: 'No file selected' };
     
     const allowedTypes = ['.pdf', '.doc', '.docx'];
-    const fileExtension = selectedFile.name.toLowerCase().substr(selectedFile.name.lastIndexOf('.'));
+    const fileExtension = selectedFile.name.toLowerCase().slice(selectedFile.name.lastIndexOf('.'));
     
     if (!allowedTypes.includes(fileExtension)) {
       return { valid: false, error: 'Please upload a PDF, DOC, or DOCX file' };
