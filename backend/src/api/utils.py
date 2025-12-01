@@ -2,7 +2,7 @@
 import os
 import tempfile
 import logging
-from typing import Optional, Tuple
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
