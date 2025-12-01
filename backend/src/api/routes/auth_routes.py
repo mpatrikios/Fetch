@@ -16,7 +16,9 @@ load_dotenv()
 router = APIRouter()
 security = HTTPBearer()
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY environment variable must be set for secure token signing.")
 JWT_ALGORITHM = "HS256"  # For JWT token signing (HMAC with SHA-256)
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 PASSWORD_SALT = os.getenv("PASSWORD_SALT", "fetch-recruitment-salt")
