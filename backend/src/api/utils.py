@@ -3,7 +3,6 @@ import os
 import tempfile
 import logging
 from typing import Optional, Tuple
-from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
