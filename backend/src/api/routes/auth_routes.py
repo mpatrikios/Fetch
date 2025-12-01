@@ -4,7 +4,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
-import hashlib
+import bcrypt
 import os
 from dotenv import load_dotenv
 from bson import ObjectId
@@ -21,7 +21,6 @@ if not SECRET_KEY:
     raise RuntimeError("JWT_SECRET_KEY environment variable must be set for secure token signing.")
 JWT_ALGORITHM = "HS256"  # For JWT token signing (HMAC with SHA-256)
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-PASSWORD_SALT = os.getenv("PASSWORD_SALT", "fetch-recruitment-salt")
 
 
 class UserRegister(BaseModel):
@@ -38,16 +37,20 @@ class Token(BaseModel):
     token_type: str = "bearer"
     user: dict
 
-# hash password with SHA256 and salt
-def hash_password_sha256(password: str) -> str:
-    """Hash password using SHA256 with salt"""
-    salted_password = f"{password}{PASSWORD_SALT}"
-    return hashlib.sha256(salted_password.encode()).hexdigest()
+# hash password with bcrypt
+def hash_password(password: str) -> str:
+    """Hash password using bcrypt with automatic salt generation"""
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 # verify password
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its SHA256 hash"""
-    return hash_password_sha256(plain_password) == hashed_password
+    """Verify a password against its bcrypt hash"""
+    password_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 # create JWT token
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -89,7 +92,7 @@ async def register(user_data: UserRegister):
     if existing_user:
         raise HTTPException(status_code=409, detail="Email already registered")
     
-    hashed_password = hash_password_sha256(user_data.password)
+    hashed_password = hash_password(user_data.password)
     
     user_dict = {
         "name": user_data.name,
