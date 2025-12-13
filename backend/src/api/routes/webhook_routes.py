@@ -55,7 +55,7 @@ async def calendly_webhook(request: Request):
         if "intake" in event_name or "30min" in event_name:
             new_status = "scheduled_intake"
         elif "follow" in event_name or "followup" in event_name:
-            new_status = "completed_onboarding"
+            new_status = "scheduled_followup"
         
         if not new_status:
             logger.warning(f"Could not determine status for event: {event_name}")
