@@ -27,7 +27,7 @@ function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {} }) {
 
   const defaultPrefill = {
     email: user?.email || '',
-    name: user?.name || '',
+    ...(user?.name ? { name: user.name } : {}),
     ...prefill
   };
 
