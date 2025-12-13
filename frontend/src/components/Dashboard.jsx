@@ -249,10 +249,16 @@ function Dashboard() {
                           >
                             Hide Scheduler
                           </Button>
-                          <CalendlyEmbed 
-                            url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL || 'https://calendly.com/your-username/followup-call'}
-                            user={user}
-                          />
+                          {import.meta.env.VITE_CALENDLY_FOLLOWUP_URL ? (
+                            <CalendlyEmbed 
+                              url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL}
+                              user={user}
+                            />
+                          ) : (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                              The follow-up call scheduling link is not configured. Please contact support or try again later.
+                            </Alert>
+                          )}
                         </Box>
                       )}
                     </Box>
