@@ -106,7 +106,7 @@ function Dashboard() {
       if (eventType === 'intake') {
         newStatus = 'scheduled_intake';
       } else if (eventType === 'followup') {
-        newStatus = 'completed_onboarding';
+        newStatus = 'scheduled_followup';
       }
       
       if (newStatus) {
