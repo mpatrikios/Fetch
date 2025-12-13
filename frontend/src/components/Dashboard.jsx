@@ -220,23 +220,31 @@ function Dashboard() {
                           >
                             Hide Scheduler
                           </Button>
-                          <CalendlyEmbed 
-                            url={import.meta.env.VITE_CALENDLY_INTAKE_URL || 'https://calendly.com/your-username/intake-call'}
-                            user={user}
-                          />
-                          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                              For testing: Simulate scheduling confirmation
-                            </Typography>
-                            <Button 
-                              variant="outlined" 
-                              size="small"
-                              color="secondary"
-                              onClick={() => handleMockWebhook('intake')}
-                            >
-                              Mock POST API Call
-                            </Button>
-                          </Box>
+                          {import.meta.env.VITE_CALENDLY_INTAKE_URL ? (
+                            <Box>
+                              <CalendlyEmbed 
+                                url={import.meta.env.VITE_CALENDLY_INTAKE_URL}
+                                user={user}
+                              />
+                              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                  For testing: Simulate scheduling confirmation
+                                </Typography>
+                                <Button 
+                                  variant="outlined" 
+                                  size="small"
+                                  color="secondary"
+                                  onClick={() => handleMockWebhook('intake')}
+                                >
+                                  Mock POST API Call
+                                </Button>
+                              </Box>
+                            </Box>
+                          ) : (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                              The intake call scheduling link is not configured. Please contact support or try again later.
+                            </Alert>
+                          )}
                         </Box>
                       )}
                     </Box>
