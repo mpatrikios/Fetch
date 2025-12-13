@@ -100,6 +100,24 @@ function Dashboard() {
     }
   };
 
+  const handleMockWebhook = async (eventType) => {
+    try {
+      let newStatus;
+      if (eventType === 'intake') {
+        newStatus = 'scheduled_intake';
+      } else if (eventType === 'followup') {
+        newStatus = 'completed_onboarding';
+      }
+      
+      if (newStatus) {
+        await authAPI.updateStatus(newStatus);
+        await fetchUserData();
+      }
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
   const getStepIcon = (stepIndex) => {
     if (stepIndex < currentStep) {
       // Completed steps
@@ -206,6 +224,19 @@ function Dashboard() {
                             url={import.meta.env.VITE_CALENDLY_INTAKE_URL || 'https://calendly.com/your-username/intake-call'}
                             user={user}
                           />
+                          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                              For testing: Simulate scheduling confirmation
+                            </Typography>
+                            <Button 
+                              variant="outlined" 
+                              size="small"
+                              color="secondary"
+                              onClick={() => handleMockWebhook('intake')}
+                            >
+                              Mock POST API Call
+                            </Button>
+                          </Box>
                         </Box>
                       )}
                     </Box>
@@ -250,10 +281,25 @@ function Dashboard() {
                             Hide Scheduler
                           </Button>
                           {import.meta.env.VITE_CALENDLY_FOLLOWUP_URL ? (
-                            <CalendlyEmbed 
-                              url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL}
-                              user={user}
-                            />
+                            <Box>
+                              <CalendlyEmbed 
+                                url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL}
+                                user={user}
+                              />
+                              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                  For testing: Simulate scheduling confirmation
+                                </Typography>
+                                <Button 
+                                  variant="outlined" 
+                                  size="small"
+                                  color="secondary"
+                                  onClick={() => handleMockWebhook('followup')}
+                                >
+                                  Mock POST API Call
+                                </Button>
+                              </Box>
+                            </Box>
                           ) : (
                             <Alert severity="error" sx={{ mb: 2 }}>
                               The follow-up call scheduling link is not configured. Please contact support or try again later.

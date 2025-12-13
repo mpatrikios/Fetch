@@ -15,6 +15,7 @@ import { Box } from '@mui/material';
  * @returns {JSX.Element} The Calendly embed widget.
  */
 function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {} }) {
+  const defaultPageSettings = {
     backgroundColor: 'ffffff',
     hideEventTypeDetails: false,
     hideLandingPageDetails: false,
@@ -26,6 +27,7 @@ function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {} }) {
 
   const defaultPrefill = {
     email: user?.email || '',
+    name: user?.name || '',
     ...prefill
   };
 

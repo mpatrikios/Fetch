@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Request
 from typing import Dict, Any
 from datetime import datetime
 import logging
-from bson import ObjectId
 
 from src.database.connection import mongo_connection
 
@@ -24,7 +23,7 @@ async def calendly_webhook(request: Request):
         event_type = body.get("event")
         payload = body.get("payload", {})
         
-        # We're interested in invitee.created events (when someone schedules)
+        # Use invitee.created event (when someone schedules) to update their status
         if event_type != "invitee.created":
             logger.info(f"Ignoring event type: {event_type}")
             return {"status": "ignored", "reason": "not_invitee_created"}
@@ -93,12 +92,3 @@ async def calendly_webhook(request: Request):
         logger.error(f"Error processing Calendly webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
 
-
-@router.get("/webhooks/calendly/test")
-async def test_webhook():
-    """Test endpoint to verify webhook route is working"""
-    return {
-        "status": "ok",
-        "message": "Calendly webhook endpoint is ready",
-        "timestamp": datetime.utcnow()
-    }
