@@ -162,6 +162,7 @@ def main():
             # Keep the script running
             ngrok_process.wait()
         except KeyboardInterrupt:
+            # Allow graceful shutdown on Ctrl+C; cleanup is handled in finally block
             pass
         finally:
             print("\n🛑 Stopping ngrok...")
