@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 import logging
 from bson import ObjectId
@@ -9,13 +8,6 @@ from src.database.connection import mongo_connection
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-class CalendlyWebhookPayload(BaseModel):
-    """Pydantic model for Calendly webhook payload"""
-    event: str
-    time: str
-    payload: Dict[str, Any]
 
 
 @router.post("/webhooks/calendly")

@@ -44,7 +44,7 @@ def delete_existing_webhooks():
     # Get organization URI
     response = requests.get(f"{CALENDLY_API_BASE}/users/me", headers=headers)
     if response.status_code != 200:
-        print(f"❌ Failed to get user info for deleting webhooks: {response.status_code} - {response.text}")
+        print(f" Failed to get user info for deleting webhooks: {response.status_code} - {response.text}")
         return
     
     org_uri = response.json()['resource']['current_organization']
@@ -65,7 +65,7 @@ def delete_existing_webhooks():
 def create_webhook(webhook_url):
     """Create new webhook subscription"""
     if not CALENDLY_ACCESS_TOKEN:
-        print("❌ No Calendly access token found")
+        print("No Calendly access token found")
         return False
     
     headers = {
@@ -76,7 +76,7 @@ def create_webhook(webhook_url):
     # Get organization URI
     response = requests.get(f"{CALENDLY_API_BASE}/users/me", headers=headers)
     if response.status_code != 200:
-        print(f"❌ Failed to get user info: {response.status_code}")
+        print(f"Failed to get user info: {response.status_code}")
         return False
     
     org_uri = response.json()['resource']['current_organization']
@@ -96,15 +96,15 @@ def create_webhook(webhook_url):
     )
     
     if response.status_code == 201:
-        print(f"✅ Webhook created: {webhook_url}/api/webhooks/calendly")
+        print(f" Webhook created: {webhook_url}/api/webhooks/calendly")
         return True
     else:
-        print(f"❌ Failed to create webhook: {response.status_code}")
+        print(f" Failed to create webhook: {response.status_code}")
         return False
 
 def start_ngrok():
     """Start ngrok and return the process"""
-    print("🚀 Starting ngrok tunnel...")
+    print(" Starting ngrok tunnel...")
     process = subprocess.Popen(['ngrok', 'http', '127.0.0.1:8000'], 
                              stdout=subprocess.PIPE, 
                              stderr=subprocess.PIPE)
@@ -153,11 +153,6 @@ def main():
         print(f"📋 Summary:")
         print(f"  - ngrok URL: {ngrok_url}")
         print(f"  - Webhook URL: {ngrok_url}/api/webhooks/calendly")
-        print(f"  - Backend should be running on http://localhost:8000")
-        print("\n💡 To start your backend, run in another terminal:")
-        print("   cd backend && source venv/bin/activate && python -m uvicorn src.api.main:app --reload --port 8000")
-        
-        print("\n⏳ Keeping ngrok running... Press Ctrl+C to stop")
         
         try:
             # Keep the script running
@@ -166,11 +161,11 @@ def main():
             # Allow graceful shutdown on Ctrl+C; cleanup is handled in finally block
             pass
         finally:
-            print("\n🛑 Stopping ngrok...")
+            print("\n Stopping ngrok...")
             ngrok_process.terminate()
     
     else:
-        print("💥 Failed to create webhook")
+        print(" Failed to create webhook")
         ngrok_process.terminate()
 
 if __name__ == "__main__":
