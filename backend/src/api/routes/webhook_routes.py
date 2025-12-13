@@ -38,16 +38,17 @@ async def calendly_webhook(request: Request):
             return {"status": "ignored", "reason": "not_invitee_created"}
         
         # Extract invitee information
-        # In the actual webhook payload, email is directly in payload
-        invitee_email = payload.get("email")
+        # Validate payload structure and extract email
+        invitee_email = None
+        if isinstance(payload, dict) and "email" in payload and isinstance(payload["email"], str):
+            invitee_email = payload["email"]
+        else:
+            logger.error(f"Invalid payload structure or missing invitee email: {payload}")
+            return {"status": "error", "reason": "invalid_payload_or_missing_invitee_email"}
         
         # Event info is in payload.scheduled_event
         scheduled_event = payload.get("scheduled_event", {})
         event_name = scheduled_event.get("name", "").lower()
-        
-        if not invitee_email:
-            logger.error("No invitee email found in webhook payload")
-            return {"status": "error", "reason": "missing_invitee_email"}
         
         # Determine which status to update based on event name
         new_status = None
