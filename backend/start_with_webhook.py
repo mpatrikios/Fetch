@@ -44,6 +44,7 @@ def delete_existing_webhooks():
     # Get organization URI
     response = requests.get(f"{CALENDLY_API_BASE}/users/me", headers=headers)
     if response.status_code != 200:
+        print(f"❌ Failed to get user info for deleting webhooks: {response.status_code} - {response.text}")
         return
     
     org_uri = response.json()['resource']['current_organization']
