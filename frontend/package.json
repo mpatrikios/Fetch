@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "backend": "cd ../backend && source venv/bin/activate && python3 -m uvicorn src.api.main:app --reload --port 8000",
     "webhook": "cd ../backend && source venv/bin/activate && python3 start_with_webhook.py",
-    "start": "concurrently \"npm run backend\" \"npm run webhook\" \"npm run dev\""
+    "start": "concurrently \"npm run webhook\" \"npm run dev\""
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
