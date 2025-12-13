@@ -16,7 +16,7 @@ import {
 } from '@mui/icons-material';
 import { resumeAPI } from '../utils/api';
 
-const ResumeUpload = ({ onSuccess }) => {
+const DocumentUpload = ({ onSuccess }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -198,4 +198,4 @@ const ResumeUpload = ({ onSuccess }) => {
   );
 };
 
-export default ResumeUpload;
+export default DocumentUpload;
