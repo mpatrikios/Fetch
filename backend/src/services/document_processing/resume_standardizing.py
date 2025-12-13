@@ -88,11 +88,17 @@ DESIRED_FIELD_KEYS = {"Location", "Summary", "WorkExperience", "Skills", "Compan
 def standardize_resume(result_json: dict) -> dict:
     """Standardize resume JSON data from Azure into MongoDB-ready format.
     
+    Note:
+        This function only extracts and standardizes resume content from Azure.
+        Candidate information (such as user_id or name) should be added by the 
+        caller after standardization when storing to the database.
+    
     Args:
         result_json: The JSON result from Azure Content Understanding
     
     Returns:
-        MongoDB-ready document dictionary
+        MongoDB-ready document dictionary containing Location, Summary, 
+        Experience, Skills, Companies, and extraction timestamp
     """
     all_fields = result_json["result"]["contents"][0]["fields"]
     

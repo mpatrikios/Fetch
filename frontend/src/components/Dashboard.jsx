@@ -16,6 +16,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { authAPI } from '../utils/api';
 import ResumeUpload from './ResumeUpload';
+import CalendlyEmbed from './CalendlyEmbed';
 
 const onboardingSteps = [
   {
@@ -51,6 +52,8 @@ function Dashboard() {
   const [error, setError] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [showIntakeCalendly, setShowIntakeCalendly] = useState(false);
+  const [showFollowupCalendly, setShowFollowupCalendly] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -181,14 +184,30 @@ function Dashboard() {
                 <StepContent>
                   {index === currentStep && index === 1 && (
                     <Box mt={2}>
-                      <Button 
-                        variant="contained" 
-                        size="small"
-                        href="https://calendly.com/your-link" 
-                        target="_blank"
-                      >
-                        Schedule Call
-                      </Button>
+                      {!showIntakeCalendly ? (
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={() => setShowIntakeCalendly(true)}
+                        >
+                          Schedule Intake Call
+                        </Button>
+                      ) : (
+                        <Box>
+                          <Button 
+                            variant="text" 
+                            size="small"
+                            onClick={() => setShowIntakeCalendly(false)}
+                            sx={{ mb: 2 }}
+                          >
+                            Hide Scheduler
+                          </Button>
+                          <CalendlyEmbed 
+                            url={import.meta.env.VITE_CALENDLY_INTAKE_URL || 'https://calendly.com/your-username/intake-call'}
+                            user={user}
+                          />
+                        </Box>
+                      )}
                     </Box>
                   )}
                   {index === currentStep && index === 2 && (
@@ -212,14 +231,30 @@ function Dashboard() {
                   )}
                   {index === currentStep && index === 4 && (
                     <Box mt={2}>
-                      <Button 
-                        variant="contained" 
-                        size="small"
-                        href="https://calendly.com/your-link" 
-                        target="_blank"
-                      >
-                        Schedule Follow-up
-                      </Button>
+                      {!showFollowupCalendly ? (
+                        <Button 
+                          variant="contained" 
+                          size="small"
+                          onClick={() => setShowFollowupCalendly(true)}
+                        >
+                          Schedule Follow-up Call
+                        </Button>
+                      ) : (
+                        <Box>
+                          <Button 
+                            variant="text" 
+                            size="small"
+                            onClick={() => setShowFollowupCalendly(false)}
+                            sx={{ mb: 2 }}
+                          >
+                            Hide Scheduler
+                          </Button>
+                          <CalendlyEmbed 
+                            url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL || 'https://calendly.com/your-username/followup-call'}
+                            user={user}
+                          />
+                        </Box>
+                      )}
                     </Box>
                   )}
                 </StepContent>
