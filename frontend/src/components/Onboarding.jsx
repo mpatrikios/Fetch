@@ -41,7 +41,7 @@ const onboardingSteps = [
   }
 ];
 
-function Dashboard() {
+function Onboarding() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -100,7 +100,7 @@ function Dashboard() {
       if (eventType === 'intake') {
         newStatus = 'scheduled_intake';
       } else if (eventType === 'followup') {
-        newStatus = 'scheduled_followup';
+        newStatus = 'completed_onboarding';
       }
       
       if (newStatus) {
@@ -109,6 +109,16 @@ function Dashboard() {
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+    }
+  };
+
+  const handleCliftonUploadSuccess = async () => {
+    try {
+      // Update status to uploaded_results when CliftonStrengths upload succeeds
+      await authAPI.updateStatus('uploaded_results');
+      await fetchUserData();
+    } catch (err) {
+      console.error('Failed to update status after CliftonStrengths upload:', err);
     }
   };
 
@@ -245,9 +255,14 @@ function Dashboard() {
                   )}
                   {index === currentStep && index === 2 && (
                     <Box mt={2}>
-                      <Button variant="contained" size="small">
-                        Upload Results
-                      </Button>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Please upload your completed CliftonStrengths assessment results:
+                      </Typography>
+                      <ResumeUpload 
+                        onSuccess={handleCliftonUploadSuccess}
+                        acceptedFileTypes=".pdf,.doc,.docx"
+                        uploadType="cliftonstrengths"
+                      />
                     </Box>
                   )}
                   {index === currentStep && index === 3 && (
@@ -322,4 +337,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default Onboarding;
