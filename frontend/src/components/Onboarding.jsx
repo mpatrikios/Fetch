@@ -15,7 +15,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { authAPI } from '../utils/api';
-import ResumeUpload from './DocumentUpload';
+import DocumentUpload from './DocumentUpload';
 import CalendlyEmbed from './CalendlyEmbed';
 
 const onboardingSteps = [
@@ -173,7 +173,7 @@ function Onboarding() {
           <Typography variant="h6" gutterBottom>
             Upload Your Resume
           </Typography>
-          <ResumeUpload onSuccess={handleResumeUploadSuccess} />
+          <DocumentUpload onSuccess={handleResumeUploadSuccess} />
         </Paper>
       )}
 
@@ -258,7 +258,7 @@ function Onboarding() {
                       <Typography variant="body2" color="text.secondary" gutterBottom>
                         Please upload your completed CliftonStrengths assessment results:
                       </Typography>
-                      <ResumeUpload 
+                      <DocumentUpload 
                         onSuccess={handleCliftonUploadSuccess}
                         acceptedFileTypes=".pdf,.doc,.docx"
                         uploadType="cliftonstrengths"
