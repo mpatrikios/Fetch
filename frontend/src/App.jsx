@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
 import Onboarding from './components/Onboarding';
+import CandidateDashboard from './components/CandidateDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -19,6 +20,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Onboarding />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <CandidateDashboard />
               </ProtectedRoute>
             } 
           />
