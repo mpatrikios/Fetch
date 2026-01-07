@@ -29,6 +29,10 @@ function App() {
             element={
               <ProtectedRoute>
                 <MLGDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/dashboard" 
             element={
               <ProtectedRoute>

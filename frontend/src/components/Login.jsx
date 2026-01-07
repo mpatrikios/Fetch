@@ -42,6 +42,9 @@ function Login() {
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
         // Check if onboarding is complete
+        if (response.userType === 'mlg-recruiter') {
+          navigate('/mlg-dashboard');
+        }
         if (response.data.user.status === 'completed_onboarding') {
           navigate('/dashboard');
         } else {
