@@ -56,6 +56,7 @@ function Header() {
                     color: '#FF5A5A' 
                   }
                 }}
+                onClick={() => handleUserTypeSelect('mlg-recruiter')}
               >
                 Recruiters
               </Button>

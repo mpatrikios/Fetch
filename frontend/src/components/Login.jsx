@@ -22,6 +22,10 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Check if this is a recruiter login flow
+  const userType = localStorage.getItem('userType');
+  const isRecruiter = userType === 'mlg-recruiter';
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -89,7 +93,7 @@ function Login() {
                 lineHeight: 1.2
               }}
             >
-              Executives
+              {isRecruiter ? 'MLG Recruiters' : 'Executives'}
             </Typography>
             <Typography 
               variant="h5" 
@@ -101,7 +105,9 @@ function Login() {
                 fontSize: { xs: '1.25rem', md: '1.5rem' }
               }}
             >
-              Join our exclusive talent pool today.
+              {isRecruiter 
+                ? 'Access your recruiting dashboard and candidate pipeline.'
+                : 'Join our exclusive talent pool today.'}
             </Typography>
           </Grid>
 
@@ -169,21 +175,23 @@ function Login() {
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
                 
-                <Box sx={{ textAlign: 'center' }}>
-                  <Link 
-                    href="/register" 
-                    sx={{ 
-                      color: '#FF5A5A',
-                      textDecoration: 'none',
-                      fontFamily: 'Petrona, serif',
-                      '&:hover': {
-                        textDecoration: 'underline'
-                      }
-                    }}
-                  >
-                    Create account
-                  </Link>
-                </Box>
+                {!isRecruiter && (
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Link 
+                      href="/register" 
+                      sx={{ 
+                        color: '#FF5A5A',
+                        textDecoration: 'none',
+                        fontFamily: 'Petrona, serif',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      Create account
+                    </Link>
+                  </Box>
+                )}
               </Box>
         </Card>
       </Container>
