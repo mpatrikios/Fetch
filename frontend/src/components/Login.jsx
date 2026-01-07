@@ -29,6 +29,9 @@ function Login() {
     });
   };
 
+  const userType = localStorage.getItem('userType');
+  const isRecruiter = userType === 'mlg-recruiter';
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -38,14 +41,15 @@ function Login() {
       const response = await authAPI.login(formData.email, formData.password);
       
       if (response.data.token) {
+        console.log('Login successful:', response.data);
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Check if onboarding is complete
-        if (response.userType === 'mlg-recruiter') {
+        // Check user role from database first (authoritative)
+        const userRole = response.data.user?.role;
+        if (userRole === 'mlg-recruiter') {
           navigate('/mlg-dashboard');
-        }
-        if (response.data.user.status === 'completed_onboarding') {
+        } else if (response.data.user.status === 'completed_onboarding') {
           navigate('/dashboard');
         } else {
           navigate('/onboarding');
@@ -64,8 +68,8 @@ function Login() {
     }
   };
 
-  const userType = localStorage.getItem('userType');
-  const isRecruiter = userType === 'mlg-recruiter';
+  // const userType = localStorage.getItem('userType');
+  // const isRecruiter = userType === 'mlg-recruiter';
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#FFFFFF', pt: 0, position: 'relative' }}>

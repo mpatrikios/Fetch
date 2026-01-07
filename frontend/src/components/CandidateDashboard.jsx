@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Container, Box, Typography, Grid, CircularProgress, Alert } from '@mui/material';
 import { authAPI, jobAPI } from '../utils/api';
-import ProfileCard from './ProfileCard';
-import AppliedJobsList from './AppliedJobsList';
-import RecommendedJobs from './RecommendedJobs';
+import ProfileCard from './dashboard-components/ProfileCard';
+import AppliedJobsList from './dashboard-components/AppliedJobsList';
+import RecommendedJobs from './dashboard-components/RecommendedJobs';
 
 function CandidateDashboard() {
   const [user, setUser] = useState(null);
@@ -75,7 +75,7 @@ function CandidateDashboard() {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {/* Welcome Section */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
+          <Typography variant="h4" gutterBottom>
             Welcome back, {user?.name || 'Candidate'}!
           </Typography>
           <Typography variant="body1" color="text.secondary">

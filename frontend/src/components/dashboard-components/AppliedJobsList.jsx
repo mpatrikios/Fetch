@@ -1,6 +1,4 @@
 import {
-  Card,
-  CardContent,
   Typography,
   List,
   ListItem,
@@ -11,6 +9,7 @@ import {
 } from '@mui/material';
 import { Work, Schedule, TrendingUp, CheckCircle, Cancel } from '@mui/icons-material';
 import JobStatusChip from './JobStatusChip';
+import { CardSection, SectionHeader } from '../common-components/StyledComponents';
 
 function AppliedJobsList({ appliedJobs }) {
   const getStatusIcon = (status) => {
@@ -29,12 +28,13 @@ function AppliedJobsList({ appliedJobs }) {
   };
 
   return (
-    <Card elevation={3} sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-          <Work sx={{ mr: 1 }} />
+    <CardSection sx={{ mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Work sx={{ mr: 2, color: 'text.secondary' }} />
+        <SectionHeader variant="h6" sx={{ mb: 0 }}>
           Applied Jobs & Status
-        </Typography>
+        </SectionHeader>
+      </Box>
         
         {appliedJobs.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
@@ -65,8 +65,7 @@ function AppliedJobsList({ appliedJobs }) {
             ))}
           </List>
         )}
-      </CardContent>
-    </Card>
+    </CardSection>
   );
 }
 

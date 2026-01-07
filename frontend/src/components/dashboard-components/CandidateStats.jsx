@@ -1,27 +1,16 @@
-import { Box, Typography, Card, Grid } from '@mui/material';
+import { Box, Typography, Grid } from '@mui/material';
 import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
-import { CardSection } from '../ui/StyledComponents';
+import { CardSection, DarkButton, DashboardStatCard } from '../common-components/StyledComponents';
+
 
 function CandidateStats() {
-  // Placeholder data - will be replaced with real API calls
+  // MOCK DATA TODO: Replace with real data fetching logic
   const stats = {
     total: 247,
     onboarding: 12,
     interviews: 8,
     pending: 5
   };
-
-  const StatCard = ({ value, label, icon: Icon }) => (
-    <Card sx={{ p: 2, textAlign: 'center', backgroundColor: '#f8f9fa', height: '100%' }}>
-      <Icon sx={{ fontSize: 24, color: 'text.secondary', mb: 1 }} />
-      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.primary', mb: 1 }}>
-        {value}
-      </Typography>
-      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'Montserrat, sans-serif' }}>
-        {label}
-      </Typography>
-    </Card>
-  );
 
   return (
     <CardSection sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -33,35 +22,45 @@ function CandidateStats() {
       </Box>
       
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
-        <Grid item xs={6}>
-          <StatCard 
+        <Grid size={{ xs: 6 }}>
+          <DashboardStatCard 
             value={stats.total} 
             label="Total Candidates" 
             icon={People}
+            size="small"
           />
         </Grid>
-        <Grid item xs={6}>
-          <StatCard 
+        <Grid size={{ xs: 6 }}>
+          <DashboardStatCard 
             value={stats.onboarding} 
             label="Onboarding" 
             icon={PersonAdd}
+            size="small"
           />
         </Grid>
-        <Grid item xs={6}>
-          <StatCard 
+        <Grid size={{ xs: 6 }}>
+          <DashboardStatCard 
             value={stats.interviews} 
             label="In Interviews" 
             icon={Schedule}
+            size="small"
           />
         </Grid>
-        <Grid item xs={6}>
-          <StatCard 
+        <Grid size={{ xs: 6 }}>
+          <DashboardStatCard 
             value={stats.pending} 
             label="Pending Approval" 
             icon={CheckCircle}
+            size="small"
           />
         </Grid>
       </Grid>
+      
+      <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <DarkButton size="small">
+          View All Candidates
+        </DarkButton>
+      </Box>
     </CardSection>
   );
 }

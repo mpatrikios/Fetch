@@ -1,14 +1,12 @@
 import {
-  Card,
-  CardContent,
   Typography,
   Grid,
   Paper,
   Box,
-  Button,
   Chip
 } from '@mui/material';
 import { Star } from '@mui/icons-material';
+import { CardSection, SectionHeader, DarkButton } from '../common-components/StyledComponents';
 
 function RecommendedJobs({ recommendedJobs }) {
   // TODO: Replace with API call to get jobs recommended specifically for this user
@@ -22,12 +20,13 @@ function RecommendedJobs({ recommendedJobs }) {
   // 3. Send notification to MLG recruiter about candidate interest
 
   return (
-    <Card elevation={3}>
-      <CardContent>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-          <Star sx={{ mr: 1 }} />
+    <CardSection>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Star sx={{ mr: 2, color: 'text.secondary' }} />
+        <SectionHeader variant="h6" sx={{ mb: 0 }}>
           Recommended Jobs & Next Steps
-        </Typography>
+        </SectionHeader>
+      </Box>
         
         {recommendedJobs.length === 0 ? (
           <Typography>
@@ -69,17 +68,16 @@ function RecommendedJobs({ recommendedJobs }) {
 
                     {/* TODO: Implement Next Steps functionality */}
                     
-                    <Button variant="contained" color="primary">
+                    <DarkButton>
                       Next Steps
-                    </Button>
+                    </DarkButton>
                   </Box>
                 </Paper>
               </Grid>
             ))}
           </Grid>
         )}
-      </CardContent>
-    </Card>
+    </CardSection>
   );
 }
 

@@ -61,41 +61,6 @@ const theme = createTheme({
     }
   },
   components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 20,
-          fontFamily: "Montserrat, sans-serif",
-          fontWeight: 500,
-          textTransform: "none"
-        },
-        contained: {
-          backgroundColor: "#FF5A5A",
-          color: "white",
-          '&:hover': {
-            backgroundColor: "rgba(255,90,90,0.8)"
-          }
-        },
-        outlined: {
-          borderColor: "#FF5A5A",
-          color: "#FF5A5A",
-          backgroundColor: "white",
-          '&:hover': {
-            backgroundColor: "rgba(255,90,90,0.1)",
-            borderColor: "#FF5A5A"
-          }
-        }
-      }
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-          padding: "16px 24px",
-          elevation: 1
-        }
-      }
-    },
     MuiTextField: {
       styleOverrides: {
         root: {

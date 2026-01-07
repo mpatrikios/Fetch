@@ -1,9 +1,9 @@
 import { Box, Typography, Card, List, ListItem, ListItemText, Chip } from '@mui/material';
 import { CalendarToday, VideoCall } from '@mui/icons-material';
-import { CardSection } from '../ui/StyledComponents';
+import { CardSection, DarkButton } from '../common-components/StyledComponents';
 
 function UpcomingMeetings() {
-  // Placeholder data - will be replaced with real API calls
+  // MOCK DATA TODO: Replace with real data fetching logic
   const meetings = [
     {
       id: 1,
@@ -47,10 +47,11 @@ function UpcomingMeetings() {
               <ListItem 
                 key={meeting.id} 
                 sx={{ 
-                  border: '1px solid #e0e0e0', 
+                  border: '1px solid',
+                  borderColor: 'divider',
                   borderRadius: 2, 
                   mb: 1,
-                  backgroundColor: '#fafafa'
+                  backgroundColor: 'grey.50'
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
@@ -94,6 +95,12 @@ function UpcomingMeetings() {
             </Typography>
           </Box>
         )}
+      </Box>
+      
+      <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <DarkButton size="small">
+          View Calendar
+        </DarkButton>
       </Box>
     </CardSection>
   );
