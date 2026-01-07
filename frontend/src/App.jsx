@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
-import Dashboard from './components/Dashboard';
+import Onboarding from './components/Onboarding';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -15,10 +15,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route 
-            path="/dashboard" 
+            path="/onboarding" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Onboarding />
               </ProtectedRoute>
             } 
           />

@@ -15,7 +15,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { authAPI } from '../utils/api';
-import ResumeUpload from './ResumeUpload';
+import DocumentUpload from './DocumentUpload';
 import CalendlyEmbed from './CalendlyEmbed';
 
 const onboardingSteps = [
@@ -30,11 +30,6 @@ const onboardingSteps = [
     description: 'This is a 30-45 minute call to discuss your search and help us connect you with roles of interest. Just bring yourself!'
   },
   {
-    label: 'Complete Clifton Strengths assessment',
-    status: 'completed_assessment',
-    description: 'A comprehensive strengths assessment tool to help understand your culture and personality. A prepaid link has been sent to your email. Takes about 30-45 minutes.'
-  },
-  {
     label: 'Upload Clifton Strengths results',
     status: 'uploaded_results',
     description: 'Upload your completed Clifton Strengths Assessment results so we can start matching you with opportunities!'
@@ -46,7 +41,7 @@ const onboardingSteps = [
   }
 ];
 
-function Dashboard() {
+function Onboarding() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,9 +64,8 @@ function Dashboard() {
         'registered': 0,
         'uploaded_resume': 1,  // When resume uploaded, move to step 1 (schedule intake)
         'scheduled_intake': 2,
-        'completed_assessment': 3,
-        'uploaded_results': 4,
-        'completed_onboarding': 5
+        'uploaded_results': 3,
+        'completed_onboarding': 4
       };
       
       const currentStepIndex = statusToStepMap[response.data.status] || 0;
@@ -106,7 +100,7 @@ function Dashboard() {
       if (eventType === 'intake') {
         newStatus = 'scheduled_intake';
       } else if (eventType === 'followup') {
-        newStatus = 'scheduled_followup';
+        newStatus = 'completed_onboarding';
       }
       
       if (newStatus) {
@@ -115,6 +109,16 @@ function Dashboard() {
       }
     } catch (err) {
       console.error('Failed to update status:', err);
+    }
+  };
+
+  const handleCliftonUploadSuccess = async () => {
+    try {
+      // Update status to uploaded_results when CliftonStrengths upload succeeds
+      await authAPI.updateStatus('uploaded_results');
+      await fetchUserData();
+    } catch (err) {
+      console.error('Failed to update status after CliftonStrengths upload:', err);
     }
   };
 
@@ -169,7 +173,7 @@ function Dashboard() {
           <Typography variant="h6" gutterBottom>
             Upload Your Resume
           </Typography>
-          <ResumeUpload onSuccess={handleResumeUploadSuccess} />
+          <DocumentUpload onSuccess={handleResumeUploadSuccess} />
         </Paper>
       )}
 
@@ -181,7 +185,7 @@ function Dashboard() {
           </Typography>
           
           <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-            {currentStep} of 5 Steps Complete
+            {currentStep} of 4 Steps Complete
           </Typography>
 
           <Stepper activeStep={currentStep} orientation="vertical">
@@ -251,24 +255,17 @@ function Dashboard() {
                   )}
                   {index === currentStep && index === 2 && (
                     <Box mt={2}>
-                      <Button 
-                        variant="contained" 
-                        size="small"
-                        href="https://www.gallup.com/cliftonstrengths" 
-                        target="_blank"
-                      >
-                        Take Assessment
-                      </Button>
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Please upload your completed CliftonStrengths assessment results:
+                      </Typography>
+                      <DocumentUpload 
+                        onSuccess={handleCliftonUploadSuccess}
+                        acceptedFileTypes=".pdf,.doc,.docx"
+                        uploadType="cliftonstrengths"
+                      />
                     </Box>
                   )}
                   {index === currentStep && index === 3 && (
-                    <Box mt={2}>
-                      <Button variant="contained" size="small">
-                        Upload Results
-                      </Button>
-                    </Box>
-                  )}
-                  {index === currentStep && index === 4 && (
                     <Box mt={2}>
                       {!showFollowupCalendly ? (
                         <Button 
@@ -340,4 +337,4 @@ function Dashboard() {
   );
 }
 
-export default Dashboard;
+export default Onboarding;

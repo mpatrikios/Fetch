@@ -42,7 +42,7 @@ function Login() {
         localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Invalid email or password');

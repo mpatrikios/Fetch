@@ -46,6 +46,17 @@ export const resumeAPI = {
   list: () => api.get('/candidates'),
 };
 
+export const cliftonStrengthsAPI = {
+  upload: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/clifton-strengths/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  list: () => api.get('/clifton-strengths'),
+};
+
 // Job endpoints
 export const jobAPI = {
   upload: (file, companyName) => {

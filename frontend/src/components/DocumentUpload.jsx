@@ -14,9 +14,9 @@ import {
   Delete,
   Description,
 } from '@mui/icons-material';
-import { resumeAPI } from '../utils/api';
+import { resumeAPI, cliftonStrengthsAPI } from '../utils/api';
 
-const ResumeUpload = ({ onSuccess }) => {
+const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = '.pdf,.doc,.docx' }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,11 +25,11 @@ const ResumeUpload = ({ onSuccess }) => {
   const validateFile = (selectedFile) => {
     if (!selectedFile) return { valid: false, error: 'No file selected' };
     
-    const allowedTypes = ['.pdf', '.doc', '.docx'];
+    const allowedTypes = acceptedFileTypes.split(',').map(type => type.trim());
     const fileExtension = selectedFile.name.toLowerCase().slice(selectedFile.name.lastIndexOf('.'));
     
     if (!allowedTypes.includes(fileExtension)) {
-      return { valid: false, error: 'Please upload a PDF, DOC, or DOCX file' };
+      return { valid: false, error: `Please upload a ${allowedTypes.join(', ')} file` };
     }
     
     if (selectedFile.size > 10 * 1024 * 1024) {
@@ -81,7 +81,13 @@ const ResumeUpload = ({ onSuccess }) => {
     setError(null);
     
     try {
-      const response = await resumeAPI.upload(file);
+      let response;
+      if (uploadType === 'cliftonstrengths') {
+        response = await cliftonStrengthsAPI.upload(file);
+      } else {
+        response = await resumeAPI.upload(file);
+      }
+      
       setFile(null);
       if (onSuccess) {
         onSuccess(response.data);
@@ -97,7 +103,7 @@ const ResumeUpload = ({ onSuccess }) => {
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom align="center" color="primary">
-        Upload Your Resume
+        {uploadType === 'cliftonstrengths' ? 'Upload CliftonStrengths Results' : 'Upload Your Resume'}
       </Typography>
     
       <Box
@@ -124,12 +130,12 @@ const ResumeUpload = ({ onSuccess }) => {
         <CloudUpload sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
         
         <Typography variant="h6" gutterBottom>
-          {file ? file.name : 'Drag & drop your resume here'}
+          {file ? file.name : `Drag & drop your ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths results' : 'resume'} here`}
         </Typography>
         
         <input
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept={acceptedFileTypes}
           onChange={(e) => handleFileSelect(e.target.files[0])}
           style={{ display: 'none' }}
           id="file-input"
@@ -142,7 +148,7 @@ const ResumeUpload = ({ onSuccess }) => {
         </label>
         
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          Accepted: PDF, DOC, DOCX (Max 10MB)
+          Accepted: {acceptedFileTypes.split(',').map(type => type.trim().toUpperCase()).join(', ')} (Max 10MB)
         </Typography>
       </Box>
 
@@ -179,7 +185,7 @@ const ResumeUpload = ({ onSuccess }) => {
           disabled={!file || uploading}
           startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
         >
-          {uploading ? 'Processing...' : 'Upload Resume'}
+          {uploading ? 'Processing...' : `Upload ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths Results' : 'Resume'}`}
         </Button>
         
         {uploading && (
@@ -198,4 +204,4 @@ const ResumeUpload = ({ onSuccess }) => {
   );
 };
 
-export default ResumeUpload;
+export default DocumentUpload;
