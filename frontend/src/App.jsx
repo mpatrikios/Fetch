@@ -4,8 +4,10 @@ import Header from './components/Header';
 import Login from './components/Login';
 import Register from './components/Register';
 import Onboarding from './components/Onboarding';
+import MLGDashboard from './components/MlgDashboard';
 import CandidateDashboard from './components/CandidateDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 
 function App() {
   return (
@@ -21,6 +23,14 @@ function App() {
               <ProtectedRoute>
                 <Onboarding />
               </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/mlg-dashboard" 
+            element={
+              <RoleProtectedRoute requiredRole="mlg-recruiter">
+                <MLGDashboard />
+              </RoleProtectedRoute>
             } 
           />
           <Route 
