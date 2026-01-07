@@ -40,9 +40,14 @@ function Login() {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Check if onboarding is complete
+        if (response.data.user.status === 'completed_onboarding') {
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
       }
-      
-      navigate('/onboarding');
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Invalid email or password');

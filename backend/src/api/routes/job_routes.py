@@ -135,14 +135,13 @@ async def upload_job_description(
 async def list_jobs():
     try:
         jobs = list(mongo_connection.job_descriptions_collection.find(
-            {}, 
+            {"profile_embedding": {"$exists": True}}, 
             {
                 "_id": 0,
                 "CompanyName": 1,
                 "JobTitle": 1,
                 "Location": 1,
-                "Skills": {"$slice": 10},
-                "profile_embedding": {"$exists": True}
+                "Skills": {"$slice": 10}
             }
         ).limit(100))
         
