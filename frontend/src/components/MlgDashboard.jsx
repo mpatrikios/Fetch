@@ -1,9 +1,9 @@
 import { Box, Grid } from '@mui/material';
-import { SectionHeader } from './common-components/StyledComponents';
-import UpcomingMeetings from './dashboard-components/UpcomingMeetings';
-import CandidateStats from './dashboard-components/CandidateStats';
-import JobsMatching from './dashboard-components/JobsMatching';
-import ClientStats from './dashboard-components/ClientStats';
+import { SectionHeader } from './ui/StyledComponents';
+import UpcomingMeetings from './dashboard/UpcomingMeetings';
+import CandidateStats from './dashboard/CandidateStats';
+import JobsMatching from './dashboard/JobsMatching';
+import ClientStats from './dashboard/ClientStats';
 
 function MLGDashboard() {
   return (
