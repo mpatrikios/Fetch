@@ -1,6 +1,6 @@
 import { Box, Typography, Grid } from '@mui/material';
 import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
-import { CardSection, DarkButton, DashboardStatCard } from '../common-components/StyledComponents';
+import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
 function CandidateStats() {
@@ -14,11 +14,11 @@ function CandidateStats() {
 
   return (
     <CardSection sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <People sx={{ mr: 2, color: 'text.secondary' }} />
-        <Typography variant="h6" sx={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
+        <SectionHeader variant="h6" sx={{ mb: 0 }}>
           Candidate Statistics
-        </Typography>
+        </SectionHeader>
       </Box>
       
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>

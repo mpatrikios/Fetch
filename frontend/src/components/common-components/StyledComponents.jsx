@@ -11,10 +11,10 @@ export const PrimaryButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   padding: '12px 24px',
   '&:hover': {
-    backgroundColor: 'rgba(255,90,90,0.8)',
+    backgroundColor: `${theme.palette.primary.main}CC`, // 80% opacity
   },
   '&:disabled': {
-    backgroundColor: 'rgba(255,90,90,0.4)',
+    backgroundColor: `${theme.palette.primary.main}66`, // 40% opacity
   }
 }));
 
@@ -29,7 +29,7 @@ export const SecondaryButton = styled(Button)(({ theme }) => ({
   textTransform: 'none',
   padding: '12px 24px',
   '&:hover': {
-    backgroundColor: 'rgba(255,90,90,0.1)',
+    backgroundColor: `${theme.palette.primary.main}1A`, // 10% opacity
     borderColor: theme.palette.primary.main,
   }
 }));
@@ -57,11 +57,10 @@ export const SectionHeader = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(3)
 }));
 
-// Card Section - Branded card styling
-export const CardSection = styled(Card)(({ theme }) => ({
+// Card Section - Branded card styling with default elevation
+const CardSectionBase = styled(Card)(({ theme }) => ({
   borderRadius: 16,
   padding: '16px 24px',
-  elevation: 1,
   backgroundColor: theme.palette.background.paper,
   '& .MuiCardContent-root': {
     padding: 0,
@@ -70,6 +69,10 @@ export const CardSection = styled(Card)(({ theme }) => ({
     }
   }
 }));
+
+export const CardSection = (props) => (
+  <CardSectionBase elevation={1} {...props} />
+);
 
 // Dashboard Stat Card - Styled card component
 export const DashboardStatCardBase = styled(Card)(({ theme, size = 'large' }) => ({
@@ -99,8 +102,7 @@ export const DashboardStatCard = ({ value, label, icon: Icon, size = 'large' }) 
         variant={labelVariant} 
         color="text.secondary" 
         sx={{ 
-          mt: size === 'small' ? 0 : 1, 
-          fontFamily: 'Montserrat, sans-serif' 
+          mt: size === 'small' ? 0 : 1
         }}
       >
         {label}

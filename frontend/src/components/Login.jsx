@@ -29,8 +29,6 @@ function Login() {
     });
   };
 
-  const userType = localStorage.getItem('userType');
-  const isRecruiter = userType === 'mlg-recruiter';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +39,6 @@ function Login() {
       const response = await authAPI.login(formData.email, formData.password);
       
       if (response.data.token) {
-        console.log('Login successful:', response.data);
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
@@ -68,8 +65,6 @@ function Login() {
     }
   };
 
-  // const userType = localStorage.getItem('userType');
-  // const isRecruiter = userType === 'mlg-recruiter';
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#FFFFFF', pt: 0, position: 'relative' }}>
@@ -94,7 +89,7 @@ function Login() {
                 lineHeight: 1.2
               }}
             >
-              {isRecruiter ? 'MLG Recruiters' : 'Executives'}
+              Executives
             </Typography>
             <Typography 
               variant="h5" 
@@ -106,9 +101,7 @@ function Login() {
                 fontSize: { xs: '1.25rem', md: '1.5rem' }
               }}
             >
-              {isRecruiter 
-                ? 'Access your recruiting dashboard and candidate pipeline.'
-                : 'Join our exclusive talent pool today.'}
+              Join our exclusive talent pool today.
             </Typography>
           </Grid>
 
@@ -176,23 +169,21 @@ function Login() {
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
                 
-                {!isRecruiter && (
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Link 
-                      href="/register" 
-                      sx={{ 
-                        color: '#FF5A5A',
-                        textDecoration: 'none',
-                        fontFamily: 'Petrona, serif',
-                        '&:hover': {
-                          textDecoration: 'underline'
-                        }
-                      }}
-                    >
-                      Create account
-                    </Link>
-                  </Box>
-                )}
+                <Box sx={{ textAlign: 'center' }}>
+                  <Link 
+                    href="/register" 
+                    sx={{ 
+                      color: '#FF5A5A',
+                      textDecoration: 'none',
+                      fontFamily: 'Petrona, serif',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}
+                  >
+                    Create account
+                  </Link>
+                </Box>
               </Box>
         </Card>
       </Container>

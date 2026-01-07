@@ -7,6 +7,7 @@ import Onboarding from './components/Onboarding';
 import MLGDashboard from './components/MlgDashboard';
 import CandidateDashboard from './components/CandidateDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
 
 function App() {
   return (
@@ -27,9 +28,9 @@ function App() {
           <Route 
             path="/mlg-dashboard" 
             element={
-              <ProtectedRoute>
+              <RoleProtectedRoute requiredRole="mlg-recruiter">
                 <MLGDashboard />
-              </ProtectedRoute>
+              </RoleProtectedRoute>
             } 
           />
           <Route 
