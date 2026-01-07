@@ -42,7 +42,13 @@ function Login() {
         localStorage.setItem('user', JSON.stringify(response.data.user));
       }
       
-      navigate('/onboarding');
+      // Check user role and redirect accordingly
+      const userRole = response.data.user?.role;
+      if (userRole === 'mlg-recruiter') {
+        navigate('/mlg-dashboard');
+      } else {
+        navigate('/onboarding');
+      }
     } catch (err) {
       if (err.response?.status === 401) {
         setError('Invalid email or password');
