@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../utils/api';
 import DocumentUpload from './DocumentUpload';
 import CalendlyEmbed from './CalendlyEmbed';
@@ -42,6 +43,7 @@ const onboardingSteps = [
 ];
 
 function Onboarding() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -135,6 +137,19 @@ function Onboarding() {
     }
   };
 
+  const isOnboardingComplete = user?.status === 'completed_onboarding';
+
+  // Auto-redirect to dashboard after 5 seconds when onboarding is complete
+  useEffect(() => {
+    if (isOnboardingComplete) {
+      const timer = setTimeout(() => {
+        navigate('/dashboard');
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOnboardingComplete, navigate]);
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -151,8 +166,6 @@ function Onboarding() {
     );
   }
 
-  const isOnboardingComplete = user?.status === 'completed_onboarding';
-
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Welcome Section */}
@@ -163,7 +176,7 @@ function Onboarding() {
         <Typography variant="body1" color="text.secondary">
           {isOnboardingComplete 
             ? "You've completed the onboarding process. We'll be in touch with opportunities that match your profile."
-            : "Let's complete your job placement process"}
+            : "Let's complete your onboarding process"}
         </Typography>
       </Box>
 
@@ -327,9 +340,8 @@ function Onboarding() {
           <Typography variant="h5" gutterBottom>
             Your Profile is Complete!
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Our team is actively searching for opportunities that match your skills and preferences. 
-            We'll notify you as soon as we find suitable positions.
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Redirecting you to your dashboard...
           </Typography>
         </Paper>
       )}

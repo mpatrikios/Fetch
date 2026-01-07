@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Onboarding from './components/Onboarding';
 import MLGDashboard from './components/MlgDashboard';
+import CandidateDashboard from './components/CandidateDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -28,6 +29,10 @@ function App() {
             element={
               <ProtectedRoute>
                 <MLGDashboard />
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <CandidateDashboard />
               </ProtectedRoute>
             } 
           />

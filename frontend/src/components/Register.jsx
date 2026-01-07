@@ -8,7 +8,8 @@ import {
   Alert,
   Link,
   Grid,
-  Card
+  Card,
+  Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../utils/api';
@@ -76,7 +77,7 @@ function Register() {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        navigate('/dashboard');
+        navigate('/onboarding');
       } else {
         navigate('/login');
       }

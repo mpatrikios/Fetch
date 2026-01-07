@@ -40,14 +40,13 @@ function Login() {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-      
-      // Check user role and redirect accordingly
-      const userRole = response.data.user?.role;
-      if (userRole === 'mlg-recruiter') {
-        navigate('/mlg-dashboard');
-      } else {
-        navigate('/onboarding');
+        
+        // Check if onboarding is complete
+        if (response.data.user.status === 'completed_onboarding') {
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
       }
     } catch (err) {
       if (err.response?.status === 401) {
