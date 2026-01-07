@@ -48,6 +48,16 @@ function Login() {
         
         // Check user role from database first (authoritative)
         const userRole = response.data.user?.role;
+        
+        // If user tried to login through MLG recruiter flow but isn't an MLG recruiter
+        if (isRecruiter && userRole !== 'mlg-recruiter') {
+          setError('Access denied. This login is only for MLG recruiters. Please use the candidate login.');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          return;
+        }
+        
+        // Normal routing based on role
         if (userRole === 'mlg-recruiter') {
           navigate('/mlg-dashboard');
         } else if (response.data.user.status === 'completed_onboarding') {
