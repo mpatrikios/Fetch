@@ -48,10 +48,18 @@ function Candidates() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [accepting, setAccepting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     loadCandidates();
   }, []);
+
+  useEffect(() => {
+    loadCandidates();
+  }, [statusFilter]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -80,10 +88,22 @@ function Candidates() {
     setSelectedLocation('');
   };
 
+  // Get status indicator - only blue dot for pending, nothing for accepted
+  const getStatusIndicator = (status) => {
+    if (status === 'accepted') {
+      return null; // No indicator for accepted candidates
+    }
+    // Blue dot for pending/unprocessed candidates
+    return { 
+      type: 'dot',
+      color: 'primary.main'
+    };
+  };
+
   const loadCandidates = async () => {
     try {
       setLoading(true);
-      const response = await candidateAPI.list();
+      const response = await candidateAPI.list(statusFilter);
       setCandidates(response.data.candidates || []);
     } catch (err) {
       setError('Failed to load candidates');
@@ -105,7 +125,7 @@ function Candidates() {
       // Use the candidate data from MongoDB
       setCandidateDetails({
         ...candidate,
-        jobTitle: candidate.Summary || 'Position information not available',
+        jobTitle: candidate.summary || 'Position information not available',
         location: candidate.location || 'Location not specified',
         skills: candidate.skills || [],
         cliftonStrengths: candidate.clifton_strengths || [],
@@ -190,12 +210,32 @@ function Candidates() {
     if (!selectedCandidate) return;
     
     try {
+      setAccepting(true);
+      setErrorMessage('');
+      
       await candidateAPI.accept(selectedCandidate.id);
       await candidateAPI.sendAssessment(selectedCandidate.id);
+      
+      // Show success message
+      setSuccessMessage(`${selectedCandidate.name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      
+      // Clear candidate details and selection
+      setSelectedCandidate(null);
+      setCandidateDetails(null);
+      setExpandedSummary(false);
+      
       // Refresh candidates list
       loadCandidates();
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
       console.error('Accept and send assessment error:', err);
+      setErrorMessage('Failed to accept candidate or send assessment. Please try again.');
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -263,6 +303,26 @@ function Candidates() {
         </SectionHeader>
       </Box>
 
+      {/* Success/Error Messages */}
+      {successMessage && (
+        <Alert 
+          severity="success" 
+          onClose={() => setSuccessMessage('')}
+          sx={{ mb: 2 }}
+        >
+          {successMessage}
+        </Alert>
+      )}
+      {errorMessage && (
+        <Alert 
+          severity="error" 
+          onClose={() => setErrorMessage('')}
+          sx={{ mb: 2 }}
+        >
+          {errorMessage}
+        </Alert>
+      )}
+
       <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
         {/* Sidebar - Candidates List */}
         <Grid size={{ xs: 12, md: 4 }}>
@@ -305,6 +365,33 @@ function Candidates() {
                 </Box>
               </Box>
               
+              {/* Status Filter Tabs */}
+              <Box sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
+                    Status:
+                  </Typography>
+                  {['pending', 'all'].map((status) => (
+                    <Button
+                      key={status}
+                      size="small"
+                      variant={statusFilter === status ? 'contained' : 'outlined'}
+                      onClick={() => setStatusFilter(status)}
+                      sx={{
+                        minWidth: 'auto',
+                        px: 2,
+                        py: 0.5,
+                        fontSize: '0.75rem',
+                        textTransform: 'capitalize',
+                        borderRadius: 1
+                      }}
+                    >
+                      {status === 'all' ? 'All' : status}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+              
               {/* Search Field */}
               <TextField
                 size="small"
@@ -336,7 +423,7 @@ function Candidates() {
              {/* Filtered Candidates by Name or Location */}
             <Box sx={{ 
               overflowY: 'auto', 
-              height: 'calc(100% - 120px)',
+              height: 'calc(100% - 160px)', // Adjust for header with search and status filters
               '&::-webkit-scrollbar': { width: '6px' },
               '&::-webkit-scrollbar-thumb': { 
                 backgroundColor: 'grey.300',
@@ -360,20 +447,39 @@ function Candidates() {
                   </Typography>
                 </Box>
               ) : (
-                filteredCandidates.map((candidate, index) => (
-                <SelectableListItem
-                  key={candidate.id || index}
-                  selected={selectedCandidate?.id === candidate.id}
-                  onClick={() => handleCandidateSelect(candidate)}
-                >
-                  <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                    {candidate.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {candidate.email}
-                  </Typography>
-                </SelectableListItem>
-                ))
+                filteredCandidates.map((candidate, index) => {
+                  const statusIndicator = getStatusIndicator(candidate.status);
+                  
+                  return (
+                    <SelectableListItem
+                      key={candidate.id || index}
+                      selected={selectedCandidate?.id === candidate.id}
+                      onClick={() => handleCandidateSelect(candidate)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {candidate.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {candidate.email}
+                          </Typography>
+                        </Box>
+                        {statusIndicator && (
+                          <Box 
+                            sx={{ 
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              backgroundColor: statusIndicator.color,
+                              ml: 1
+                            }} 
+                          />
+                        )}
+                      </Box>
+                    </SelectableListItem>
+                  );
+                })
               )}
             </Box>
           </CardSection>
@@ -525,8 +631,11 @@ function Candidates() {
                   <SecondaryButton onClick={handleRejectClick}>
                     Reject Candidate
                   </SecondaryButton>
-                  <PrimaryButton onClick={handleAcceptAndSendAssessment}>
-                    Accept Candidate & Send CliftonStrengths Assessment
+                  <PrimaryButton 
+                    onClick={handleAcceptAndSendAssessment}
+                    disabled={accepting}
+                  >
+                    {accepting ? 'Processing...' : 'Accept Candidate & Send CliftonStrengths Assessment'}
                   </PrimaryButton>
                 </Box>
               </DetailPanel>

@@ -8,9 +8,9 @@ import sys
 import mimetypes
 
 # Fields match the Azure Content Understanding job description parser's schema
-DESIRED_FIELD_KEYS = {"Summary", "Locations", "JobTitle", "Skills", "Responsibilities", "MinYears", "CultureIndex", "Qualifications"}
+DESIRED_FIELD_KEYS = {"summary", "Locations", "JobTitle", "Skills", "Responsibilities", "MinYears", "CultureIndex", "Qualifications"}
 LIST_FIELD_KEYS = {"Locations", "Skills", "Responsibilities", "Qualifications"}
-FLAT_FIELD_KEYS = {"Summary", "JobTitle", "MinYears", "CultureIndex"}
+FLAT_FIELD_KEYS = {"summary", "JobTitle", "MinYears", "CultureIndex"}
 
 # --- Basic field extraction function ---
 def extract_field_value(field_obj):
@@ -105,7 +105,7 @@ def standardize_job_description(result_json: dict, company_name: str = "Unknown 
     mongo_doc = {
         "companyName": company_name,
         "JobTitle": extracted_data.get("JobTitle"),
-        "Summary": extracted_data.get("Summary"),
+        "summary": extracted_data.get("summary"),
         "Locations": extracted_data.get("Locations", []),
         "Skills": extracted_data.get("Skills", []),
         "Responsibilities": extracted_data.get("Responsibilities", []),

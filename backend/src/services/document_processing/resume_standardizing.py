@@ -83,7 +83,7 @@ def validate_file_type(filepath: str) -> bool:
         print(f"\n✓ Valid file type\n")
     return mime_type == valid_mime_types
 
-DESIRED_FIELD_KEYS = {"Location", "Summary", "WorkExperience", "Skills", "Companies"}
+DESIRED_FIELD_KEYS = {"Location", "summary", "WorkExperience", "Skills", "Companies"}
 
 def standardize_resume(result_json: dict) -> dict:
     """Standardize resume JSON data from Azure into MongoDB-ready format.
@@ -97,7 +97,7 @@ def standardize_resume(result_json: dict) -> dict:
         result_json: The JSON result from Azure Content Understanding
     
     Returns:
-        MongoDB-ready document dictionary containing Location, Summary, 
+        MongoDB-ready document dictionary containing Location, summary, 
         Experience, Skills, Companies, and extraction timestamp
     """
     all_fields = result_json["result"]["contents"][0]["fields"]
@@ -110,7 +110,7 @@ def standardize_resume(result_json: dict) -> dict:
     #  Build mongo-ready document (no normalization – use extracted values as-is)
     mongo_doc = {
         "Location": extracted_data.get("Location"),
-        "Summary": extracted_data.get("Summary"),
+        "summary": extracted_data.get("summary"),
         "Experience": extracted_data.get("Experience", []),
         "Skills": extracted_data.get("Skills", []),
         "Companies": extracted_data.get("Companies", []),
@@ -125,7 +125,7 @@ def extract_data(fields: dict) -> dict:
 
     # Simple string fields
     extracted_data["Location"] = extract_field_value(fields.get("Location"))
-    extracted_data["Summary"] = extract_field_value(fields.get("Summary"))
+    extracted_data["summary"] = extract_field_value(fields.get("summary"))
 
     # Complex fields - Experience (array of objects)
     if "WorkExperience" in fields:

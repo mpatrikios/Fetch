@@ -1,42 +1,83 @@
 # API routes for candidate management (list, reject, accept, send assessments)
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
 from datetime import datetime
+from typing import Optional, Dict
 
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
+from src.api.routes.auth_routes import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+def verify_mlg_recruiter_role(current_user: Dict):
+    """Verify that the current user has the mlg-recruiter role."""
+    user_role = current_user.get("role")
+    if user_role != "mlg-recruiter":
+        raise HTTPException(
+            status_code=403, 
+            detail="Access denied. MLG recruiter role required."
+        )
+
 # API endpoint to list candidates with basic info
 @router.get("/candidates", response_model=CandidateListResponse)
-async def list_candidates():
+async def list_candidates(
+    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all"),
+    current_user: Dict = Depends(get_current_user)
+):
+    # Verify user has mlg-recruiter role
+    verify_mlg_recruiter_role(current_user)
+    
     try:
+        # Build query filter based on status parameter
+        if status == "all":
+            query_filter = {"status": {"$ne": "rejected"}}  # Exclude only rejected candidates
+        elif status == "pending":
+            query_filter = {"status": {"$nin": ["rejected", "accepted"]}}  # Exclude rejected and accepted
+        else:
+            # Default to pending for any invalid status value
+            query_filter = {"status": {"$nin": ["rejected", "accepted"]}}
+        
         candidates = list(mongo_connection.candidates_collection.find(
-            {"status": {"$ne": "rejected"}},  # Exclude rejected candidates
+            query_filter,
             {
                 "_id": 1,
                 "full_name": 1,
                 "Email": 1,
                 "Location": 1,
-                "Summary": 1,
+                "summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
+                "recruiter_notes": 1,
+                "status": 1,
                 "profile_embedding": 1
             }
-        ).limit(100))
+        ).sort("full_name", 1).limit(100))
         
         formatted_candidates = []
         for candidate in candidates:
+            # Extract only strength names from clifton_strengths objects
+            clifton_strengths_raw = candidate.get("clifton_strengths", [])
+            clifton_strengths_names = []
+            
+            for strength in clifton_strengths_raw:
+                if isinstance(strength, dict) and "name" in strength:
+                    clifton_strengths_names.append(strength["name"])
+                elif isinstance(strength, str):
+                    # Handle case where it's already a string
+                    clifton_strengths_names.append(strength)
+            
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
                 "name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("Email"),
                 "location": candidate.get("Location"),
-                "Summary": candidate.get("Summary"),
+                "summary": candidate.get("summary"),
                 "skills": candidate.get("Skills", []),
-                "clifton_strengths": candidate.get("clifton_strengths", []),
+                "clifton_strengths": clifton_strengths_names,
+                "notes": candidate.get("recruiter_notes", ""),
+                "status": candidate.get("status", "pending"),
                 "has_embeddings": "profile_embedding" in candidate
             })
         
@@ -52,7 +93,13 @@ async def list_candidates():
 
 # API endpoint to reject a candidate
 @router.put("/candidates/{candidate_id}/reject")
-async def reject_candidate(candidate_id: str):
+async def reject_candidate(
+    candidate_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    # Verify user has mlg-recruiter role
+    verify_mlg_recruiter_role(current_user)
+    
     try:
         from bson import ObjectId
         
@@ -78,7 +125,13 @@ async def reject_candidate(candidate_id: str):
 
 # API endpoint to accept a candidate
 @router.put("/candidates/{candidate_id}/accept")
-async def accept_candidate(candidate_id: str):
+async def accept_candidate(
+    candidate_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    # Verify user has mlg-recruiter role
+    verify_mlg_recruiter_role(current_user)
+    
     try:
         from bson import ObjectId
         
@@ -104,7 +157,13 @@ async def accept_candidate(candidate_id: str):
 
 # API endpoint to send assessment to candidate (placeholder)
 @router.post("/candidates/{candidate_id}/send-assessment")
-async def send_assessment(candidate_id: str):
+async def send_assessment(
+    candidate_id: str,
+    current_user: Dict = Depends(get_current_user)
+):
+    # Verify user has mlg-recruiter role
+    verify_mlg_recruiter_role(current_user)
+    
     try:
         from bson import ObjectId
         
@@ -142,7 +201,14 @@ async def send_assessment(candidate_id: str):
 
 # API endpoint to update candidate notes
 @router.put("/candidates/{candidate_id}/notes")
-async def update_candidate_notes(candidate_id: str, notes_data: dict):
+async def update_candidate_notes(
+    candidate_id: str, 
+    notes_data: dict,
+    current_user: Dict = Depends(get_current_user)
+):
+    # Verify user has mlg-recruiter role
+    verify_mlg_recruiter_role(current_user)
+    
     try:
         from bson import ObjectId
         

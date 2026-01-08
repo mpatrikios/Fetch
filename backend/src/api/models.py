@@ -8,9 +8,11 @@ class CandidateInfo(BaseModel):
     name: str
     email: Optional[str] = None
     location: Optional[str] = None
-    Summary: Optional[str] = None
+    summary: Optional[str] = None
     skills: List[str] = []
     clifton_strengths: List[str] = []
+    notes: Optional[str] = None
+    status: Optional[str] = "pending"
     has_embeddings: bool = False
 
 class CandidateResponse(BaseModel):
