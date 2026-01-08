@@ -194,6 +194,9 @@ function Candidates() {
       setShowRejectDialog(false);
     } catch (err) {
       console.error('Reject candidate error:', err);
+      setErrorMessage('Failed to reject candidate. Please try again.');
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => setErrorMessage(''), 5000);
     } finally {
       setRejecting(false);
     }
