@@ -14,14 +14,12 @@ import {
   DialogActions,
   DialogContentText,
   TextField,
-  Select,
   MenuItem,
-  FormControl,
-  InputLabel,
   InputAdornment,
-  IconButton
+  IconButton,
+  Menu
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
@@ -49,6 +47,7 @@ function Candidates() {
   const [rejecting, setRejecting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
 
   useEffect(() => {
     loadCandidates();
@@ -281,16 +280,29 @@ function Candidates() {
                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                   ({filteredCandidates.length} of {candidates.length})
                 </Typography>
-                {(searchQuery || selectedLocation) && (
+                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <IconButton 
                     size="small" 
-                    onClick={clearFilters}
-                    sx={{ ml: 'auto' }}
-                    title="Clear filters"
+                    onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
+                    title="Filter by location"
+                    sx={{ 
+                      color: selectedLocation ? 'primary.main' : 'text.secondary',
+                      backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
+                      '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
+                    }}
                   >
-                    <Clear fontSize="small" />
+                    <LocationOn fontSize="small" />
                   </IconButton>
-                )}
+                  {(searchQuery || selectedLocation) && (
+                    <IconButton 
+                      size="small" 
+                      onClick={clearFilters}
+                      title="Clear filters"
+                    >
+                      <FilterListOff fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
               </Box>
               
               {/* Search Field */}
@@ -318,32 +330,13 @@ function Candidates() {
                     </InputAdornment>
                   )
                 }}
-                sx={{ mb: 2 }}
               />
-              
-              {/* Location Filter */}
-              <FormControl size="small" fullWidth>
-                <InputLabel>Filter by location</InputLabel>
-                <Select
-                  value={selectedLocation}
-                  onChange={(e) => setSelectedLocation(e.target.value)}
-                  label="Filter by location"
-                >
-                  <MenuItem value="">
-                    <em>All locations</em>
-                  </MenuItem>
-                  {uniqueLocations.map((location) => (
-                    <MenuItem key={location} value={location}>
-                      {location}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
             </Box>
             
+             {/* Filtered Candidates by Name or Location */}
             <Box sx={{ 
               overflowY: 'auto', 
-              height: 'calc(100% - 160px)', // Adjust for header with search/filter
+              height: 'calc(100% - 120px)',
               '&::-webkit-scrollbar': { width: '6px' },
               '&::-webkit-scrollbar-thumb': { 
                 backgroundColor: 'grey.300',
@@ -420,7 +413,7 @@ function Candidates() {
                   </Typography>
                   {candidateDetails?.location && (
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      📍 {candidateDetails.location}
+                      {candidateDetails.location}
                     </Typography>
                   )}
                   <SummaryDisplay summary={candidateDetails?.jobTitle} />
@@ -468,11 +461,7 @@ function Candidates() {
                           variant="outlined"
                           sx={{
                             borderColor: 'text.primary',
-                            color: 'text.primary',
-                            '&:hover': {
-                              backgroundColor: 'text.primary',
-                              color: 'background.paper',
-                            }
+                            color: 'text.primary'
                           }}
                         />
                       ))}
@@ -545,6 +534,43 @@ function Candidates() {
           </CardSection>
         </Grid>
       </Grid>
+
+      {/* Location Filter Menu */}
+      <Menu
+        anchorEl={locationMenuAnchor}
+        open={Boolean(locationMenuAnchor)}
+        onClose={() => setLocationMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem 
+          onClick={() => {
+            setSelectedLocation('');
+            setLocationMenuAnchor(null);
+          }}
+          selected={selectedLocation === ''}
+        >
+          <em>All locations</em>
+        </MenuItem>
+        {uniqueLocations.map((location) => (
+          <MenuItem 
+            key={location} 
+            onClick={() => {
+              setSelectedLocation(location);
+              setLocationMenuAnchor(null);
+            }}
+            selected={selectedLocation === location}
+          >
+            {location}
+          </MenuItem>
+        ))}
+      </Menu>
 
       {/* Rejection Confirmation Dialog */}
       <Dialog
