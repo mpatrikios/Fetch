@@ -64,6 +64,7 @@ async def upload_clifton_strengths(
                 logger.info(f"Updated candidate document with Clifton Strengths for {current_user['email']}")
             except Exception as e:
                 logger.error(f"Failed to update candidate document with Clifton Strengths for {current_user['email']}: {e}")
+                raise
         
         # Clean up temporary file
         DocumentService.cleanup_temp_file_safe(tmp_file_path)
