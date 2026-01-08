@@ -157,9 +157,17 @@ function Candidates() {
       const notes = candidateNotes[candidateId] || '';
       await candidateAPI.updateNotes(candidateId, notes);
       // Update local state
-      setCandidateDetails(prev => ({ ...prev, notes }));
+      setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
+      // Clear any previous error on successful save
+      if (typeof setErrorMessage === 'function') {
+        setErrorMessage('');
+      }
     } catch (err) {
       console.error('Update notes error:', err);
+      // Show user-facing error message when notes fail to save
+      if (typeof setErrorMessage === 'function') {
+        setErrorMessage('Failed to save notes. Please try again.');
+      }
     }
   };
 
