@@ -2,7 +2,6 @@
 from fastapi import APIRouter, HTTPException
 import logging
 from datetime import datetime
-from typing import List
 
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
