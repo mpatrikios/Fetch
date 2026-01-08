@@ -7,6 +7,7 @@ from datetime import datetime
 from src.services.document_processing.document_service import DocumentService
 from src.services.document_processing.azure_clifton_parser import azure_clifton_parser, parse_clifton_strengths_result
 from src.api.routes.auth_routes import get_current_user
+from src.database.connection import mongo_connection
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -47,6 +48,22 @@ async def upload_clifton_strengths(
             document_type="clifton_strengths",
             additional_data=additional_data
         )
+        
+        # Update candidate document with Clifton Strengths
+        if processed_data.get("strengths_themes"):
+            try:
+                update_result = mongo_connection.candidates_collection.update_one(
+                    {"Email": current_user["email"]},
+                    {
+                        "$set": {
+                            "clifton_strengths": processed_data["strengths_themes"],
+                            "clifton_strengths_updated_at": datetime.utcnow()
+                        }
+                    }
+                )
+                logger.info(f"Updated candidate document with Clifton Strengths for {current_user['email']}")
+            except Exception as e:
+                logger.error(f"Failed to update candidate document with Clifton Strengths for {current_user['email']}: {e}")
         
         # Clean up temporary file
         DocumentService.cleanup_temp_file_safe(tmp_file_path)

@@ -1,4 +1,4 @@
-import { Button, Typography, Card, Box } from '@mui/material';
+import { Button, Typography, Card, Box, Link, TextareaAutosize } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
 // Primary Button - Red background, white text
@@ -111,11 +111,79 @@ export const DashboardStatCard = ({ value, label, icon: Icon, size = 'large' }) 
   );
 };
 
+// Selectable List Item - Generic list item for sidebar lists
+export const SelectableListItem = styled(Box)(({ theme, selected = false }) => ({
+  padding: theme.spacing(2),
+  borderBottom: `1px solid ${theme.palette.grey[200]}`,
+  cursor: 'pointer',
+  backgroundColor: selected ? theme.palette.grey[100] : theme.palette.background.paper,
+  transition: 'background-color 0.2s ease',
+  '&:hover': {
+    backgroundColor: selected ? theme.palette.grey[100] : theme.palette.grey[50],
+  },
+  '&:last-child': {
+    borderBottom: 'none',
+  }
+}));
+
+// Detail Panel Container - Generic container for detail view content
+export const DetailPanel = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(3),
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(3),
+}));
+
+// File Link - Generic styled link component for file downloads/views
+export const FileLink = styled(Link)(({ theme }) => ({
+  color: theme.palette.primary.main,
+  fontFamily: theme.typography.h1.fontFamily,
+  fontWeight: 500,
+  textDecoration: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  padding: theme.spacing(1, 2),
+  borderRadius: 8,
+  border: `1px solid ${theme.palette.primary.main}`,
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: `${theme.palette.primary.main}1A`,
+    textDecoration: 'none',
+  }
+}));
+
+// Notes Field - Generic styled textarea for notes
+export const NotesField = styled(TextareaAutosize)(({ theme }) => ({
+  width: '100%',
+  minHeight: '200px',
+  padding: theme.spacing(2),
+  borderRadius: 8,
+  border: `1px solid ${theme.palette.grey[300]}`,
+  fontFamily: theme.typography.body1.fontFamily,
+  fontSize: '1rem',
+  color: theme.palette.text.primary,
+  resize: 'vertical',
+  '&:focus': {
+    outline: 'none',
+    borderColor: theme.palette.primary.main,
+  },
+  '&::placeholder': {
+    color: theme.palette.text.secondary,
+    fontStyle: 'italic',
+  }
+}));
+
 export default {
   PrimaryButton,
   SecondaryButton,
   DarkButton,
   SectionHeader,
   CardSection,
-  DashboardStatCard
+  DashboardStatCard,
+  SelectableListItem,
+  DetailPanel,
+  FileLink,
+  NotesField
 };

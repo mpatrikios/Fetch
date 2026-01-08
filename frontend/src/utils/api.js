@@ -46,6 +46,16 @@ export const resumeAPI = {
   list: () => api.get('/candidates'),
 };
 
+// Candidate endpoints
+export const candidateAPI = {
+  list: () => api.get('/candidates'),
+  getById: (candidateId) => api.get(`/candidates/${candidateId}`),
+  updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
+  reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
+  accept: (candidateId) => api.put(`/candidates/${candidateId}/accept`),
+  sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
+};
+
 export const cliftonStrengthsAPI = {
   upload: (file) => {
     const formData = new FormData();

@@ -4,9 +4,11 @@ from typing import List, Optional, Dict, Any
 
 # Candidate Models
 class CandidateInfo(BaseModel):
+    id: Optional[str] = None
     name: str
     email: Optional[str] = None
     location: Optional[str] = None
+    Summary: Optional[str] = None
     skills: List[str] = []
     has_embeddings: bool = False
 
