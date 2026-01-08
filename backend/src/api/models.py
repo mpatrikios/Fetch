@@ -10,6 +10,7 @@ class CandidateInfo(BaseModel):
     location: Optional[str] = None
     Summary: Optional[str] = None
     skills: List[str] = []
+    clifton_strengths: List[str] = []
     has_embeddings: bool = False
 
 class CandidateResponse(BaseModel):
