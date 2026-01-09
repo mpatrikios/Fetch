@@ -155,15 +155,11 @@ function Candidates() {
       // Update local state
       setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
       // Clear any previous error on successful save
-      if (typeof setErrorMessage === 'function') {
-        setErrorMessage('');
-      }
+      setErrorMessage('');
     } catch (err) {
       console.error('Update notes error:', err);
       // Show user-facing error message when notes fail to save
-      if (typeof setErrorMessage === 'function') {
-        setErrorMessage('Failed to save notes. Please try again.');
-      }
+      setErrorMessage('Failed to save notes. Please try again.');
     }
   };
 
