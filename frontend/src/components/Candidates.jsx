@@ -624,7 +624,7 @@ function Candidates() {
                     value={candidateNotes[selectedCandidate?.id] || ''}
                     onChange={(e) => updateCandidateNotes(selectedCandidate?.id, e.target.value)}
                     placeholder="Enter candidate notes"
-                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when user stops talking
+                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when the user finishes editing
                   />
                 </Box>
 
