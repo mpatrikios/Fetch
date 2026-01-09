@@ -43,7 +43,15 @@ export const resumeAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  list: () => api.get('/candidates'),
+};
+
+// Candidate endpoints
+export const candidateAPI = {
+  list: (status = 'all') => api.get('/candidates', { params: { status } }),
+  updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
+  reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
+  accept: (candidateId) => api.put(`/candidates/${candidateId}/accept`),
+  sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
 };
 
 export const cliftonStrengthsAPI = {

@@ -1,15 +1,22 @@
 import { Box, Typography, Grid } from '@mui/material';
 import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
 function CandidateStats() {
+  const navigate = useNavigate();
+  
   // MOCK DATA TODO: Replace with real data fetching logic
   const stats = {
     total: 247,
     onboarding: 12,
     interviews: 8,
     pending: 5
+  };
+
+  const handleViewAllCandidates = () => {
+    navigate('/candidates');
   };
 
   return (
@@ -57,7 +64,7 @@ function CandidateStats() {
       </Grid>
       
       <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <DarkButton size="small">
+        <DarkButton size="small" onClick={handleViewAllCandidates}>
           View All Candidates
         </DarkButton>
       </Box>

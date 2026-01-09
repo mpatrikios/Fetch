@@ -129,38 +129,3 @@ async def upload_resume(
         if 'tmp_file_path' in locals():
             cleanup_temp_file(tmp_file_path)
 
-# api endpoint to list candidates with basic info
-@router.get("/candidates", response_model=CandidateListResponse)
-async def list_candidates():
-    try:
-        candidates = list(mongo_connection.candidates_collection.find(
-            {}, 
-            {
-                "_id": 0,
-                "full_name": 1,
-                "Email": 1,
-                "Location": 1,
-                "Skills": {"$slice": 10},
-                "profile_embedding": {"$exists": True}
-            }
-        ).limit(100))
-        
-        formatted_candidates = []
-        for candidate in candidates:
-            formatted_candidates.append({
-                "name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("Email"),
-                "location": candidate.get("Location"),
-                "skills": candidate.get("Skills", []),
-                "has_embeddings": "profile_embedding" in candidate
-            })
-        
-        return CandidateListResponse(
-            success=True,
-            count=len(formatted_candidates),
-            candidates=formatted_candidates
-        )
-        
-    except Exception as e:
-        logger.error(f"Failed to fetch candidates: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
