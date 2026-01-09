@@ -155,15 +155,11 @@ function Candidates() {
       // Update local state
       setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
       // Clear any previous error on successful save
-      if (typeof setErrorMessage === 'function') {
-        setErrorMessage('');
-      }
+      setErrorMessage('');
     } catch (err) {
       console.error('Update notes error:', err);
       // Show user-facing error message when notes fail to save
-      if (typeof setErrorMessage === 'function') {
-        setErrorMessage('Failed to save notes. Please try again.');
-      }
+      setErrorMessage('Failed to save notes. Please try again.');
     }
   };
 
@@ -251,7 +247,7 @@ function Candidates() {
     
     const words = summary.split(' ');
     const shouldTruncate = words.length > 25; // Roughly 2 lines
-    const truncatedSummary = shouldTruncate ? words.slice(0, 25).join(' ') + '...': summary;
+    const truncatedSummary = shouldTruncate ? words.slice(0, 25).join(' ') + ' ...': summary;
     
     return (
       <Box>
@@ -624,7 +620,7 @@ function Candidates() {
                     value={candidateNotes[selectedCandidate?.id] || ''}
                     onChange={(e) => updateCandidateNotes(selectedCandidate?.id, e.target.value)}
                     placeholder="Enter candidate notes"
-                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when user stops talking
+                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when the user finishes editing
                   />
                 </Box>
 
