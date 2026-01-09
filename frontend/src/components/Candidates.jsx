@@ -247,7 +247,7 @@ function Candidates() {
     
     const words = summary.split(' ');
     const shouldTruncate = words.length > 25; // Roughly 2 lines
-    const truncatedSummary = shouldTruncate ? words.slice(0, 25).join(' ') + '...': summary;
+    const truncatedSummary = shouldTruncate ? words.slice(0, 25).join(' ') + ' ...': summary;
     
     return (
       <Box>
