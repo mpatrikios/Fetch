@@ -8,7 +8,7 @@ class CandidateInfo(BaseModel):
     name: str
     email: Optional[str] = None
     location: Optional[str] = None
-    summary: Optional[str] = None
+    Summary: Optional[str] = None
     skills: List[str] = []
     clifton_strengths: List[str] = []
     notes: Optional[str] = None

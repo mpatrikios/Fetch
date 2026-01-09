@@ -80,7 +80,7 @@ def create_location_embedding(coordinates: Optional[Dict[str, float]]) -> Option
 
 # generate and store candidate profile embeddings
 def embed_candidate_profile(candidate_doc):
-    text = f"{candidate_doc.get('summary', '')} " + \
+    text = f"{candidate_doc.get('Summary', '')} " + \
            " ".join(candidate_doc.get('Skills', [])) + " " + \
            " ".join([exp.get('role', '') for exp in (candidate_doc.get('Experience') or []) if exp]) + " " + \
            " ".join([comp.get('companyName', '') for comp in (candidate_doc.get('Companies') or []) if comp])
@@ -132,7 +132,7 @@ def embed_candidate_culture(candidate_doc):
 # generate and store job description profile embeddings
 def embed_job_description_profile(job_doc):
     text = f"{job_doc.get('JobTitle', '')} " + \
-           f"{job_doc.get('summary', '')} " + \
+           f"{job_doc.get('Summary', '')} " + \
            " ".join(job_doc.get('Skills') or []) + " " + \
            " ".join(job_doc.get('Responsibilities') or []) + " " + \
            " ".join(job_doc.get('Qualifications') or [])

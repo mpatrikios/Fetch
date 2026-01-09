@@ -55,10 +55,6 @@ function Candidates() {
 
   useEffect(() => {
     loadCandidates();
-  }, []);
-
-  useEffect(() => {
-    loadCandidates();
   }, [statusFilter]);
 
   // Get unique locations for filter dropdown
@@ -125,7 +121,7 @@ function Candidates() {
       // Use the candidate data from MongoDB
       setCandidateDetails({
         ...candidate,
-        jobTitle: candidate.summary || 'Position information not available',
+        jobTitle: candidate.Summary || 'Position information not available',
         location: candidate.location || 'Location not specified',
         skills: candidate.skills || [],
         cliftonStrengths: candidate.clifton_strengths || [],

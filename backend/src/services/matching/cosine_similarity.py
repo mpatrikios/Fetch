@@ -146,7 +146,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
 
     # Full job text for keyword extraction
     job_text = (
-        job_doc.get("summary", "") + " " +
+        job_doc.get("Summary", "") + " " +
         " ".join(job_doc.get("Responsibilities", [])) + " " +
         " ".join(job_doc.get("Qualifications", []))
     )
@@ -160,7 +160,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     )
 
     cand_text = (
-        cand_doc.get("summary", "") + " " +
+        cand_doc.get("Summary", "") + " " +
         cand_roles_text + " " +
         cand_resp_text
     )
@@ -217,12 +217,12 @@ def build_match_explanation_llm(job_doc: dict, cand_doc: dict, combined_score: f
     features = build_match_explanation(job_doc, cand_doc)
 
     job_title = job_doc.get("JobTitle", "")
-    job_summary = job_doc.get("summary", "")
+    job_summary = job_doc.get("Summary", "")
     job_skills = job_doc.get("Skills", [])
     job_company = job_doc.get("companyName", "")
 
     cand_name = cand_doc.get("full_name", "Unknown candidate")
-    cand_summary = cand_doc.get("summary", "")
+    cand_summary = cand_doc.get("Summary", "")
     cand_skills = cand_doc.get("Skills", [])
     cand_location = cand_doc.get("Location", "")
 

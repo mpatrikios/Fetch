@@ -7,6 +7,7 @@ from typing import Optional, Dict
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.routes.auth_routes import get_current_user
+from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -18,6 +19,17 @@ def verify_mlg_recruiter_role(current_user: Dict):
         raise HTTPException(
             status_code=403, 
             detail="Access denied. MLG recruiter role required."
+        )
+
+def validate_object_id(candidate_id: str) -> None:
+    """Validate that candidate_id is a valid ObjectId format."""
+    try:
+        from bson import ObjectId
+        ObjectId(candidate_id)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid candidate ID format: {candidate_id}"
         )
 
 # API endpoint to list candidates with basic info
@@ -46,7 +58,7 @@ async def list_candidates(
                 "full_name": 1,
                 "Email": 1,
                 "Location": 1,
-                "summary": 1,
+                "Summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
                 "recruiter_notes": 1,
@@ -73,7 +85,7 @@ async def list_candidates(
                 "name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("Email"),
                 "location": candidate.get("Location"),
-                "summary": candidate.get("summary"),
+                "Summary": candidate.get("Summary"),
                 "skills": candidate.get("Skills", []),
                 "clifton_strengths": clifton_strengths_names,
                 "notes": candidate.get("recruiter_notes", ""),
@@ -99,6 +111,9 @@ async def reject_candidate(
 ):
     # Verify user has mlg-recruiter role
     verify_mlg_recruiter_role(current_user)
+    
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
     
     try:
         from bson import ObjectId
@@ -132,6 +147,9 @@ async def accept_candidate(
     # Verify user has mlg-recruiter role
     verify_mlg_recruiter_role(current_user)
     
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
+    
     try:
         from bson import ObjectId
         
@@ -163,6 +181,9 @@ async def send_assessment(
 ):
     # Verify user has mlg-recruiter role
     verify_mlg_recruiter_role(current_user)
+    
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
     
     try:
         from bson import ObjectId
@@ -208,6 +229,9 @@ async def update_candidate_notes(
 ):
     # Verify user has mlg-recruiter role
     verify_mlg_recruiter_role(current_user)
+    
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
     
     try:
         from bson import ObjectId
