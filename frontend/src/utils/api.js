@@ -43,7 +43,6 @@ export const resumeAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  list: () => api.get('/candidates'),
 };
 
 // Candidate endpoints

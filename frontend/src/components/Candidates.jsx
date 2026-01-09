@@ -153,9 +153,17 @@ function Candidates() {
       const notes = candidateNotes[candidateId] || '';
       await candidateAPI.updateNotes(candidateId, notes);
       // Update local state
-      setCandidateDetails(prev => ({ ...prev, notes }));
+      setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
+      // Clear any previous error on successful save
+      if (typeof setErrorMessage === 'function') {
+        setErrorMessage('');
+      }
     } catch (err) {
       console.error('Update notes error:', err);
+      // Show user-facing error message when notes fail to save
+      if (typeof setErrorMessage === 'function') {
+        setErrorMessage('Failed to save notes. Please try again.');
+      }
     }
   };
 
@@ -190,6 +198,9 @@ function Candidates() {
       setShowRejectDialog(false);
     } catch (err) {
       console.error('Reject candidate error:', err);
+      setErrorMessage('Failed to reject candidate. Please try again.');
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => setErrorMessage(''), 5000);
     } finally {
       setRejecting(false);
     }

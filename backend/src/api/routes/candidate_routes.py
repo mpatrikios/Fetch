@@ -44,12 +44,32 @@ async def list_candidates(
     try:
         # Build query filter based on status parameter
         if status == "all":
-            query_filter = {"status": {"$ne": "rejected"}}  # Exclude only rejected candidates
+            # Include candidates without a status or with non-rejected status
+            query_filter = {
+                "$or": [
+                    {"status": {"$ne": "rejected"}},           # Exclude only explicitly rejected
+                    {"status": {"$exists": False}},            # Include documents missing status
+                    {"status": None}                           # Include documents with null status
+                ]
+            }
         elif status == "pending":
-            query_filter = {"status": {"$nin": ["rejected", "accepted"]}}  # Exclude rejected and accepted
+            # Include candidates without a status or with status not rejected/accepted
+            query_filter = {
+                "$or": [
+                    {"status": {"$nin": ["rejected", "accepted"]}},  # Exclude rejected and accepted
+                    {"status": {"$exists": False}},                  # Include documents missing status
+                    {"status": None}                                 # Include documents with null status
+                ]
+            }
         else:
             # Default to pending for any invalid status value
-            query_filter = {"status": {"$nin": ["rejected", "accepted"]}}
+            query_filter = {
+                "$or": [
+                    {"status": {"$nin": ["rejected", "accepted"]}},
+                    {"status": {"$exists": False}},
+                    {"status": None}
+                ]
+            }
         
         candidates = list(mongo_connection.candidates_collection.find(
             query_filter,
