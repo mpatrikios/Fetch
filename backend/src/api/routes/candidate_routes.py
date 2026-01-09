@@ -42,6 +42,15 @@ async def list_candidates(
     verify_mlg_recruiter_role(current_user)
     
     try:
+        # Define common query patterns
+        pending_query = {
+            "$or": [
+                {"status": {"$nin": ["rejected", "accepted"]}},  # Exclude rejected and accepted
+                {"status": {"$exists": False}},                  # Include documents missing status
+                {"status": None}                                 # Include documents with null status
+            ]
+        }
+        
         # Build query filter based on status parameter
         if status == "all":
             # Include candidates without a status or with non-rejected status
@@ -53,23 +62,11 @@ async def list_candidates(
                 ]
             }
         elif status == "pending":
-            # Include candidates without a status or with status not rejected/accepted
-            query_filter = {
-                "$or": [
-                    {"status": {"$nin": ["rejected", "accepted"]}},  # Exclude rejected and accepted
-                    {"status": {"$exists": False}},                  # Include documents missing status
-                    {"status": None}                                 # Include documents with null status
-                ]
-            }
+            query_filter = pending_query
         else:
-            # Default to pending for any invalid status value
-            query_filter = {
-                "$or": [
-                    {"status": {"$nin": ["rejected", "accepted"]}},
-                    {"status": {"$exists": False}},
-                    {"status": None}
-                ]
-            }
+            # Log invalid status and default to pending logic
+            logger.warning(f"Invalid status filter '{status}' provided, defaulting to 'pending'")
+            query_filter = pending_query
         
         candidates = list(mongo_connection.candidates_collection.find(
             query_filter,
