@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -12,9 +12,11 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
+  const { isAuthenticated, login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -25,6 +27,23 @@ function Login() {
   // Check if this is a recruiter login flow
   const userType = localStorage.getItem('userType');
   const isRecruiter = userType === 'mlg-recruiter';
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        if (user.role === 'mlg-recruiter') {
+          navigate('/mlg-dashboard');
+        } else if (user.status === 'completed_onboarding') {
+          navigate('/dashboard');
+        } else {
+          navigate('/onboarding');
+        }
+      }
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -43,20 +62,18 @@ function Login() {
       const response = await authAPI.login(formData.email, formData.password);
       
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
         // Check user role from database first (authoritative)
         const userRole = response.data.user?.role;
-        
+
         // If user tried to login through MLG recruiter flow but isn't an MLG recruiter
         if (isRecruiter && userRole !== 'mlg-recruiter') {
           setError('Access denied. This login is only for MLG recruiters. Please use the candidate login.');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
           return;
         }
-        
+
+        // Use auth context to handle login
+        login(response.data.token, response.data.user);
+
         // Normal routing based on role
         if (userRole === 'mlg-recruiter') {
           navigate('/mlg-dashboard');

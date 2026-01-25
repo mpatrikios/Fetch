@@ -1,9 +1,11 @@
 import { AppBar, Toolbar, Typography, Button, Box, Avatar } from '@mui/material';
 import PetsIcon from '@mui/icons-material/Pets';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function Header() {
   const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
 
   const handleUserTypeSelect = (type) => {
     localStorage.setItem('userType', type);
@@ -11,13 +13,9 @@ function Header() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userType');
+    logout();
     navigate('/');
   };
-
-  const isLoggedIn = !!localStorage.getItem('token');
 
   return (
     <AppBar position="static">
@@ -45,7 +43,7 @@ function Header() {
         </Box>
         
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-          {!isLoggedIn && (
+          {!isAuthenticated && (
             <>
               <Button 
                 sx={{ 
@@ -125,7 +123,7 @@ function Header() {
             </>
           )}
 
-          {isLoggedIn && (
+          {isAuthenticated && (
             <Button 
               variant="outlined"
               color="primary"

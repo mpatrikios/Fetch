@@ -1,30 +1,27 @@
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function RoleProtectedRoute({ children, requiredRole }) {
-  const token = localStorage.getItem('token');
-  const user = localStorage.getItem('user');
-  
-  if (!token) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  // Show nothing while checking auth state
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
-  if (requiredRole) {
-    try {
-      const userData = JSON.parse(user);
-      if (userData?.role !== requiredRole) {
-        // Redirect non-MLG recruiters back to appropriate dashboard
-        if (userData?.status === 'completed_onboarding') {
-          return <Navigate to="/dashboard" replace />;
-        } else {
-          return <Navigate to="/onboarding" replace />;
-        }
-      }
-    } catch (error) {
-      // Invalid user data, redirect to login
-      return <Navigate to="/login" replace />;
+
+  if (requiredRole && user?.role !== requiredRole) {
+    // Redirect non-MLG recruiters back to appropriate dashboard
+    if (user?.status === 'completed_onboarding') {
+      return <Navigate to="/dashboard" replace />;
+    } else {
+      return <Navigate to="/onboarding" replace />;
     }
   }
-  
+
   return children;
 }
 
