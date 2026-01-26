@@ -88,7 +88,7 @@ def embed_candidate_profile(candidate_doc):
     if embedding is None:
         print(f"Failed to generate profile embedding for candidate {candidate_doc.get('_id')}")
         return
-    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "profile_embedding", embedding)
+    insert_embedding(candidate_doc["_id"], "Candidates", "profile_embedding", embedding)
 
 # generate and store candidate location embeddings
 def embed_candidate_location(candidate_doc):
@@ -102,7 +102,7 @@ def embed_candidate_location(candidate_doc):
         embedding = create_location_embedding(coordinates)
         
         # Also store the coordinates in the database for reference
-        insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_coordinates", coordinates)
+        insert_embedding(candidate_doc["_id"], "Candidates", "location_coordinates", coordinates)
     else:
         # Fallback to text embedding if geocoding fails
         print(f"Geocoding failed for {location_text}, using text embedding as fallback")
@@ -112,7 +112,7 @@ def embed_candidate_location(candidate_doc):
         print(f"Failed to generate location embedding for candidate {candidate_doc.get('_id')}")
         return
     
-    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "location_embedding", embedding)
+    insert_embedding(candidate_doc["_id"], "Candidates", "location_embedding", embedding)
 def embed_candidate_culture(candidate_doc):
     clifton_strengths = candidate_doc.get("clifton_strengths", [])
     if not clifton_strengths:
@@ -127,7 +127,7 @@ def embed_candidate_culture(candidate_doc):
     if embedding is None:
         print(f"Failed to generate culture embedding for candidate {candidate_doc.get('_id')}")
         return
-    insert_embedding(candidate_doc["_id"], "CandidatesTesting", "culture_embedding", embedding)
+    insert_embedding(candidate_doc["_id"], "Candidates", "culture_embedding", embedding)
 
 # generate and store job description profile embeddings
 def embed_job_description_profile(job_doc):
@@ -140,7 +140,7 @@ def embed_job_description_profile(job_doc):
     if embedding is None:
         print(f"Failed to generate profile embedding for job description {job_doc.get('_id')}")
         return
-    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "profile_embedding", embedding)
+    insert_embedding(job_doc["_id"], "JobDescriptions", "profile_embedding", embedding)
 
 # generate and store job description location embeddings
 def embed_job_description_location(job_doc):
@@ -160,7 +160,7 @@ def embed_job_description_location(job_doc):
         embedding = create_location_embedding(coordinates)
         
         # Store the coordinates in the database for reference
-        insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_coordinates", coordinates)
+        insert_embedding(job_doc["_id"], "JobDescriptions", "location_coordinates", coordinates)
         
         # If there are multiple locations, store all coordinates
         if isinstance(locations, list) and len(locations) > 1:
@@ -172,7 +172,7 @@ def embed_job_description_location(job_doc):
                 if coord:
                     all_coordinates.append(coord)
             if all_coordinates:
-                insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "all_location_coordinates", all_coordinates)
+                insert_embedding(job_doc["_id"], "JobDescriptions", "all_location_coordinates", all_coordinates)
     else:
         # Fallback to text embedding if geocoding fails
         location_text = " ".join(locations) if isinstance(locations, list) else str(locations)
@@ -183,7 +183,7 @@ def embed_job_description_location(job_doc):
         print(f"Failed to generate location embedding for job description {job_doc.get('_id')}")
         return
     
-    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "location_embedding", embedding)
+    insert_embedding(job_doc["_id"], "JobDescriptions", "location_embedding", embedding)
 
 def embed_job_description_culture(job_doc):
     clifton_strengths = job_doc.get("clifton_strengths", [])
@@ -199,4 +199,4 @@ def embed_job_description_culture(job_doc):
     if embedding is None:
         print(f"Failed to generate culture embedding for job description {job_doc.get('_id')}")
         return
-    insert_embedding(job_doc["_id"], "JobDescriptionsTesting", "culture_embedding", embedding)
+    insert_embedding(job_doc["_id"], "JobDescriptions", "culture_embedding", embedding)

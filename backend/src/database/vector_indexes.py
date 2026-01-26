@@ -19,7 +19,7 @@ DiskANN vector index creation is way too expensive. $160/month. Commented out fo
 
 # def ensure_candidate_profile_vector_index(db) -> Dict[str, Any]:
 #     """
-#     Create DiskANN vector index on CandidatesTesting.profile_embedding field.
+#     Create DiskANN vector index on Candidates.profile_embedding field.
     
 #     Uses DiskANN for high-performance vector similarity search with cosine similarity.
 #     Optimized for OpenAI text-embedding-ada-002 (1536 dimensions).
@@ -30,7 +30,7 @@ DiskANN vector index creation is way too expensive. $160/month. Commented out fo
 #     Returns:
 #         Dictionary with operation result
 #     """
-#     collection_name = "CandidatesTesting"
+#     collection_name = "Candidates"
 #     index_name = "profile_embedding_diskann_index"
     
 #     try:
@@ -88,7 +88,7 @@ DiskANN vector index creation is way too expensive. $160/month. Commented out fo
 
 # def ensure_job_profile_vector_index(db) -> Dict[str, Any]:
 #     """
-#     Create DiskANN vector index on JobDescriptionsTesting.profile_embedding field.
+#     Create DiskANN vector index on JobDescriptions.profile_embedding field.
     
 #     Args:
 #         db: MongoDB database instance
@@ -96,7 +96,7 @@ DiskANN vector index creation is way too expensive. $160/month. Commented out fo
 #     Returns:
 #         Dictionary with operation result
 #     """
-#     collection_name = "JobDescriptionsTesting"
+#     collection_name = "JobDescriptions"
 #     index_name = "profile_embedding_diskann_index"
     
 #     try:
