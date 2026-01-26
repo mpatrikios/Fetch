@@ -37,7 +37,7 @@ function ClientStats({ stats, loading }) {
           ) : (
             <DashboardStatCard
               value={clientStats.onboarding}
-              label="Clients Onboarding"
+              label="Clients in Intake Phase"
               icon={Assessment}
             />
           )}
