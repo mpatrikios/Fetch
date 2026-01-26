@@ -7,8 +7,6 @@ import {
   Typography,
   Alert,
   Link,
-  Grid,
-  Card,
   Paper
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';

@@ -88,7 +88,7 @@ class PersistentTokenBlacklist:
         return False
 
 # Persistent token blacklist stored in MongoDB
-token_blacklist = PersistentTokenBlacklist(mongo_connection)
+token_blacklist = PersistentTokenBlacklist(mongo_connection.database)
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("JWT_SECRET_KEY environment variable must be set for secure token signing.")

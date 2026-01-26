@@ -13,8 +13,7 @@ from src.services.document_processing.azure_resume_parser import AzureContentUnd
 from src.services.document_processing.resume_standardizing import standardize_resume
 from src.services.embeddings.generate_embeddings import (
     embed_candidate_profile,
-    embed_candidate_location,
-    embed_candidate_culture
+    embed_candidate_location
 )
 from src.api.models import CandidateResponse, CandidateListResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file

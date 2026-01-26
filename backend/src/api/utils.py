@@ -58,16 +58,3 @@ def validate_document_file(filename: str) -> Tuple[bool, str]:
     is_valid = file_extension in allowed_extensions
     return is_valid, file_extension
 
-# function to check for required Azure API keys
-def check_azure_keys() -> dict:
-    """
-    Check if required Azure API keys are configured.
-    
-    Returns:
-        Dictionary with key names and their availability
-    """
-    return {
-        "content_understanding": bool(os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")),
-        "openai": bool(os.getenv("AZURE_OPENAI_API_KEY")),
-        "openai_base_url": bool(os.getenv("AZURE_OPENAI_EXPLANATION_BASE_URL"))
-    }

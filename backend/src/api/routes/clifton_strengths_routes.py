@@ -2,7 +2,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import Dict
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.services.document_processing.document_service import DocumentService
 from src.services.document_processing.azure_clifton_parser import azure_clifton_parser, parse_clifton_strengths_result
@@ -38,7 +38,7 @@ async def upload_clifton_strengths(
             "assessment_date": processed_data.get("assessment_date", ""),
             "participant_name": processed_data.get("participant_name", ""),
             "processing_status": "completed" if azure_result else "failed",
-            "azure_processed_at": datetime.utcnow(),
+            "azure_processed_at": datetime.now(timezone.utc),
         }
         
         # Store file metadata using shared service
@@ -57,7 +57,7 @@ async def upload_clifton_strengths(
                     {
                         "$set": {
                             "clifton_strengths": processed_data["strengths_themes"],
-                            "clifton_strengths_updated_at": datetime.utcnow()
+                            "clifton_strengths_updated_at": datetime.now(timezone.utc)
                         }
                     }
                 )

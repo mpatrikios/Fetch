@@ -1,25 +1,17 @@
 # API routes for candidate management (list, reject, accept, send assessments)
 from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict
 
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.routes.auth_routes import get_current_user
+from src.api.auth_utils import verify_mlg_recruiter_role
 from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-def verify_mlg_recruiter_role(current_user: Dict):
-    """Verify that the current user has the mlg-recruiter role."""
-    user_role = current_user.get("role")
-    if user_role != "mlg-recruiter":
-        raise HTTPException(
-            status_code=403, 
-            detail="Access denied. MLG recruiter role required."
-        )
 
 def validate_object_id(candidate_id: str) -> None:
     """Validate that candidate_id is a valid ObjectId format."""
@@ -140,7 +132,7 @@ async def reject_candidate(
             {
                 "$set": {
                     "status": "rejected",
-                    "rejected_at": datetime.utcnow()
+                    "rejected_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -175,7 +167,7 @@ async def accept_candidate(
             {
                 "$set": {
                     "status": "accepted",
-                    "accepted_at": datetime.utcnow()
+                    "accepted_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -225,7 +217,7 @@ async def send_assessment(
             {
                 "$set": {
                     "assessment_sent": True,
-                    "assessment_sent_at": datetime.utcnow()
+                    "assessment_sent_at": datetime.now(timezone.utc)
                 }
             }
         )
@@ -260,7 +252,7 @@ async def update_candidate_notes(
             {
                 "$set": {
                     "recruiter_notes": notes,
-                    "notes_updated_at": datetime.utcnow()
+                    "notes_updated_at": datetime.now(timezone.utc)
                 }
             }
         )

@@ -6,18 +6,10 @@ from typing import Dict
 from src.database.connection import mongo_connection
 from src.api.models import DashboardStatsResponse, CandidateStats, JobStats, ClientStats
 from src.api.routes.auth_routes import get_current_user
+from src.api.auth_utils import verify_mlg_recruiter_role
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def verify_mlg_recruiter_role(current_user: Dict):
-    """Verify that the current user has the mlg-recruiter role."""
-    if current_user.get("role") != "mlg-recruiter":
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied. MLG recruiter role required."
-        )
 
 
 @router.get("/dashboard/stats", response_model=DashboardStatsResponse)
