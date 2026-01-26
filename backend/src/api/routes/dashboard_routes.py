@@ -124,6 +124,9 @@ async def get_dashboard_stats(current_user: Dict = Depends(get_current_user)):
             )
         )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like auth failures) without masking them
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch dashboard stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch dashboard statistics")
