@@ -16,9 +16,79 @@ load_dotenv()
 router = APIRouter()
 security = HTTPBearer()
 
-# In-memory token blacklist (use Redis in production for persistence across restarts)
-token_blacklist: Set[str] = set()
+class PersistentTokenBlacklist:
+    """
+    MongoDB-backed token blacklist.
 
+    This class is designed to be a drop-in replacement for the previous in-memory set,
+    supporting `add(token)` and `token in token_blacklist` usage while persisting data
+    across server restarts.
+    """
+
+    def __init__(self, db):
+        # Use a dedicated collection for blacklisted tokens
+        self._collection = db["token_blacklist"]
+        # In-memory cache to avoid frequent DB lookups
+        self._cache: Set[str] = set()
+
+        # Pre-load existing tokens into the cache (best-effort; failures should not block startup)
+        try:
+            for doc in self._collection.find({}, {"token": 1}):
+                token = doc.get("token")
+                if isinstance(token, str):
+                    self._cache.add(token)
+        except Exception:
+            # If MongoDB is unavailable at startup, continue with an empty cache
+            # to avoid breaking the application; membership checks will still hit MongoDB later.
+            self._cache = set()
+
+    def add(self, token: str) -> None:
+        """
+        Add a token to the blacklist in both the in-memory cache and MongoDB.
+        """
+        if not isinstance(token, str):
+            return
+        if token in self._cache:
+            return
+
+        self._cache.add(token)
+        try:
+            self._collection.update_one(
+                {"token": token},
+                {
+                    "$set": {
+                        "token": token,
+                        "created_at": datetime.now(timezone.utc),
+                    }
+                },
+                upsert=True,
+            )
+        except Exception:
+            # If persisting fails, the token remains blacklisted in-memory for this process.
+            pass
+
+    def __contains__(self, token: str) -> bool:
+        """
+        Support `token in token_blacklist` syntax.
+        """
+        if not isinstance(token, str):
+            return False
+
+        if token in self._cache:
+            return True
+
+        try:
+            doc = self._collection.find_one({"token": token}, {"_id": 1})
+        except Exception:
+            return False
+
+        if doc:
+            self._cache.add(token)
+            return True
+        return False
+
+# Persistent token blacklist stored in MongoDB
+token_blacklist = PersistentTokenBlacklist(mongo_connection)
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("JWT_SECRET_KEY environment variable must be set for secure token signing.")
