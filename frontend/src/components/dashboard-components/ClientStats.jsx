@@ -7,7 +7,7 @@ function ClientStats({ stats, loading }) {
 
   const clientStats = {
     totalClients: stats?.clients?.total ?? 0,
-    onboarding: stats?.clients?.intake_phase ?? 0
+    intakePhase: stats?.clients?.intake_phase ?? 0
   };
 
   return (
@@ -36,7 +36,7 @@ function ClientStats({ stats, loading }) {
             <Skeleton variant="rounded" height={80} />
           ) : (
             <DashboardStatCard
-              value={clientStats.onboarding}
+              value={clientStats.intakePhase}
               label="Clients in Intake Phase"
               icon={Assessment}
             />
