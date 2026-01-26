@@ -101,7 +101,7 @@ async def get_dashboard_stats(current_user: Dict = Depends(get_current_user)):
                 jobs_with_matches = facets["withEmbeddings"][0].get("count", 0)
 
         # Client stats from clients collection
-        clients_collection = mongo_connection.get_collection("Clients")
+        clients_collection = mongo_connection.clients_collection
         total_clients = clients_collection.count_documents({})
         clients_onboarding = clients_collection.count_documents({"status": "onboarding"})
 
