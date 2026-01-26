@@ -1,13 +1,13 @@
-import { Box, Typography, Grid } from '@mui/material';
+import { Box, Grid, Skeleton } from '@mui/material';
 import { Work, Assignment } from '@mui/icons-material';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
-function JobsMatching() {
-  // MOCK DATA - todo: Replace with real data fetching logic
+function JobsMatching({ stats, loading }) {
+
   const jobStats = {
-    totalJobs: 34,
-    jobsWithMatches: 28
+    totalJobs: stats?.jobs?.total ?? 0,
+    jobsWithMatches: stats?.jobs?.with_matches ?? 0
   };
 
   return (
@@ -21,18 +21,26 @@ function JobsMatching() {
       
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={jobStats.totalJobs} 
-            label="Total Jobs in Database" 
-            icon={Work}
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={jobStats.totalJobs}
+              label="Total Jobs in Database"
+              icon={Work}
+            />
+          )}
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={jobStats.jobsWithMatches} 
-            label="Jobs with Generated Matches" 
-            icon={Assignment}
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={jobStats.jobsWithMatches}
+              label="Jobs with Generated Matches"
+              icon={Assignment}
+            />
+          )}
         </Grid>
       </Grid>
       

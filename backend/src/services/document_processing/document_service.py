@@ -68,7 +68,7 @@ class DocumentService:
                 if key not in file_metadata:  # Don't duplicate metadata fields
                     update_data[key] = value
         
-        result = db.CandidatesTesting.update_one(
+        result = db.Candidates.update_one(
             {"email": user_email},
             {"$set": update_data}
         )
@@ -91,7 +91,7 @@ class DocumentService:
         Get document information for a user
         """
         db = mongo_connection.database
-        user = db.CandidatesTesting.find_one({"email": user_email})
+        user = db.Candidates.find_one({"email": user_email})
         
         if not user:
             raise HTTPException(status_code=404, detail="User not found")

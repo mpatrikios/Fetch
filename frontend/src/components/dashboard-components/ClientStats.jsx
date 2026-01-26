@@ -1,13 +1,13 @@
-import { Box, Typography, Grid } from '@mui/material';
+import { Box, Grid, Skeleton } from '@mui/material';
 import { Business, Assessment } from '@mui/icons-material';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
-function ClientStats() {
-  // MOCK DATA TODO: Replace with real data fetching logic
+function ClientStats({ stats, loading }) {
+
   const clientStats = {
-    totalClients: 18,
-    intakePhase: 3
+    totalClients: stats?.clients?.total ?? 0,
+    onboarding: stats?.clients?.intake_phase ?? 0
   };
 
   return (
@@ -21,18 +21,26 @@ function ClientStats() {
       
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={clientStats.totalClients} 
-            label="Total Clients in Database" 
-            icon={Business}
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={clientStats.totalClients}
+              label="Total Clients in Database"
+              icon={Business}
+            />
+          )}
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={clientStats.intakePhase} 
-            label="Clients in Intake Phase" 
-            icon={Assessment}
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={clientStats.onboarding}
+              label="Clients in Intake Phase"
+              icon={Assessment}
+            />
+          )}
         </Grid>
       </Grid>
       

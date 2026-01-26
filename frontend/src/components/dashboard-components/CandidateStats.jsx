@@ -1,18 +1,17 @@
-import { Box, Typography, Grid } from '@mui/material';
+import { Box, Grid, Skeleton } from '@mui/material';
 import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
-function CandidateStats() {
+function CandidateStats({ stats, loading }) {
   const navigate = useNavigate();
-  
-  // MOCK DATA TODO: Replace with real data fetching logic
-  const stats = {
-    total: 247,
-    onboarding: 12,
-    interviews: 8,
-    pending: 5
+
+  const candidateStats = {
+    total: stats?.candidates?.total ?? 0,
+    onboarding: stats?.candidates?.onboarding ?? 0,
+    interviews: 0, // Not tracked yet
+    pending: stats?.candidates?.pending ?? 0
   };
 
   const handleViewAllCandidates = () => {
@@ -30,36 +29,52 @@ function CandidateStats() {
       
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={stats.total} 
-            label="Total Candidates" 
-            icon={People}
-            size="small"
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={candidateStats.total}
+              label="Total Candidates"
+              icon={People}
+              size="small"
+            />
+          )}
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={stats.onboarding} 
-            label="Onboarding" 
-            icon={PersonAdd}
-            size="small"
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={candidateStats.onboarding}
+              label="Onboarding"
+              icon={PersonAdd}
+              size="small"
+            />
+          )}
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={stats.interviews} 
-            label="In Interviews" 
-            icon={Schedule}
-            size="small"
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={candidateStats.interviews}
+              label="In Interviews"
+              icon={Schedule}
+              size="small"
+            />
+          )}
         </Grid>
         <Grid size={{ xs: 6 }}>
-          <DashboardStatCard 
-            value={stats.pending} 
-            label="Pending Approval" 
-            icon={CheckCircle}
-            size="small"
-          />
+          {loading ? (
+            <Skeleton variant="rounded" height={80} />
+          ) : (
+            <DashboardStatCard
+              value={candidateStats.pending}
+              label="Pending Approval"
+              icon={CheckCircle}
+              size="small"
+            />
+          )}
         </Grid>
       </Grid>
       

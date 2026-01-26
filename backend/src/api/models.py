@@ -79,3 +79,29 @@ class MatchResponse(BaseModel):
     job_title: str
     total_matches: int
     matches: List[MatchResult]
+
+
+# Dashboard Stats Models
+class CandidateStats(BaseModel):
+    total: int
+    pending: int
+    accepted: int
+    rejected: int
+    onboarding: int
+
+
+class JobStats(BaseModel):
+    total: int
+    with_matches: int
+
+
+class ClientStats(BaseModel):
+    total: int
+    intake_phase: int
+
+
+class DashboardStatsResponse(BaseModel):
+    success: bool
+    candidates: CandidateStats
+    jobs: JobStats
+    clients: ClientStats

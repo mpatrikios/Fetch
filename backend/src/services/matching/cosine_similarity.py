@@ -68,7 +68,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
     Uses 50/50 weighting between profile and culture similarity.
 
     Args:
-        db: The database connection object, expected to have a "CandidatesTesting" collection.
+        db: The database connection object, expected to have a "Candidates" collection.
         job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
 
@@ -86,7 +86,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
     job_coords = job_doc.get("location_coordinates")
 
     # Find candidates with both profile and culture embeddings
-    candidates_cursor = db["CandidatesTesting"].find(
+    candidates_cursor = db["Candidates"].find(
         {
             "profile_embedding": {"$exists": True, "$ne": []},
             "culture_embedding": {"$exists": True, "$ne": []}
