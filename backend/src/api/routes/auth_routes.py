@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-from datetime import datetime, timedelta
+from typing import Optional, Set
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 import hashlib
 import os
@@ -15,6 +15,9 @@ load_dotenv()
 
 router = APIRouter()
 security = HTTPBearer()
+
+# In-memory token blacklist (use Redis in production for persistence across restarts)
+token_blacklist: Set[str] = set()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
@@ -53,9 +56,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=JWT_ALGORITHM)
     return encoded_jwt
@@ -64,6 +67,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 # this is different from the get_candidate function in candidate_routes.py becuase it uses email from the token
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
+
+    # Check if token is blacklisted
+    if token in token_blacklist:
+        raise HTTPException(status_code=401, detail="Token has been invalidated")
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
         email: str = payload.get("sub")
@@ -71,12 +79,12 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             raise HTTPException(status_code=401, detail="Invalid authentication credentials")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
-    
+
     db = mongo_connection.database
-    user = db.CandidatesTesting.find_one({"email": email})
+    user = db.Candidates.find_one({"email": email})
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
-    
+
     user["_id"] = str(user["_id"])
     return user
 
@@ -85,7 +93,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 async def register(user_data: UserRegister):
     db = mongo_connection.database
     
-    existing_user = db.CandidatesTesting.find_one({"email": user_data.email})
+    existing_user = db.Candidates.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(status_code=409, detail="Email already registered")
     
@@ -95,12 +103,12 @@ async def register(user_data: UserRegister):
         "name": user_data.name,
         "email": user_data.email,
         "password": hashed_password,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "role": "user",
         "status": "registered"  # Initial status for new candidates
     }
     
-    result = db.CandidatesTesting.insert_one(user_dict)
+    result = db.Candidates.insert_one(user_dict)
     user_dict["_id"] = str(result.inserted_id)
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -127,7 +135,7 @@ async def register(user_data: UserRegister):
 async def login(user_credentials: UserLogin):
     db = mongo_connection.database
     
-    user = db.CandidatesTesting.find_one({"email": user_credentials.email})
+    user = db.Candidates.find_one({"email": user_credentials.email})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
@@ -184,7 +192,7 @@ async def update_status(
         raise HTTPException(status_code=400, detail="Invalid status")
     
     db = mongo_connection.database
-    db.CandidatesTesting.update_one(
+    db.Candidates.update_one(
         {"_id": ObjectId(current_user["_id"])},
         {"$set": {"status": status}}
     )
@@ -193,5 +201,7 @@ async def update_status(
 
 # logout user
 @router.post("/auth/logout")
-async def logout():
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    token_blacklist.add(token)
     return {"message": "Logged out successfully"}

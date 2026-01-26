@@ -27,7 +27,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 500) {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - clear auth and redirect to login
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    } else if (error.response?.status === 500) {
       console.error('Server error:', error.response.data);
     }
     return Promise.reject(error);
@@ -108,6 +113,11 @@ export const authAPI = {
   updateStatus: (status) => api.put('/auth/update-status', null, {
     params: { status }
   }),
+};
+
+// Dashboard endpoints
+export const dashboardAPI = {
+  getStats: () => api.get('/dashboard/stats'),
 };
 
 // Health check
