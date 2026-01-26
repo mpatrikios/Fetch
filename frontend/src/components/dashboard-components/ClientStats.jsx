@@ -7,7 +7,7 @@ function ClientStats({ stats, loading }) {
 
   const clientStats = {
     totalClients: stats?.clients?.total ?? 0,
-    onboarding: stats?.clients?.intake_phase ?? 0
+    onboarding: stats?.clients?.onboarding ?? 0
   };
 
   return (

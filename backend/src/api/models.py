@@ -97,7 +97,7 @@ class JobStats(BaseModel):
 
 class ClientStats(BaseModel):
     total: int
-    intake_phase: int
+    onboarding: int
 
 
 class DashboardStatsResponse(BaseModel):
