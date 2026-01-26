@@ -59,7 +59,7 @@ function Header() {
                 Recruiters
               </Button>
               <Button sx={navButtonSx} onClick={() => handleUserTypeSelect('candidate')}>
-                Candidates
+                Executives
               </Button>
               <Button sx={navButtonSx} onClick={() => handleUserTypeSelect('mlg-recruiter')}>
                 MLG Recruiter Login
