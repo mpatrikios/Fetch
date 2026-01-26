@@ -16,8 +16,7 @@ from src.services.document_processing.azure_job_description_parser import (
 from src.services.document_processing.job_description_standardizing import standardize_job_description
 from src.services.embeddings.generate_embeddings import (
     embed_job_description_profile,
-    embed_job_description_location,
-    embed_job_description_culture
+    embed_job_description_location
 )
 from src.api.models import JobResponse, JobListResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file

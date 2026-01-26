@@ -104,7 +104,3 @@ class MongoDBConnection:
 
 # Create a module-level instance for easy import
 mongo_connection = MongoDBConnection()
-
-# Export commonly used attributes for convenience
-client = mongo_connection.client
-database = mongo_connection.database

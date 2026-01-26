@@ -88,29 +88,3 @@ def is_candidate_commutable(job_doc: dict, candidate_doc: dict, max_distance_km:
         return None
     return is_commutable(distance, max_distance_km)
 
-def get_candidate_distance_and_commutability(job_doc: dict, candidate_doc: dict, max_distance_km: float = 80) -> tuple[Optional[bool], Optional[float]]:
-    """
-    Get both commutability status and distance for a candidate relative to a job.
-    
-    Args:
-        job_doc: Job document with location_coordinates
-        candidate_doc: Candidate document with location_coordinates  
-        max_distance_km: Maximum reasonable commute distance (default 80km)
-        
-    Returns:
-        Tuple of (is_commutable, distance_km). Both are None if coordinates not available.
-    """
-    # Get coordinates from documents
-    job_coords = job_doc.get("location_coordinates")
-    candidate_coords = candidate_doc.get("location_coordinates")
-    
-    # If either doesn't have coordinates, return None for both
-    if not job_coords or not candidate_coords:
-        return None, None
-    
-    # Calculate distance and check if commutable
-    distance = calculate_haversine_distance(job_coords, candidate_coords)
-    if distance is None:
-        return None, None
-    commutable = is_commutable(distance, max_distance_km)
-    return commutable, distance

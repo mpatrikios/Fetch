@@ -1,7 +1,7 @@
 # Shared document processing service for common operations across different document types
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from fastapi import HTTPException, UploadFile
 
@@ -47,7 +47,7 @@ class DocumentService:
         # Create file metadata
         file_metadata = {
             "filename": file.filename,
-            "uploaded_at": datetime.utcnow(),
+            "uploaded_at": datetime.now(timezone.utc),
             "file_size": file.size,
             "document_type": document_type
         }
@@ -59,7 +59,7 @@ class DocumentService:
         # Update user record based on document type
         update_data = {
             f"{document_type}_file": file_metadata,
-            "last_updated": datetime.utcnow()
+            "last_updated": datetime.now(timezone.utc)
         }
         
         # Add any additional fields to user record

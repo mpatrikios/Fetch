@@ -6,18 +6,10 @@ from typing import Dict
 from src.database.connection import mongo_connection
 from src.api.models import DashboardStatsResponse, CandidateStats, JobStats, ClientStats
 from src.api.routes.auth_routes import get_current_user
+from src.api.auth_utils import verify_mlg_recruiter_role
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def verify_mlg_recruiter_role(current_user: Dict):
-    """Verify that the current user has the mlg-recruiter role."""
-    if current_user.get("role") != "mlg-recruiter":
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied. MLG recruiter role required."
-        )
 
 
 @router.get("/dashboard/stats", response_model=DashboardStatsResponse)
@@ -120,10 +112,13 @@ async def get_dashboard_stats(current_user: Dict = Depends(get_current_user)):
             ),
             clients=ClientStats(
                 total=total_clients,
-                intake_phase=clients_onboarding
+                onboarding=clients_onboarding
             )
         )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like auth failures) without masking them
+        raise
     except Exception as e:
         logger.error(f"Failed to fetch dashboard stats: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch dashboard statistics")
