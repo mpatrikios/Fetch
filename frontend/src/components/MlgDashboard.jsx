@@ -7,7 +7,7 @@ import ClientStats from './dashboard-components/ClientStats';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 
 function MLGDashboard() {
-  const { stats, loading, error } = useDashboardStats();
+  const { stats, loading } = useDashboardStats();
 
   return (
     <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
