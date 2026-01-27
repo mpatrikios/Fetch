@@ -52,12 +52,41 @@ def extract_keywords(text: str) -> set[str]:
 
 # Calculates simple cosine similarity between two vectors
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    """
+    Computes cosine similarity between two vectors.
+
+    Returns a value in the range [-1, 1] where:
+    - 1.0 = identical vectors
+    - 0.0 = orthogonal vectors (no similarity)
+    - -1.0 = opposite vectors
+    """
     if a.shape != b.shape:
         raise ValueError("Vectors must have the same shape")
     denom = (np.linalg.norm(a) * np.linalg.norm(b))
     if denom == 0:
         return 0.0
     return float(a.dot(b) / denom)
+
+
+def normalize_similarity_score(raw_score: float, baseline: float = 0.85, scale: float = 0.15) -> float:
+    """
+    Normalizes embedding similarity scores to a standardized [-1, 1] range.
+
+    This function maps the small cosine similarity range (0.7-1.0) to a more meaningful scale:
+    - baseline (default 0.85) → 0.0 (neutral)
+    - baseline - scale (0.70) → -1.0 (poor match)
+    - baseline + scale (1.00) → +1.0 (perfect match)
+
+    Args:
+        raw_score: Raw cosine similarity score (typically 0.7-1.0)
+        baseline: The score that maps to 0.0 (neutral). Default 0.85.
+        scale: The range around baseline. Default 0.15.
+
+    Returns:
+        Normalized score in the range [-1, 1], clamped to ensure bounds.
+    """
+    normalized = (raw_score - baseline) / scale
+    return max(-1.0, min(1.0, normalized))
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
@@ -67,6 +96,11 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
     Only includes candidates within reasonable commute distance (80km).
     Uses 50/50 weighting between profile and culture similarity.
 
+    All similarity scores are normalized to the range [-1, 1] where:
+    - 1.0 = excellent match
+    - 0.0 = neutral/average match
+    - -1.0 = poor match
+
     Args:
         db: The database connection object, expected to have a "Candidates" collection.
         job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
@@ -74,9 +108,9 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
 
     Returns:
         list of dict: A list of dictionaries, each containing:
-            - "combined_similarity_score": The weighted 50/50 combination of profile and culture similarity.
-            - "profile_similarity_score": The cosine similarity score for profile embeddings.
-            - "culture_similarity_score": The cosine similarity score for culture embeddings.
+            - "combined_similarity_score": The weighted 50/50 combination of normalized profile and culture similarity [-1, 1].
+            - "profile_similarity_score": The normalized cosine similarity score for profile embeddings [-1, 1].
+            - "culture_similarity_score": The normalized cosine similarity score for culture embeddings [-1, 1].
             - "candidate": The candidate document.
             - "explanation": An explanation of the match.
             - "distance_km": Distance in kilometers (if coordinates available).
@@ -104,16 +138,18 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
         
         # Calculate profile similarity
         cand_profile_vec = np.array(cand["profile_embedding"], dtype=float)
-        profile_similarity = cosine_similarity(job_profile_vec, cand_profile_vec)
-        
+        raw_profile_similarity = cosine_similarity(job_profile_vec, cand_profile_vec)
+        profile_similarity = normalize_similarity_score(raw_profile_similarity)
+
         # Calculate culture similarity
         culture_similarity = 0.0
         if job_culture_vec is not None and cand.get("culture_embedding"):
             cand_culture_vec = np.array(cand["culture_embedding"], dtype=float)
-            culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
-        
-        # Calculate combined score (60/40 weighting)
-        combined_similarity = (profile_similarity * 0.7) + (culture_similarity * 0.3)
+            raw_culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
+            culture_similarity = normalize_similarity_score(raw_culture_similarity)
+
+        # Calculate combined score (50/50 weighting)
+        combined_similarity = (profile_similarity * 0.5) + (culture_similarity * 0.5)
         
         # Calculate distance if coordinates available
         distance_km = None
