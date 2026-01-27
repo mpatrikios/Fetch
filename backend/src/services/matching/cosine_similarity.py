@@ -69,19 +69,19 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(a.dot(b) / denom)
 
 
-def normalize_similarity_score(raw_score: float, baseline: float = 0.85, scale: float = 0.15) -> float:
+def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: float = 0.25) -> float:
     """
     Normalizes embedding similarity scores to a standardized [-1, 1] range.
 
-    This function maps the small cosine similarity range (0.7-1.0) to a more meaningful scale:
-    - baseline (default 0.85) → 0.0 (neutral)
-    - baseline - scale (0.70) → -1.0 (poor match)
+    This function maps the small cosine similarity range (0.5-1.0) to a more meaningful scale:
+    - baseline (default 0.75) → 0.0 (neutral)
+    - baseline - scale (0.50) → -1.0 (poor match)
     - baseline + scale (1.00) → +1.0 (perfect match)
 
     Args:
-        raw_score: Raw cosine similarity score (typically 0.7-1.0)
-        baseline: The score that maps to 0.0 (neutral). Default 0.85.
-        scale: The range around baseline. Default 0.15.
+        raw_score: Raw cosine similarity score (typically 0.5-1.0)
+        baseline: The score that maps to 0.0 (neutral). Default 0.75.
+        scale: The range around baseline. Default 0.25.
 
     Returns:
         Normalized score in the range [-1, 1], clamped to ensure bounds.
