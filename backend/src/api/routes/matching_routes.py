@@ -43,7 +43,8 @@ async def find_matches(request: MatchRequest):
         matches = profile_matching_candidate(
             mongo_connection.database,
             job_doc,
-            top_k=request.top_k or 10
+            top_k=request.top_k or 10,
+            use_cohort=request.use_cohort or False
         )
         
         # Format results
@@ -62,12 +63,12 @@ async def find_matches(request: MatchRequest):
             
             # Build formatted match entry
             formatted_match = {
-                "rank": rank,
+                "rank": rank if not request.use_cohort else None,
                 "candidate_name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("Email"),
                 "location": candidate.get("Location"),
                 "distance_km": match.get("distance_km"),
-                "scores": {
+                "scores": None if request.use_cohort else {
                     "combined": round(match["combined_similarity_score"], 3),
                     "profile": round(match["profile_similarity_score"], 3),
                     "culture": round(match["culture_similarity_score"], 3)
@@ -90,7 +91,8 @@ async def find_matches(request: MatchRequest):
             company_name=request.company_name,
             job_title=request.job_title,
             total_matches=len(formatted_matches),
-            matches=formatted_matches
+            matches=formatted_matches,
+            is_cohort=request.use_cohort or False
         )
         
     except HTTPException:
@@ -101,7 +103,7 @@ async def find_matches(request: MatchRequest):
 
 # endpoint to get matches via GET request using URL. Might be useful for testing or caching.
 @router.get("/matches/job/{company_name}/{job_title}")
-async def get_job_matches(company_name: str, job_title: str, top_k: int = 10):
+async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, use_cohort: bool = True):
     """
     Alternative GET endpoint for finding matches.
     Useful for direct URL access or caching.
@@ -109,6 +111,7 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10):
     request = MatchRequest(
         company_name=company_name,
         job_title=job_title,
-        top_k=top_k
+        top_k=top_k,
+        use_cohort=use_cohort
     )
     return await find_matches(request)

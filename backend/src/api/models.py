@@ -49,6 +49,7 @@ class MatchRequest(BaseModel):
     company_name: str
     job_title: str
     top_k: Optional[int] = 10
+    use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
     combined: float
@@ -62,12 +63,12 @@ class MatchExplanation(BaseModel):
     summary: str
 
 class MatchResult(BaseModel):
-    rank: int
+    rank: Optional[int] = None
     candidate_name: str
     email: Optional[str] = None
     location: Optional[str] = None
     distance_km: Optional[float] = None
-    scores: MatchScores
+    scores: Optional[MatchScores] = None
     explanation: MatchExplanation
     clifton_strengths: List[str] = []
     skills: List[str] = []
@@ -79,6 +80,7 @@ class MatchResponse(BaseModel):
     job_title: str
     total_matches: int
     matches: List[MatchResult]
+    is_cohort: bool = True
 
 
 # Dashboard Stats Models
