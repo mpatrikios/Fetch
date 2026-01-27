@@ -18,7 +18,7 @@ from src.services.embeddings.generate_embeddings import (
     embed_job_description_profile,
     embed_job_description_location
 )
-from src.api.models import JobResponse, JobListResponse
+from src.api.models import JobResponse, JobListResponse, JobDetailsResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
 
 logger = logging.getLogger(__name__)
@@ -134,10 +134,10 @@ async def upload_job_description(
 async def list_jobs():
     try:
         jobs = list(mongo_connection.job_descriptions_collection.find(
-            {"profile_embedding": {"$exists": True}}, 
+            {"profile_embedding": {"$exists": True}},
             {
                 "_id": 0,
-                "CompanyName": 1,
+                "companyName": 1,
                 "JobTitle": 1,
                 "Location": 1,
                 "Skills": {"$slice": 10}
@@ -147,12 +147,12 @@ async def list_jobs():
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
-                "company": job.get("CompanyName", "Unknown"),
+                "company": job.get("companyName", "Unknown"),
                 "title": job.get("JobTitle"),
                 "location": job.get("Location"),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('CompanyName')}_{job.get('JobTitle')}"
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}"
             })
         
         return JobListResponse(
@@ -164,6 +164,44 @@ async def list_jobs():
     except Exception as e:
         logger.error(f"Failed to fetch jobs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# Endpoint to get full job details
+@router.get("/jobs/{company_name}/{job_title}", response_model=JobDetailsResponse)
+async def get_job_details(company_name: str, job_title: str):
+    """Get full job details including all fields"""
+    try:
+        job = mongo_connection.job_descriptions_collection.find_one({
+            "companyName": company_name,
+            "JobTitle": job_title
+        })
+
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        return JobDetailsResponse(
+            success=True,
+            job={
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
+                "company": job.get("companyName", ""),
+                "title": job.get("JobTitle", ""),
+                "summary": job.get("Summary"),
+                "locations": job.get("Locations", []),
+                "skills": job.get("Skills", []),
+                "responsibilities": job.get("Responsibilities", []),
+                "min_years": job.get("MinYears"),
+                "culture_index": job.get("CultureIndex"),
+                "qualifications": job.get("Qualifications", []),
+                "clifton_strengths": [s.get("name") if isinstance(s, dict) else s for s in job.get("clifton_strengths", [])],
+                "has_embeddings": "profile_embedding" in job
+            }
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch job details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # endpoint to get unique company names for dropdown lists, like filters or selecting company on upload
 @router.get("/companies")

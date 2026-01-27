@@ -15,7 +15,7 @@ const theme = createTheme({
     }
   },
   typography: {
-    fontFamily: "Petrona, serif",
+    fontFamily: "Montserrat, sans-serif",
     h1: { 
       fontFamily: "Montserrat, sans-serif",
       fontWeight: 600,
@@ -52,11 +52,11 @@ const theme = createTheme({
       textTransform: "none"
     },
     body1: {
-      fontFamily: "Petrona, serif",
+      fontFamily: "Montserrat, sans-serif",
       color: "#343434"
     },
     body2: {
-      fontFamily: "Petrona, serif",
+      fontFamily: "Montserrat, sans-serif",
       color: "rgba(52,52,52,0.7)"
     }
   },

@@ -1,9 +1,11 @@
 import { Box, Grid, Skeleton } from '@mui/material';
 import { Work, Assignment } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
 function JobsMatching({ stats, loading }) {
+  const navigate = useNavigate();
 
   const jobStats = {
     totalJobs: stats?.jobs?.total ?? 0,
@@ -45,7 +47,7 @@ function JobsMatching({ stats, loading }) {
       </Grid>
       
       <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <DarkButton size="small">
+        <DarkButton size="small" onClick={() => navigate('/jobs')}>
           View All Jobs
         </DarkButton>
       </Box>

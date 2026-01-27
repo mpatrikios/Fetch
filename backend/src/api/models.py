@@ -44,6 +44,26 @@ class JobListResponse(BaseModel):
     count: int
     jobs: List[JobInfo]
 
+
+class JobDetails(BaseModel):
+    job_id: str
+    company: str
+    title: str
+    summary: Optional[str] = None
+    locations: List[str] = []
+    skills: List[str] = []
+    responsibilities: List[str] = []
+    min_years: Optional[str] = None
+    culture_index: Optional[str] = None
+    qualifications: List[str] = []
+    clifton_strengths: List[str] = []
+    has_embeddings: bool = False
+
+
+class JobDetailsResponse(BaseModel):
+    success: bool
+    job: JobDetails
+
 # Matching Models
 class MatchRequest(BaseModel):
     company_name: str
