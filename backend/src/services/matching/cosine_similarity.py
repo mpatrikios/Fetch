@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import random
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
@@ -68,19 +69,19 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(a.dot(b) / denom)
 
 
-def normalize_similarity_score(raw_score: float, baseline: float = 0.85, scale: float = 0.15) -> float:
+def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: float = 0.25) -> float:
     """
     Normalizes embedding similarity scores to a standardized [-1, 1] range.
 
-    This function maps the small cosine similarity range (0.7-1.0) to a more meaningful scale:
-    - baseline (default 0.85) → 0.0 (neutral)
-    - baseline - scale (0.70) → -1.0 (poor match)
+    This function maps the small cosine similarity range (0.5-1.0) to a more meaningful scale:
+    - baseline (default 0.75) → 0.0 (neutral)
+    - baseline - scale (0.50) → -1.0 (poor match)
     - baseline + scale (1.00) → +1.0 (perfect match)
 
     Args:
-        raw_score: Raw cosine similarity score (typically 0.7-1.0)
-        baseline: The score that maps to 0.0 (neutral). Default 0.85.
-        scale: The range around baseline. Default 0.15.
+        raw_score: Raw cosine similarity score (typically 0.5-1.0)
+        baseline: The score that maps to 0.0 (neutral). Default 0.75.
+        scale: The range around baseline. Default 0.25.
 
     Returns:
         Normalized score in the range [-1, 1], clamped to ensure bounds.
@@ -90,7 +91,7 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.85, scale: 
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
-def profile_matching_candidate(db, job_doc, top_k: int = 10):
+def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
@@ -105,6 +106,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
         db: The database connection object, expected to have a "Candidates" collection.
         job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
+        use_cohort (bool, optional): If True, randomizes the order of top_k candidates to reduce ranking bias. Defaults to True.
 
     Returns:
         list of dict: A list of dictionaries, each containing:
@@ -168,7 +170,13 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10):
         })
 
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
-    return scored[:top_k]
+    top_candidates = scored[:top_k]
+
+    # If cohort mode is enabled, randomize the order of top candidates
+    if use_cohort:
+        random.shuffle(top_candidates)
+
+    return top_candidates
 
 # python based explanation builder, using only keyword overlap and role analysis
 def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
