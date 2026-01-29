@@ -45,7 +45,10 @@ class MongoDBConnection:
             if not connection_string:
                 raise ValueError("MONGODB_URL environment variable not set")
             
-            self._client = MongoClient(connection_string)
+            self._client = MongoClient(
+                        connection_string,
+                        tlsAllowInvalidCertificates=True
+            )
             self._database = self._client.get_database("FetchTestingDB")
             
             # Test the connection
