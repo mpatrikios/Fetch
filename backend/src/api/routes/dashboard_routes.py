@@ -7,11 +7,11 @@ from src.api.models import DashboardStatsResponse, CandidateStats, JobStats, Cli
 from src.api.auth_utils import get_current_mlg_recruiter
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 
 @router.get("/dashboard/stats", response_model=DashboardStatsResponse)
-async def get_dashboard_stats(_: dict = Depends(get_current_mlg_recruiter)):
+async def get_dashboard_stats():
     """Get aggregated statistics for the MLG dashboard."""
     try:
         # Candidate stats using aggregation (exclude mlg-recruiters)
