@@ -1,9 +1,12 @@
 # Pydantic models for API responses related to candidates, jobs, and matching results.
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 # Candidate Models
+
 class CandidateInfo(BaseModel):
+    """ Recruiter's view of candidate profile """
     id: Optional[str] = None
     name: str
     email: Optional[str] = None
@@ -24,6 +27,53 @@ class CandidateListResponse(BaseModel):
     success: bool
     count: int
     candidates: List[CandidateInfo]
+
+
+# Candidate Self-Service Profile Models
+class CandidateProfileResponse(BaseModel):
+    """Candidate's view of their own profile - excludes
+    recruiter-only data and detailed resume info"""
+    id: str
+    full_name: str
+    email: str
+    location: Optional[str] = None
+    clifton_strengths: List[str] = []
+    status: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+# Account Settings Models
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+class PasswordChangeResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str
+    confirm_deletion: bool = False
+
+
+class AccountDeleteResponse(BaseModel):
+    success: bool
+    message: str
+    deletion_type: str
+
+
+class NotificationPreferences(BaseModel):
+    email_job_matches: bool = True
+    email_status_updates: bool = True
+    email_assessment_reminders: bool = True
+
+
+class PreferencesResponse(BaseModel):
+    success: bool
+    preferences: NotificationPreferences
+
 
 # Job Models
 class JobInfo(BaseModel):
