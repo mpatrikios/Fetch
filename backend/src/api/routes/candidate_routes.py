@@ -2,16 +2,15 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional
 
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
-from src.api.routes.auth_routes import get_current_user
-from src.api.auth_utils import verify_mlg_recruiter_role
+from src.api.auth_utils import get_current_mlg_recruiter
 from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 def validate_object_id(candidate_id: str) -> None:
     """Validate that candidate_id is a valid ObjectId format."""
@@ -27,12 +26,8 @@ def validate_object_id(candidate_id: str) -> None:
 # API endpoint to list candidates with basic info
 @router.get("/candidates", response_model=CandidateListResponse)
 async def list_candidates(
-    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all"),
-    current_user: Dict = Depends(get_current_user)
+    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all")
 ):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
     try:
         # Define common query patterns
         pending_query = {
@@ -114,13 +109,7 @@ async def list_candidates(
 
 # API endpoint to reject a candidate
 @router.put("/candidates/{candidate_id}/reject")
-async def reject_candidate(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def reject_candidate(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -149,13 +138,7 @@ async def reject_candidate(
 
 # API endpoint to accept a candidate
 @router.put("/candidates/{candidate_id}/accept")
-async def accept_candidate(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def accept_candidate(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -184,13 +167,7 @@ async def accept_candidate(
 
 # API endpoint to send assessment to candidate (placeholder)
 @router.post("/candidates/{candidate_id}/send-assessment")
-async def send_assessment(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def send_assessment(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -231,14 +208,7 @@ async def send_assessment(
 
 # API endpoint to update candidate notes
 @router.put("/candidates/{candidate_id}/notes")
-async def update_candidate_notes(
-    candidate_id: str, 
-    notes_data: dict,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def update_candidate_notes(candidate_id: str, notes_data: dict):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     

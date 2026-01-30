@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from typing import List, Optional
 import os
 from pathlib import Path
@@ -20,9 +20,10 @@ from src.services.embeddings.generate_embeddings import (
 )
 from src.api.models import JobResponse, JobListResponse, JobDetailsResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
+from src.api.auth_utils import get_current_mlg_recruiter
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 @router.post("/job/upload", response_model=JobResponse)
 async def upload_job_description(
