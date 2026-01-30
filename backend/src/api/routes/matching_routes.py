@@ -1,5 +1,5 @@
 # API routes for matching candidates to job descriptions.
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 import sys
@@ -12,9 +12,10 @@ from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import get_job_description
 from src.services.matching.cosine_similarity import profile_matching_candidate
 from src.api.models import MatchRequest, MatchResponse
+from src.api.auth_utils import get_current_mlg_recruiter
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 # API endpoint to find matching candidates for a job description
 @router.post("/matches/find", response_model=MatchResponse)
