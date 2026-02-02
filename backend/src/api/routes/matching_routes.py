@@ -67,8 +67,8 @@ async def find_matches(request: MatchRequest):
                 "candidate_id": str(candidate.get("_id")) if candidate.get("_id") else None,
                 "rank": rank if not request.use_cohort else None,
                 "candidate_name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("Email"),
-                "location": candidate.get("Location"),
+                "email": candidate.get("email", candidate.get("Email", "")),
+                "location": candidate.get("location", candidate.get("Location", "")),
                 "distance_km": match.get("distance_km"),
                 "scores": None if request.use_cohort else {
                     "combined": round(match["combined_similarity_score"], 3),

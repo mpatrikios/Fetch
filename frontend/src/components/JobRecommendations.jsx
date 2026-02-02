@@ -284,13 +284,9 @@ function JobRecommendations() {
                     variant="outlined"
                     size="small"
                     endIcon={<OpenInNew fontSize="small" />}
-                    onClick={() => {
-                      console.log('View Profile clicked, candidate_id:', selectedCandidate.candidate_id);
-                      console.log('Full candidate object:', selectedCandidate);
-                      navigate('/candidates', {
-                        state: { selectedCandidateId: selectedCandidate.candidate_id }
-                      });
-                    }}
+                    onClick={() => navigate('/candidates', {
+                      state: { selectedCandidateId: selectedCandidate.candidate_id }
+                    })}
                     sx={{ flexShrink: 0 }}
                   >
                     View Profile

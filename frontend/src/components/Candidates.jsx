@@ -71,17 +71,10 @@ function Candidates() {
   // Auto-select candidate if navigated from recommendations page
   useEffect(() => {
     const selectedCandidateId = location.state?.selectedCandidateId;
-    console.log('Auto-select debug:', {
-      selectedCandidateId,
-      candidatesLength: candidates.length,
-      selectedCandidate: selectedCandidate?.id,
-      firstCandidateId: candidates[0]?.id
-    });
     if (selectedCandidateId && candidates.length > 0 && !selectedCandidate) {
       const candidate = candidates.find(c =>
         c.id === selectedCandidateId || c.candidate_id === selectedCandidateId
       );
-      console.log('Found candidate:', candidate?.id, candidate?.name);
       if (candidate) {
         handleCandidateSelect(candidate);
       }

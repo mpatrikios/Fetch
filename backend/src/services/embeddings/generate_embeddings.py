@@ -2,6 +2,7 @@
 This file is responsible for generating embeddings using OpenAI API
 """
 
+import logging
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
@@ -12,6 +13,8 @@ from database.insert_to_mongo import insert_embedding
 from database.connection import mongo_connection
 from services.embeddings.geocoding import geocode_location
 from typing import Optional, Dict
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
@@ -26,7 +29,7 @@ if openai_api_key and azure_base_url:
             base_url=azure_base_url
         )
     except Exception as e:
-        print(f"Failed to initialize OpenAI client: {e}")
+        logger.error(f"Failed to initialize OpenAI client: {e}")
         client = None
 
 # Use centralized MongoDB connection
@@ -34,9 +37,9 @@ db = mongo_connection.database
 
 def generate_embedding(text, model="text-embedding-ada-002"):
     if client is None:
-        print("OpenAI client not initialized. Check environment variables.")
+        logger.error("OpenAI client not initialized. Check environment variables.")
         return None
-    
+
     try:
         response = client.embeddings.create(
             input=[text],
@@ -44,7 +47,7 @@ def generate_embedding(text, model="text-embedding-ada-002"):
         )
         return response.data[0].embedding
     except Exception as e:
-        print(f"Embedding generation failed: {e}")
+        logger.error(f"Embedding generation failed: {e}")
         return None
 
 def create_location_embedding(coordinates: Optional[Dict[str, float]]) -> Optional[list]:
@@ -86,7 +89,7 @@ def embed_candidate_profile(candidate_doc):
            " ".join([comp.get('companyName', '') for comp in (candidate_doc.get('Companies') or []) if comp])
     embedding = generate_embedding(text)
     if embedding is None:
-        print(f"Failed to generate profile embedding for candidate {candidate_doc.get('_id')}")
+        logger.error(f"Failed to generate profile embedding for candidate {candidate_doc.get('_id')}")
         return
     insert_embedding(candidate_doc["_id"], "Candidates", "profile_embedding", embedding)
 
@@ -105,27 +108,27 @@ def embed_candidate_location(candidate_doc):
         insert_embedding(candidate_doc["_id"], "Candidates", "location_coordinates", coordinates)
     else:
         # Fallback to text embedding if geocoding fails
-        print(f"Geocoding failed for {location_text}, using text embedding as fallback")
+        logger.warning(f"Geocoding failed for {location_text}, using text embedding as fallback")
         embedding = generate_embedding(location_text)
-    
+
     if embedding is None:
-        print(f"Failed to generate location embedding for candidate {candidate_doc.get('_id')}")
+        logger.error(f"Failed to generate location embedding for candidate {candidate_doc.get('_id')}")
         return
-    
+
     insert_embedding(candidate_doc["_id"], "Candidates", "location_embedding", embedding)
 def embed_candidate_culture(candidate_doc):
     clifton_strengths = candidate_doc.get("clifton_strengths", [])
     if not clifton_strengths:
-        print(f"No clifton_strengths found for candidate {candidate_doc.get('_id')}")
+        logger.warning(f"No clifton_strengths found for candidate {candidate_doc.get('_id')}")
         return
-    
+
     # Extract strength names sorted alphabetically (ignoring rank to ensure position-independence)
     sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('name', ''))
     text = " ".join([strength['name'] for strength in sorted_strengths])
-    
+
     embedding = generate_embedding(text)
     if embedding is None:
-        print(f"Failed to generate culture embedding for candidate {candidate_doc.get('_id')}")
+        logger.error(f"Failed to generate culture embedding for candidate {candidate_doc.get('_id')}")
         return
     insert_embedding(candidate_doc["_id"], "Candidates", "culture_embedding", embedding)
 
@@ -138,7 +141,7 @@ def embed_job_description_profile(job_doc):
            " ".join(job_doc.get('Qualifications') or [])
     embedding = generate_embedding(text)
     if embedding is None:
-        print(f"Failed to generate profile embedding for job description {job_doc.get('_id')}")
+        logger.error(f"Failed to generate profile embedding for job description {job_doc.get('_id')}")
         return
     insert_embedding(job_doc["_id"], "JobDescriptions", "profile_embedding", embedding)
 
@@ -176,27 +179,27 @@ def embed_job_description_location(job_doc):
     else:
         # Fallback to text embedding if geocoding fails
         location_text = " ".join(locations) if isinstance(locations, list) else str(locations)
-        print(f"Geocoding failed for {primary_location}, using text embedding as fallback")
+        logger.warning(f"Geocoding failed for {primary_location}, using text embedding as fallback")
         embedding = generate_embedding(location_text)
-    
+
     if embedding is None:
-        print(f"Failed to generate location embedding for job description {job_doc.get('_id')}")
+        logger.error(f"Failed to generate location embedding for job description {job_doc.get('_id')}")
         return
-    
+
     insert_embedding(job_doc["_id"], "JobDescriptions", "location_embedding", embedding)
 
 def embed_job_description_culture(job_doc):
     clifton_strengths = job_doc.get("clifton_strengths", [])
     if not clifton_strengths:
-        print(f"No clifton_strengths found for job description {job_doc.get('_id')}")
+        logger.warning(f"No clifton_strengths found for job description {job_doc.get('_id')}")
         return
-    
+
     # Extract strength names sorted alphabetically (ignoring rank to ensure position-independence)
     sorted_strengths = sorted(clifton_strengths, key=lambda x: x.get('name', ''))
     text = " ".join([strength['name'] for strength in sorted_strengths])
-    
+
     embedding = generate_embedding(text)
     if embedding is None:
-        print(f"Failed to generate culture embedding for job description {job_doc.get('_id')}")
+        logger.error(f"Failed to generate culture embedding for job description {job_doc.get('_id')}")
         return
     insert_embedding(job_doc["_id"], "JobDescriptions", "culture_embedding", embedding)

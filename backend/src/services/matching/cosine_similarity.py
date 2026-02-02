@@ -28,7 +28,7 @@ if openai_api_key and azure_base_url:
             base_url=azure_base_url
         )
     except Exception as e:
-        print(f"Failed to initialize OpenAI client: {e}")
+        logger.error(f"Failed to initialize OpenAI client: {e}")
         client = None
  
 # Common English stopwords to exclude from keyword extraction       
