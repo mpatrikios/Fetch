@@ -79,7 +79,7 @@ function Candidates() {
         handleCandidateSelect(candidate);
       }
     }
-  }, [candidates, location.state, selectedCandidate]);
+  }, [candidates, location.state, selectedCandidate, handleCandidateSelect]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
