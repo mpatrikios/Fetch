@@ -178,12 +178,24 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
 
     # Generate LLM explanations ONLY for top_k candidates (slow, but limited)
     for match in top_candidates:
-        match["explanation"] = build_match_explanation_llm(
-            job_doc,
-            match["_candidate_doc"],
-            match["combined_similarity_score"]
-        )
-        del match["_candidate_doc"]  # Clean up temporary reference
+        try:
+            match["explanation"] = build_match_explanation_llm(
+                job_doc,
+                match["_candidate_doc"],
+                match["combined_similarity_score"]
+            )
+        except Exception:
+            # Ensure that a failure for one candidate does not break the entire request
+            logger.exception("Failed to generate LLM explanation for candidate match.")
+            match["explanation"] = {
+                "summary": "We could not generate an AI explanation for this match.",
+                "details": "There was an internal error while generating the explanation, "
+                           "but the candidate was still matched based on profile and culture similarity."
+            }
+        finally:
+            # Clean up temporary reference regardless of success or failure
+            if "_candidate_doc" in match:
+                del match["_candidate_doc"]
 
     # If cohort mode is enabled, randomize the order of top candidates
     if use_cohort:
