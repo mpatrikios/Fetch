@@ -81,7 +81,7 @@ async def upload_resume(
         # standardize and upsert candidate data
         standardized_data = standardize_resume(azure_result)
         
-        # Add authenticated user's information (use lowercase for consistency with auth)
+        # Add authenticated user's information and set lowercase field names (email, not Email) for consistency with authentication system
         standardized_data["full_name"] = user_name
         standardized_data["email"] = user_email
         standardized_data["status"] = "uploaded_resume"  # Update status

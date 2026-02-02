@@ -301,7 +301,7 @@ function JobRecommendations() {
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         {selectedCandidate.explanation.summary
-                          .split(/[-•]\s+/)
+                          .split(/(?:[-•*]|\d+\.)\s+/)
                           .filter(point => point.trim().length > 0)
                           .map((point, index) => {
                             // Detect gaps/risks/concerns in the explanation
