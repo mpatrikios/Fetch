@@ -1,5 +1,5 @@
 """
-Self-service profile and account management routes for candidates.
+Self-service profile management routes for candidates.
 All endpoints require authentication and operate on the authenticated user's own data.
 """
 from fastapi import APIRouter, HTTPException, Depends
@@ -12,13 +12,14 @@ from src.database.connection import mongo_connection
 from src.api.routes.auth_routes import get_current_user, hash_password_sha256, verify_password
 from src.api.models import (
     CandidateProfileResponse,
+    ProfileUpdateRequest,
+    ProfileUpdateResponse,
     PasswordChangeRequest,
     PasswordChangeResponse,
     AccountDeleteRequest,
     AccountDeleteResponse,
-    NotificationPreferences,
-    PreferencesResponse,
 )
+from src.services.embeddings.generate_embeddings import embed_candidate_location
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -65,7 +66,77 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
 
 
-@router.put("/account/password", response_model=PasswordChangeResponse)
+@router.put("/profile", response_model=ProfileUpdateResponse)
+async def update_profile(
+    update_data: ProfileUpdateRequest,
+    current_user: Dict = Depends(get_current_user)
+):
+    """
+    Update the authenticated user's profile (name and/or location).
+    Regenerates location embeddings if location changes.
+    """
+    try:
+        user_id = ObjectId(current_user["_id"])
+
+        # Get current profile for comparison
+        old_profile = mongo_connection.candidates_collection.find_one({"_id": user_id})
+        if not old_profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        # Build update document
+        update_doc = {}
+        if update_data.full_name is not None:
+            update_doc["full_name"] = update_data.full_name
+            update_doc["name"] = update_data.full_name  # Keep both fields in sync
+        if update_data.location is not None:
+            update_doc["Location"] = update_data.location
+
+        if not update_doc:
+            raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        # Add timestamp
+        update_doc["profile_updated_at"] = datetime.now(timezone.utc)
+
+        # Perform update
+        result = mongo_connection.candidates_collection.update_one(
+            {"_id": user_id},
+            {"$set": update_doc}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        # Check if location changed - regenerate embeddings if so
+        embeddings_regenerated = False
+        if "Location" in update_doc and update_doc["Location"] != old_profile.get("Location"):
+            try:
+                new_profile = mongo_connection.candidates_collection.find_one({"_id": user_id})
+                embed_candidate_location(new_profile)
+                embeddings_regenerated = True
+                logger.info(f"Location embeddings regenerated for {current_user.get('email', 'unknown')}")
+            except Exception as e:
+                logger.warning(f"Embedding regeneration failed for {current_user.get('email', 'unknown')}: {e}")
+
+        # Fetch updated profile for response
+        updated_profile = await get_own_profile(current_user)
+
+        logger.info(f"Profile updated for {current_user.get('email', 'unknown')}: {list(update_doc.keys())}")
+
+        return ProfileUpdateResponse(
+            success=True,
+            message="Profile updated successfully",
+            profile=updated_profile,
+            embeddings_regenerated=embeddings_regenerated,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile update failed for {current_user.get('email', 'unknown')}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update profile")
+
+
+@router.put("/profile/password", response_model=PasswordChangeResponse)
 async def change_password(
     password_data: PasswordChangeRequest,
     current_user: Dict = Depends(get_current_user)
@@ -121,7 +192,7 @@ async def change_password(
         raise HTTPException(status_code=500, detail="Failed to change password")
 
 
-@router.delete("/account", response_model=AccountDeleteResponse)
+@router.delete("/profile", response_model=AccountDeleteResponse)
 async def delete_account(
     delete_request: AccountDeleteRequest,
     current_user: Dict = Depends(get_current_user)
@@ -195,71 +266,3 @@ async def delete_account(
     except Exception as e:
         logger.error(f"Account deletion failed for {current_user.get('email', 'unknown')}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete account")
-
-
-@router.get("/account/preferences", response_model=PreferencesResponse)
-async def get_preferences(current_user: Dict = Depends(get_current_user)):
-    """Get notification preferences for the authenticated user."""
-    try:
-        user_id = ObjectId(current_user["_id"])
-
-        user = mongo_connection.candidates_collection.find_one(
-            {"_id": user_id},
-            {"notification_preferences": 1}
-        )
-
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        prefs = user.get("notification_preferences", {})
-
-        return PreferencesResponse(
-            success=True,
-            preferences=NotificationPreferences(
-                email_job_matches=prefs.get("email_job_matches", True),
-                email_status_updates=prefs.get("email_status_updates", True),
-                email_assessment_reminders=prefs.get("email_assessment_reminders", True),
-            )
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to get preferences for {current_user.get('email', 'unknown')}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve preferences")
-
-
-@router.put("/account/preferences", response_model=PreferencesResponse)
-async def update_preferences(
-    preferences: NotificationPreferences,
-    current_user: Dict = Depends(get_current_user)
-):
-    """Update notification preferences for the authenticated user."""
-    try:
-        user_id = ObjectId(current_user["_id"])
-
-        result = mongo_connection.candidates_collection.update_one(
-            {"_id": user_id},
-            {
-                "$set": {
-                    "notification_preferences": preferences.dict(),
-                    "preferences_updated_at": datetime.now(timezone.utc)
-                }
-            }
-        )
-
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        logger.info(f"Preferences updated for {current_user.get('email', 'unknown')}")
-
-        return PreferencesResponse(
-            success=True,
-            preferences=preferences
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Failed to update preferences for {current_user.get('email', 'unknown')}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update preferences")

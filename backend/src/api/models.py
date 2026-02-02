@@ -42,6 +42,20 @@ class CandidateProfileResponse(BaseModel):
     created_at: Optional[datetime] = None
 
 
+class ProfileUpdateRequest(BaseModel):
+    """Request to update candidate's own profile"""
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    location: Optional[str] = Field(None, max_length=200)
+
+
+class ProfileUpdateResponse(BaseModel):
+    """Response after profile update"""
+    success: bool
+    message: str
+    profile: CandidateProfileResponse
+    embeddings_regenerated: bool = False
+
+
 # Account Settings Models
 class PasswordChangeRequest(BaseModel):
     current_password: str
@@ -62,17 +76,6 @@ class AccountDeleteResponse(BaseModel):
     success: bool
     message: str
     deletion_type: str
-
-
-class NotificationPreferences(BaseModel):
-    email_job_matches: bool = True
-    email_status_updates: bool = True
-    email_assessment_reminders: bool = True
-
-
-class PreferencesResponse(BaseModel):
-    success: bool
-    preferences: NotificationPreferences
 
 
 # Job Models
