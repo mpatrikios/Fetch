@@ -17,11 +17,6 @@ function Header() {
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
 
-  const handleUserTypeSelect = (type) => {
-    localStorage.setItem('userType', type);
-    navigate('/login');
-  };
-
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -55,14 +50,14 @@ function Header() {
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
           {!isAuthenticated && (
             <>
-              <Button sx={navButtonSx} onClick={() => handleUserTypeSelect('mlg-recruiter')}>
-                Recruiters
+              <Button sx={navButtonSx} onClick={() => navigate('/executives')}>
+                For Executives
               </Button>
-              <Button sx={navButtonSx} onClick={() => handleUserTypeSelect('candidate')}>
-                Executives
+              <Button sx={navButtonSx} onClick={() => navigate('/recruiters')}>
+                For Recruiters
               </Button>
-              <Button sx={navButtonSx} onClick={() => handleUserTypeSelect('mlg-recruiter')}>
-                MLG Recruiter Login
+              <Button sx={navButtonSx} onClick={() => navigate('/login')}>
+                Login
               </Button>
             </>
           )}
