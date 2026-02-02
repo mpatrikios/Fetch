@@ -168,8 +168,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
             "culture_similarity_score": culture_similarity,
             "distance_km": distance_km,
             "candidate": cand,
-            "_candidate_doc": cand,  # Keep reference for explanation generation
-            "explanation": None  # Placeholder
+            "explanation": None  # Placeholder, generated later for top_k only
         })
 
     # Sort and take top_k candidates
@@ -181,7 +180,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
         try:
             match["explanation"] = build_match_explanation_llm(
                 job_doc,
-                match["_candidate_doc"],
+                match["candidate"],
                 match["combined_similarity_score"]
             )
         except Exception:
@@ -192,10 +191,6 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
                 "details": "There was an internal error while generating the explanation, "
                            "but the candidate was still matched based on profile and culture similarity."
             }
-        finally:
-            # Clean up temporary reference regardless of success or failure
-            if "_candidate_doc" in match:
-                del match["_candidate_doc"]
 
     # If cohort mode is enabled, randomize the order of top candidates
     if use_cohort:
