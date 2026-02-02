@@ -274,9 +274,6 @@ function JobRecommendations() {
                     {selectedCandidate.location && (
                       <Typography variant="body2" color="text.secondary">
                         {selectedCandidate.location}
-                        {selectedCandidate.distance_miles != null && (
-                          <span> ({selectedCandidate.distance_miles.toFixed(1)} miles away)</span>
-                        )}
                       </Typography>
                     )}
                   </Box>

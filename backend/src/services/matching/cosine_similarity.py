@@ -232,14 +232,17 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     # Tokens indicating leadership/senior roles
     job_title = (job_doc.get("JobTitle") or "").lower()
     leadership_tokens = {"head", "director", "cto", "chief", "lead", "leader", "architect"}
-    
-    # Find relevant senior/leadership roles in candidate experience
+
+    # Find relevant senior/leadership roles in candidate experience with company info
     relevant_roles = []
+    relevant_experience = []
     for exp in cand_doc.get("Experience", []):
         role = (exp.get("role") or "").strip()
+        company = (exp.get("company") or exp.get("companyName") or "").strip()
         rl = role.lower()
         if any(tok in rl for tok in leadership_tokens) or any(tok in job_title.split() for tok in rl.split()):
             relevant_roles.append(role)
+            relevant_experience.append({"role": role, "company": company})
 
     # Companies worked at by candidate
     candidate_companies = [
@@ -257,6 +260,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     return {
         "keyword_overlap": keyword_overlap[:15],  # cap for readability
         "relevant_roles": relevant_roles,
+        "relevant_experience": relevant_experience,
         "candidate_companies": candidate_companies,
         "job_min_years": job_min_years,
         "candidate_num_roles": cand_role_count,

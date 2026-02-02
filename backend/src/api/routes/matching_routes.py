@@ -78,6 +78,7 @@ async def find_matches(request: MatchRequest):
                 "explanation": {
                     "keyword_overlap": match.get("explanation", {}).get("keyword_overlap", [])[:10],
                     "relevant_roles": match.get("explanation", {}).get("relevant_roles", [])[:3],
+                    "relevant_experience": match.get("explanation", {}).get("relevant_experience", [])[:3],
                     "candidate_companies": match.get("explanation", {}).get("candidate_companies", [])[:3],
                     "summary": match.get("explanation", {}).get("summary", "No summary available")
                 },
