@@ -64,16 +64,17 @@ function UpcomingMeetings() {
                     </Typography>
                   }
                   secondary={
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
+                    <>
+                      <Typography variant="caption" color="text.secondary" component="span">
                         {meeting.date} at {meeting.time}
                       </Typography>
                       <br />
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" component="span">
                         with {meeting.participant}
                       </Typography>
-                    </Box>
+                    </>
                   }
+                  secondaryTypographyProps={{ component: 'div' }}
                 />
                 <Chip 
                   label={meeting.type === 'calendly' ? 'Calendly' : 'Google Calendar'} 

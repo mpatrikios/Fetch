@@ -133,6 +133,7 @@ class MatchExplanation(BaseModel):
     summary: str
 
 class MatchResult(BaseModel):
+    candidate_id: Optional[str] = None
     rank: Optional[int] = None
     candidate_name: str
     email: Optional[str] = None

@@ -102,9 +102,9 @@ function Login() {
       <Container maxWidth="xl" sx={{ height: '100vh', py: 10, position: 'relative' }}>
         <Grid container spacing={6} sx={{ height: '100%' }}>
           {/* Left side content */}
-          <Grid item xs={12} md={6} sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
+          <Grid size={{ xs: 12, md: 6 }} sx={{
+            display: 'flex',
+            flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'flex-start',
             px: 4
@@ -139,7 +139,7 @@ function Login() {
           </Grid>
 
           {/* Empty right side for spacing */}
-          <Grid item xs={12} md={6} />
+          <Grid size={{ xs: 12, md: 6 }} />
         </Grid>
 
         {/* Login form positioned absolutely on the right */}

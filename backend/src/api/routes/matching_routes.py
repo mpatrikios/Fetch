@@ -64,6 +64,7 @@ async def find_matches(request: MatchRequest):
             
             # Build formatted match entry
             formatted_match = {
+                "candidate_id": str(candidate.get("_id")) if candidate.get("_id") else None,
                 "rank": rank if not request.use_cohort else None,
                 "candidate_name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("Email"),
