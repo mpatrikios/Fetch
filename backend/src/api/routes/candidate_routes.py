@@ -60,8 +60,10 @@ async def list_candidates(
             {
                 "_id": 1,
                 "full_name": 1,
-                "Email": 1,
-                "Location": 1,
+                "email": 1,
+                "Email": 1,  # Legacy field support
+                "location": 1,
+                "Location": 1,  # Legacy field support
                 "Summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
@@ -87,8 +89,8 @@ async def list_candidates(
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
                 "name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("Email"),
-                "location": candidate.get("Location"),
+                "email": candidate.get("email", candidate.get("Email", "")),
+                "location": candidate.get("location", candidate.get("Location", "")),
                 "Summary": candidate.get("Summary"),
                 "skills": candidate.get("Skills", []),
                 "clifton_strengths": clifton_strengths_names,

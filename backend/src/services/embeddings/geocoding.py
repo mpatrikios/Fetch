@@ -2,10 +2,13 @@
 Geocoding module for converting location strings to coordinates
 """
 
+import logging
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 import time
 from typing import Optional, Dict
+
+logger = logging.getLogger(__name__)
 
 # Initialize geocoder with a user agent
 geocoder = Nominatim(user_agent="fetch-recruitment-app")
@@ -37,18 +40,18 @@ def geocode_location(location_string: str, retry_count: int = 3) -> Optional[Dic
                     'lon': location.longitude
                 }
             else:
-                print(f"Could not geocode location: {location_string}")
+                logger.warning(f"Could not geocode location: {location_string}")
                 return None
-                
+
         except GeocoderTimedOut:
-            print(f"Geocoding timeout for {location_string}, attempt {attempt + 1}/{retry_count}")
+            logger.warning(f"Geocoding timeout for {location_string}, attempt {attempt + 1}/{retry_count}")
             continue
         except GeocoderServiceError as e:
-            print(f"Geocoder service error for {location_string}: {e}")
+            logger.error(f"Geocoder service error for {location_string}: {e}")
             return None
         except Exception as e:
-            print(f"Unexpected error geocoding {location_string}: {e}")
+            logger.error(f"Unexpected error geocoding {location_string}: {e}")
             return None
-    
-    print(f"Failed to geocode {location_string} after {retry_count} attempts")
+
+    logger.warning(f"Failed to geocode {location_string} after {retry_count} attempts")
     return None

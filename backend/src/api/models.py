@@ -126,13 +126,19 @@ class MatchScores(BaseModel):
     profile: float
     culture: float
 
+class RelevantExperience(BaseModel):
+    role: str
+    company: Optional[str] = None
+
 class MatchExplanation(BaseModel):
     keyword_overlap: List[str]
     relevant_roles: List[str]
+    relevant_experience: List[RelevantExperience] = []
     candidate_companies: List[str]
     summary: str
 
 class MatchResult(BaseModel):
+    candidate_id: Optional[str] = None
     rank: Optional[int] = None
     candidate_name: str
     email: Optional[str] = None

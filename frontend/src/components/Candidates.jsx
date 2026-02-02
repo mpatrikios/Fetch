@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Box, 
   Grid, 
@@ -20,7 +20,7 @@ import {
   Menu
 } from '@mui/material';
 import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
   SectionHeader, 
@@ -35,6 +35,7 @@ import {
 
 function Candidates() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [candidateDetails, setCandidateDetails] = useState(null);
@@ -53,9 +54,32 @@ function Candidates() {
   const [errorMessage, setErrorMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Refs for timeout cleanup
+  const timeoutRefs = useRef([]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(clearTimeout);
+    };
+  }, []);
+
   useEffect(() => {
     loadCandidates();
   }, [statusFilter]);
+
+  // Auto-select candidate if navigated from recommendations page
+  useEffect(() => {
+    const selectedCandidateId = location.state?.selectedCandidateId;
+    if (selectedCandidateId && candidates.length > 0 && !selectedCandidate) {
+      const candidate = candidates.find(c =>
+        c.id === selectedCandidateId || c.candidate_id === selectedCandidateId
+      );
+      if (candidate) {
+        handleCandidateSelect(candidate);
+      }
+    }
+  }, [candidates, location.state, selectedCandidate]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -196,7 +220,7 @@ function Candidates() {
       console.error('Reject candidate error:', err);
       setErrorMessage('Failed to reject candidate. Please try again.');
       // Auto-hide error message after 5 seconds
-      setTimeout(() => setErrorMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setRejecting(false);
     }
@@ -231,12 +255,12 @@ function Candidates() {
       loadCandidates();
       
       // Auto-hide success message after 5 seconds
-      setTimeout(() => setSuccessMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
       console.error('Accept and send assessment error:', err);
       setErrorMessage('Failed to accept candidate or send assessment. Please try again.');
       // Auto-hide error message after 5 seconds
-      setTimeout(() => setErrorMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAccepting(false);
     }

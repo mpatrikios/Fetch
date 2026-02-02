@@ -1,9 +1,12 @@
 import numpy as np
 import re
 import random
+import logging
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 from src.services.matching.location_matching import is_candidate_commutable, calculate_haversine_distance
 
 load_dotenv()
@@ -25,7 +28,7 @@ if openai_api_key and azure_base_url:
             base_url=azure_base_url
         )
     except Exception as e:
-        print(f"Failed to initialize OpenAI client: {e}")
+        logger.error(f"Failed to initialize OpenAI client: {e}")
         client = None
  
 # Common English stopwords to exclude from keyword extraction       
@@ -157,20 +160,37 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
         distance_km = None
         if job_coords and cand.get("location_coordinates"):
             distance_km = calculate_haversine_distance(job_coords, cand["location_coordinates"])
-        
-        explanation = build_match_explanation_llm(job_doc, cand, combined_similarity)
-        
+
+        # Store candidate data without LLM explanation (fast)
         scored.append({
             "combined_similarity_score": combined_similarity,
             "profile_similarity_score": profile_similarity,
             "culture_similarity_score": culture_similarity,
             "distance_km": distance_km,
             "candidate": cand,
-            "explanation": explanation
+            "explanation": None  # Placeholder, generated later for top_k only
         })
 
+    # Sort and take top_k candidates
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
     top_candidates = scored[:top_k]
+
+    # Generate LLM explanations ONLY for top_k candidates (slow, but limited)
+    for match in top_candidates:
+        try:
+            match["explanation"] = build_match_explanation_llm(
+                job_doc,
+                match["candidate"],
+                match["combined_similarity_score"]
+            )
+        except Exception:
+            # Ensure that a failure for one candidate does not break the entire request
+            logger.exception("Failed to generate LLM explanation for candidate match.")
+            match["explanation"] = {
+                "summary": "We could not generate an AI explanation for this match.",
+                "details": "There was an internal error while generating the explanation, "
+                           "but the candidate was still matched based on profile and culture similarity."
+            }
 
     # If cohort mode is enabled, randomize the order of top candidates
     if use_cohort:
@@ -219,14 +239,17 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     # Tokens indicating leadership/senior roles
     job_title = (job_doc.get("JobTitle") or "").lower()
     leadership_tokens = {"head", "director", "cto", "chief", "lead", "leader", "architect"}
-    
-    # Find relevant senior/leadership roles in candidate experience
+
+    # Find relevant senior/leadership roles in candidate experience with company info
     relevant_roles = []
+    relevant_experience = []
     for exp in cand_doc.get("Experience", []):
         role = (exp.get("role") or "").strip()
+        company = (exp.get("company") or exp.get("companyName") or "").strip()
         rl = role.lower()
         if any(tok in rl for tok in leadership_tokens) or any(tok in job_title.split() for tok in rl.split()):
             relevant_roles.append(role)
+            relevant_experience.append({"role": role, "company": company})
 
     # Companies worked at by candidate
     candidate_companies = [
@@ -244,6 +267,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     return {
         "keyword_overlap": keyword_overlap[:15],  # cap for readability
         "relevant_roles": relevant_roles,
+        "relevant_experience": relevant_experience,
         "candidate_companies": candidate_companies,
         "job_min_years": job_min_years,
         "candidate_num_roles": cand_role_count,
@@ -302,8 +326,8 @@ Write 3–5 short bullet points explaining:
 Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not supported above.
 """
     if client is None:
-        # Fallback: OpenAI client not initialized
-        summary_text = "Explanation generation failed: OpenAI client not initialized."
+        logger.warning("OpenAI client not initialized - skipping explanation generation")
+        summary_text = "Match explanation not available."
     else:
         try:
             response = client.chat.completions.create(
@@ -314,10 +338,15 @@ Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not s
                 ],
                 temperature=0.3,
             )
-            summary_text = response.choices[0].message.content
+            # Validate response structure
+            if response.choices and len(response.choices) > 0 and response.choices[0].message:
+                summary_text = response.choices[0].message.content
+            else:
+                logger.error("Unexpected OpenAI response format: missing choices or message")
+                summary_text = "Match explanation not available."
         except Exception as e:
-            # Fallback: if LLM call fails, just return structured info without summary
-            summary_text = f"Explanation generation failed: {e}"
+            logger.error(f"LLM explanation generation failed: {e}", exc_info=True)
+            summary_text = "Match explanation not available."
 
     # Attach LLM summary to structured features
     features["summary"] = summary_text
