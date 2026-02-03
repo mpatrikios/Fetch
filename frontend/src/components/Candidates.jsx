@@ -53,6 +53,7 @@ function Candidates() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [notesLastSaved, setNotesLastSaved] = useState({});
 
   // Refs for timeout cleanup
   const timeoutRefs = useRef([]);
@@ -172,12 +173,17 @@ function Candidates() {
   // notes update handler
   const handleNotesUpdate = async (candidateId) => {
     if (!candidateId) return;
-    
+
     try {
       const notes = candidateNotes[candidateId] || '';
       await candidateAPI.updateNotes(candidateId, notes);
       // Update local state
       setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
+      // Record the save timestamp
+      setNotesLastSaved(prev => ({
+        ...prev,
+        [candidateId]: new Date()
+      }));
       // Clear any previous error on successful save
       setErrorMessage('');
     } catch (err) {
@@ -644,8 +650,21 @@ function Candidates() {
                     value={candidateNotes[selectedCandidate?.id] || ''}
                     onChange={(e) => updateCandidateNotes(selectedCandidate?.id, e.target.value)}
                     placeholder="Enter candidate notes"
-                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when the user finishes editing
                   />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mt: 1 }}>
+                    {notesLastSaved[selectedCandidate?.id] && (
+                      <Typography variant="caption" color="text.secondary">
+                        Last saved at {notesLastSaved[selectedCandidate?.id].toLocaleTimeString()}
+                      </Typography>
+                    )}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleNotesUpdate(selectedCandidate?.id)}
+                    >
+                      Save Notes
+                    </Button>
+                  </Box>
                 </Box>
 
                 {/* Action Buttons */}
