@@ -54,6 +54,7 @@ function Candidates() {
   const [errorMessage, setErrorMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [notesLastSaved, setNotesLastSaved] = useState({});
+  const [savedNotesContent, setSavedNotesContent] = useState({});
 
   // Refs for timeout cleanup
   const timeoutRefs = useRef([]);
@@ -163,6 +164,13 @@ function Candidates() {
         ...prev,
         [candidate.id]: currentNotes
       }));
+      // Initialize saved content if not already set (to track unsaved changes)
+      if (savedNotesContent[candidate.id] === undefined) {
+        setSavedNotesContent(prev => ({
+          ...prev,
+          [candidate.id]: currentNotes
+        }));
+      }
     } catch (err) {
       console.error('Load candidate details error:', err);
     } finally {
@@ -179,10 +187,14 @@ function Candidates() {
       await candidateAPI.updateNotes(candidateId, notes);
       // Update local state
       setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
-      // Record the save timestamp
+      // Record the save timestamp and saved content
       setNotesLastSaved(prev => ({
         ...prev,
         [candidateId]: new Date()
+      }));
+      setSavedNotesContent(prev => ({
+        ...prev,
+        [candidateId]: notes
       }));
       // Clear any previous error on successful save
       setErrorMessage('');
@@ -650,13 +662,29 @@ function Candidates() {
                     value={candidateNotes[selectedCandidate?.id] || ''}
                     onChange={(e) => updateCandidateNotes(selectedCandidate?.id, e.target.value)}
                     placeholder="Enter candidate notes"
+                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)}
                   />
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mt: 1 }}>
-                    {notesLastSaved[selectedCandidate?.id] && (
-                      <Typography variant="caption" color="text.secondary">
-                        Last saved at {notesLastSaved[selectedCandidate?.id].toLocaleTimeString()}
-                      </Typography>
-                    )}
+                    {(() => {
+                      const currentNotes = candidateNotes[selectedCandidate?.id] || '';
+                      const savedNotes = savedNotesContent[selectedCandidate?.id];
+                      const hasUnsavedChanges = savedNotes !== undefined && currentNotes !== savedNotes;
+
+                      if (hasUnsavedChanges) {
+                        return (
+                          <Typography variant="caption" color="warning.main">
+                            Unsaved changes
+                          </Typography>
+                        );
+                      } else if (notesLastSaved[selectedCandidate?.id]) {
+                        return (
+                          <Typography variant="caption" color="text.secondary">
+                            Last saved at {notesLastSaved[selectedCandidate?.id].toLocaleTimeString()}
+                          </Typography>
+                        );
+                      }
+                      return null;
+                    })()}
                     <Button
                       variant="outlined"
                       size="small"
