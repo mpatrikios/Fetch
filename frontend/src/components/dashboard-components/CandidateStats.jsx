@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
+
 function CandidateStats({ stats, loading }) {
   const navigate = useNavigate();
 
@@ -16,6 +17,16 @@ function CandidateStats({ stats, loading }) {
 
   const handleViewAllCandidates = () => {
     navigate('/candidates');
+  };
+
+  const handleStatsClick = (label) => {
+    if (label === "Total Candidates") {
+      navigate("/candidates?status=all");
+    } else if (label === "Onboarding") {
+      navigate("/candidates?filter=onboarding");
+    } else if (label === "Pending Approval") {
+      navigate("/candidates?status=pending");
+    }
   };
 
   return (
@@ -32,24 +43,28 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
+            <div onClick={() => handleStatsClick("Total Candidates")}>
             <DashboardStatCard
               value={candidateStats.total}
               label="Total Candidates"
               icon={People}
               size="small"
             />
+            </div>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
+            <div onClick={() => handleStatsClick("Onboarding")}>
             <DashboardStatCard
               value={candidateStats.onboarding}
               label="Onboarding"
               icon={PersonAdd}
               size="small"
             />
+            </div>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
@@ -68,12 +83,14 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
+            <div onClick={() => handleStatsClick("Pending Approval")}>
             <DashboardStatCard
               value={candidateStats.pending}
               label="Pending Approval"
               icon={CheckCircle}
               size="small"
             />
+            </div>
           )}
         </Grid>
       </Grid>
