@@ -19,7 +19,7 @@ import {
   IconButton,
   Menu
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
@@ -55,6 +55,15 @@ function Candidates() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    location: '',
+    summary: '',
+    skills: ''
+  });
+  const [saving, setSaving] = useState(false);
 
   // Refs for timeout cleanup
   const timeoutRefs = useRef([]);
@@ -90,6 +99,14 @@ function Candidates() {
       .filter(location => location && location.trim() !== '');
     return [...new Set(locations)].sort();
   }, [candidates]);
+
+  // Filter locations based on search query
+  const filteredLocations = useMemo(() => {
+    if (!locationSearchQuery) return uniqueLocations;
+    return uniqueLocations.filter(loc =>
+      loc.toLowerCase().includes(locationSearchQuery.toLowerCase())
+    );
+  }, [uniqueLocations, locationSearchQuery]);
 
   // Filter candidates based on search query and location
   const filteredCandidates = useMemo(() => {
@@ -281,6 +298,84 @@ function Candidates() {
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // Open edit dialog with current candidate data
+  const handleEditClick = () => {
+    if (!candidateDetails) return;
+    setEditFormData({
+      full_name: candidateDetails.name || '',
+      location: candidateDetails.location || '',
+      summary: candidateDetails.Summary || candidateDetails.jobTitle || '',
+      skills: (candidateDetails.skills || []).join(', ')
+    });
+    setShowEditDialog(true);
+  };
+
+  // Handle edit form field changes
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    if (!selectedCandidate) return;
+
+    try {
+      setSaving(true);
+      setErrorMessage('');
+
+      // Parse skills from comma-separated string
+      const skillsArray = editFormData.skills
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      await candidateAPI.updateProfile(selectedCandidate.id, {
+        full_name: editFormData.full_name,
+        location: editFormData.location,
+        summary: editFormData.summary,
+        skills: skillsArray
+      });
+
+      // Update local state
+      setCandidateDetails(prev => ({
+        ...prev,
+        name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        jobTitle: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      // Update the candidate in the list
+      setCandidates(prev => prev.map(c =>
+        c.id === selectedCandidate.id
+          ? { ...c, name: editFormData.full_name, location: editFormData.location, Summary: editFormData.summary, skills: skillsArray }
+          : c
+      ));
+
+      // Update selectedCandidate reference
+      setSelectedCandidate(prev => ({
+        ...prev,
+        name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Profile updated successfully!');
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setErrorMessage('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -556,9 +651,19 @@ function Candidates() {
               <DetailPanel>
                 {/* Candidate Header */}
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                    {candidateDetails?.name}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                      {candidateDetails?.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleEditClick}
+                      title="Edit candidate profile"
+                      sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {candidateDetails?.email}
                   </Typography>
@@ -722,7 +827,10 @@ function Candidates() {
       <Menu
         anchorEl={locationMenuAnchor}
         open={Boolean(locationMenuAnchor)}
-        onClose={() => setLocationMenuAnchor(null)}
+        onClose={() => {
+          setLocationMenuAnchor(null);
+          setLocationSearchQuery('');
+        }}
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'right',
@@ -731,28 +839,74 @@ function Candidates() {
           vertical: 'top',
           horizontal: 'right',
         }}
+        slotProps={{
+          paper: {
+            sx: { width: 280 }
+          }
+        }}
       >
-        <MenuItem 
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem 
-            key={location} 
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
+        <Box sx={{ px: 1, py: 1, position: 'sticky', top: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search locations..."
+            value={locationSearchQuery}
+            onChange={(e) => setLocationSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: locationSearchQuery && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setLocationSearchQuery('')}
+                    edge="end"
+                  >
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
-            selected={selectedLocation === location}
+          />
+        </Box>
+        <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+          <MenuItem
+            onClick={() => {
+              setSelectedLocation('');
+              setLocationMenuAnchor(null);
+              setLocationSearchQuery('');
+            }}
+            selected={selectedLocation === ''}
           >
-            {location}
+            <em>All locations</em>
           </MenuItem>
-        ))}
+          {filteredLocations.length === 0 ? (
+            <MenuItem disabled>
+              <Typography variant="body2" color="text.secondary">
+                No locations found
+              </Typography>
+            </MenuItem>
+          ) : (
+            filteredLocations.map((location) => (
+              <MenuItem
+                key={location}
+                onClick={() => {
+                  setSelectedLocation(location);
+                  setLocationMenuAnchor(null);
+                  setLocationSearchQuery('');
+                }}
+                selected={selectedLocation === location}
+              >
+                {location}
+              </MenuItem>
+            ))
+          )}
+        </Box>
       </Menu>
 
       {/* Rejection Confirmation Dialog */}
@@ -782,6 +936,74 @@ function Candidates() {
             disabled={rejecting}
           >
             {rejecting ? 'Rejecting...' : 'Reject Candidate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="edit-dialog-title"
+      >
+        <DialogTitle id="edit-dialog-title">
+          Edit Candidate Profile
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Full Name"
+              fullWidth
+              value={editFormData.full_name}
+              onChange={(e) => handleEditFormChange('full_name', e.target.value)}
+            />
+            <TextField
+              label="Location"
+              fullWidth
+              value={editFormData.location}
+              onChange={(e) => handleEditFormChange('location', e.target.value)}
+            />
+            <TextField
+              label="Summary / Position"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+            <TextField
+              label="Skills"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.skills}
+              onChange={(e) => handleEditFormChange('skills', e.target.value)}
+              helperText="Enter skills separated by commas"
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveProfile}
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
