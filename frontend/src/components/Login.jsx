@@ -24,10 +24,6 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Check if this is a recruiter login flow
-  const userType = localStorage.getItem('userType');
-  const isRecruiter = userType === 'mlg-recruiter';
-
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -62,14 +58,8 @@ function Login() {
       const response = await authAPI.login(formData.email, formData.password);
       
       if (response.data.token) {
-        // Check user role from database first (authoritative)
+        // Check user role from database (authoritative)
         const userRole = response.data.user?.role;
-
-        // If user tried to login through MLG recruiter flow but isn't an MLG recruiter
-        if (isRecruiter && userRole !== 'mlg-recruiter') {
-          setError('Access denied. This login is only for MLG recruiters. Please use the candidate login.');
-          return;
-        }
 
         // Use auth context to handle login
         login(response.data.token, response.data.user);
@@ -109,9 +99,9 @@ function Login() {
             alignItems: 'flex-start',
             px: 4
           }}>
-            <Typography 
-              variant="h2" 
-              sx={{ 
+            <Typography
+              variant="h2"
+              sx={{
                 fontFamily: 'Montserrat, sans-serif',
                 fontWeight: 700,
                 mb: 3,
@@ -120,11 +110,11 @@ function Login() {
                 lineHeight: 1.2
               }}
             >
-              {isRecruiter ? 'MLG Recruiters' : 'Executives'}
+              Welcome Back
             </Typography>
-            <Typography 
-              variant="h5" 
-              sx={{ 
+            <Typography
+              variant="h5"
+              sx={{
                 fontFamily: 'Petrona, serif',
                 color: 'rgba(52,52,52,0.7)',
                 lineHeight: 1.6,
@@ -132,9 +122,7 @@ function Login() {
                 fontSize: { xs: '1.25rem', md: '1.5rem' }
               }}
             >
-              {isRecruiter 
-                ? 'Access your recruiting dashboard and candidate pipeline.'
-                : 'Join our exclusive talent pool today.'}
+              Sign in to access your dashboard.
             </Typography>
           </Grid>
 
@@ -202,23 +190,21 @@ function Login() {
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
                 
-                {!isRecruiter && (
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Link 
-                      href="/register" 
-                      sx={{ 
-                        color: '#FF5A5A',
-                        textDecoration: 'none',
-                        fontFamily: 'Petrona, serif',
-                        '&:hover': {
-                          textDecoration: 'underline'
-                        }
-                      }}
-                    >
-                      Create account
-                    </Link>
-                  </Box>
-                )}
+                <Box sx={{ textAlign: 'center' }}>
+                  <Link
+                    href="/register"
+                    sx={{
+                      color: '#FF5A5A',
+                      textDecoration: 'none',
+                      fontFamily: 'Petrona, serif',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}
+                  >
+                    Create account
+                  </Link>
+                </Box>
               </Box>
         </Card>
       </Container>
