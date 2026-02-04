@@ -19,7 +19,7 @@ import {
   IconButton,
   Menu
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
@@ -49,6 +49,8 @@ function Candidates() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -92,12 +94,33 @@ function Candidates() {
     }
   }, [candidates, location.state, selectedCandidate]);
 
+  // Status labels for display
+  const statusLabels = {
+    pending: 'Pending',
+    registered: 'Registered',
+    accepted: 'Accepted',
+    rejected: 'Rejected',
+    scheduled_intake: 'Scheduled Intake',
+    completed_assessment: 'Completed Assessment',
+    uploaded_results: 'Uploaded Results',
+    uploaded_resume: 'Uploaded Resume',
+    completed_onboarding: 'Completed Onboarding'
+  };
+
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
     const locations = candidates
       .map(candidate => candidate.location)
       .filter(location => location && location.trim() !== '');
     return [...new Set(locations)].sort();
+  }, [candidates]);
+
+  // Get unique statuses for filter dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statuses = candidates
+      .map(candidate => candidate.status || 'pending')
+      .filter(status => status && status.trim() !== '');
+    return [...new Set(statuses)].sort();
   }, [candidates]);
 
   // Filter locations based on search query
@@ -108,23 +131,28 @@ function Candidates() {
     );
   }, [uniqueLocations, locationSearchQuery]);
 
-  // Filter candidates based on search query and location
+  // Filter candidates based on search query, location, and status
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch = searchQuery === '' ||
         candidate.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesLocation = selectedLocation === '' || 
+
+      const matchesLocation = selectedLocation === '' ||
         candidate.location === selectedLocation;
-      
-      return matchesSearch && matchesLocation;
+
+      const candidateStatus = candidate.status || 'pending';
+      const matchesStatus = selectedCandidateStatus === '' ||
+        candidateStatus === selectedCandidateStatus;
+
+      return matchesSearch && matchesLocation && matchesStatus;
     });
-  }, [candidates, searchQuery, selectedLocation]);
+  }, [candidates, searchQuery, selectedLocation, selectedCandidateStatus]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedLocation('');
+    setSelectedCandidateStatus('');
   };
 
   // Get status indicator - only blue dot for pending, nothing for accepted
@@ -481,11 +509,11 @@ function Candidates() {
                   ({filteredCandidates.length} of {candidates.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton 
-                    size="small" 
+                  <IconButton
+                    size="small"
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
                     title="Filter by location"
-                    sx={{ 
+                    sx={{
                       color: selectedLocation ? 'primary.main' : 'text.secondary',
                       backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
                       '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
@@ -493,42 +521,27 @@ function Candidates() {
                   >
                     <LocationOn fontSize="small" />
                   </IconButton>
-                  {(searchQuery || selectedLocation) && (
-                    <IconButton 
-                      size="small" 
+                  <IconButton
+                    size="small"
+                    onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+                    title="Filter by status"
+                    sx={{
+                      color: selectedCandidateStatus ? 'primary.main' : 'text.secondary',
+                      backgroundColor: selectedCandidateStatus ? 'primary.light' : 'transparent',
+                      '&:hover': { backgroundColor: selectedCandidateStatus ? 'primary.light' : 'grey.100' }
+                    }}
+                  >
+                    <LabelIcon fontSize="small" />
+                  </IconButton>
+                  {(searchQuery || selectedLocation || selectedCandidateStatus) && (
+                    <IconButton
+                      size="small"
                       onClick={clearFilters}
                       title="Clear filters"
                     >
                       <FilterListOff fontSize="small" />
                     </IconButton>
                   )}
-                </Box>
-              </Box>
-              
-              {/* Status Filter Tabs */}
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                    Status:
-                  </Typography>
-                  {['pending', 'all'].map((status) => (
-                    <Button
-                      key={status}
-                      size="small"
-                      variant={statusFilter === status ? 'contained' : 'outlined'}
-                      onClick={() => setStatusFilter(status)}
-                      sx={{
-                        minWidth: 'auto',
-                        px: 2,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                        textTransform: 'capitalize',
-                        borderRadius: 1
-                      }}
-                    >
-                      {status === 'all' ? 'All' : status}
-                    </Button>
-                  ))}
                 </Box>
               </Box>
               
@@ -583,7 +596,7 @@ function Candidates() {
                     No candidates found
                   </Typography>
                   <Typography variant="body2">
-                    {searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No candidates available'}
+                    {searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
                   </Typography>
                 </Box>
               ) : (
@@ -907,6 +920,48 @@ function Candidates() {
             ))
           )}
         </Box>
+      </Menu>
+
+      {/* Status Filter Menu */}
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={() => setStatusMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        slotProps={{
+          paper: {
+            sx: { width: 220 }
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setSelectedCandidateStatus('');
+            setStatusMenuAnchor(null);
+          }}
+          selected={selectedCandidateStatus === ''}
+        >
+          <em>All statuses</em>
+        </MenuItem>
+        {uniqueStatuses.map((status) => (
+          <MenuItem
+            key={status}
+            onClick={() => {
+              setSelectedCandidateStatus(status);
+              setStatusMenuAnchor(null);
+            }}
+            selected={selectedCandidateStatus === status}
+          >
+            {statusLabels[status] || status}
+          </MenuItem>
+        ))}
       </Menu>
 
       {/* Rejection Confirmation Dialog */}
