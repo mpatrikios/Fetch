@@ -135,7 +135,7 @@ function Candidates() {
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
       const matchesSearch = searchQuery === '' ||
-        candidate.name.toLowerCase().includes(searchQuery.toLowerCase());
+        candidate.full_name.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesLocation = selectedLocation === '' ||
         candidate.location === selectedLocation;
@@ -192,13 +192,14 @@ function Candidates() {
       // Use the candidate data from MongoDB
       setCandidateDetails({
         ...candidate,
+        full_name: candidate.full_name,
         jobTitle: candidate.Summary || 'Position information not available',
         location: candidate.location || 'Location not specified',
         skills: candidate.skills || [],
         cliftonStrengths: candidate.clifton_strengths || [],
         documents: [
-          { name: `${candidate.name.replace(/\s+/g, '_')} Resume`, type: 'resume' },
-          { name: `${candidate.name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }
+          { name: `${candidate.full_name.replace(/\s+/g, '_')} Resume`, type: 'resume' },
+          { name: `${candidate.full_name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }
         ],
         notes: candidate.notes || 'Enter candidate notes'
       });
@@ -307,7 +308,7 @@ function Candidates() {
       await candidateAPI.sendAssessment(selectedCandidate.id);
       
       // Show success message
-      setSuccessMessage(`${selectedCandidate.name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      setSuccessMessage(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
       
       // Clear candidate details and selection
       setSelectedCandidate(null);
@@ -333,7 +334,7 @@ function Candidates() {
   const handleEditClick = () => {
     if (!candidateDetails) return;
     setEditFormData({
-      full_name: candidateDetails.name || '',
+      full_name: candidateDetails.full_name || '',
       location: candidateDetails.location || '',
       summary: candidateDetails.Summary || candidateDetails.jobTitle || '',
       skills: (candidateDetails.skills || []).join(', ')
@@ -373,7 +374,7 @@ function Candidates() {
       // Update local state
       setCandidateDetails(prev => ({
         ...prev,
-        name: editFormData.full_name,
+        full_name: editFormData.full_name,
         location: editFormData.location,
         Summary: editFormData.summary,
         jobTitle: editFormData.summary,
@@ -383,14 +384,14 @@ function Candidates() {
       // Update the candidate in the list
       setCandidates(prev => prev.map(c =>
         c.id === selectedCandidate.id
-          ? { ...c, name: editFormData.full_name, location: editFormData.location, Summary: editFormData.summary, skills: skillsArray }
+          ? { ...c, full_name: editFormData.full_name, location: editFormData.location, Summary: editFormData.summary, skills: skillsArray }
           : c
       ));
 
       // Update selectedCandidate reference
       setSelectedCandidate(prev => ({
         ...prev,
-        name: editFormData.full_name,
+        full_name: editFormData.full_name,
         location: editFormData.location,
         Summary: editFormData.summary,
         skills: skillsArray
@@ -612,7 +613,7 @@ function Candidates() {
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {candidate.name}
+                            {candidate.full_name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             {candidate.email}
@@ -666,7 +667,7 @@ function Candidates() {
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                      {candidateDetails?.name}
+                      {candidateDetails?.full_name}
                     </Typography>
                     <IconButton
                       size="small"
@@ -976,7 +977,7 @@ function Candidates() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="reject-dialog-description">
-            Are you sure you want to reject <strong>{selectedCandidate?.name}</strong>? 
+            Are you sure you want to reject <strong>{selectedCandidate?.full_name}</strong>? 
             This action will remove them from the active candidates list and cannot be undone.
           </DialogContentText>
         </DialogContent>

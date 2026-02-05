@@ -88,7 +88,7 @@ async def list_candidates(
             
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
-                "name": candidate.get("full_name", "Unknown"),
+                "full_name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("email", candidate.get("Email", "")),
                 "location": candidate.get("location", candidate.get("Location", "")),
                 "Summary": candidate.get("Summary"),
