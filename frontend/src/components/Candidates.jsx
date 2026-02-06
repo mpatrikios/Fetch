@@ -192,7 +192,6 @@ function Candidates() {
       // Use the candidate data from MongoDB
       setCandidateDetails({
         ...candidate,
-        full_name: candidate.full_name,
         jobTitle: candidate.Summary || 'Position information not available',
         location: candidate.location || 'Location not specified',
         skills: candidate.skills || [],
