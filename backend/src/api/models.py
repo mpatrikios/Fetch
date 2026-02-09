@@ -8,7 +8,7 @@ from datetime import datetime
 class CandidateInfo(BaseModel):
     """ Recruiter's view of candidate profile """
     id: Optional[str] = None
-    name: str
+    full_name: str
     email: Optional[str] = None
     location: Optional[str] = None
     Summary: Optional[str] = None

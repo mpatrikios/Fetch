@@ -48,7 +48,7 @@ async def upload_resume(
         
         # Use the authenticated user's information
         user_id = current_user["_id"]
-        user_name = current_user["name"]
+        user_name = current_user["full_name"]
         user_email = current_user["email"]
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
@@ -82,7 +82,6 @@ async def upload_resume(
         standardized_data = standardize_resume(azure_result)
         
         # Add authenticated user's information and set lowercase field names (email, not Email) for consistency with authentication system
-        standardized_data["full_name"] = user_name
         standardized_data["email"] = user_email
         standardized_data["status"] = "uploaded_resume"  # Update status
         
@@ -113,7 +112,7 @@ async def upload_resume(
             success=True,
             message=f"Resume processed successfully",
             candidate={
-                "name": candidate_doc.get("full_name", user_name),
+                "full_name": candidate_doc.get("full_name", user_name),
                 "email": candidate_doc.get("email", candidate_doc.get("Email", "")),
                 "location": candidate_doc.get("location", candidate_doc.get("Location", "")),
                 "skills": candidate_doc.get("Skills", [])[:10],
