@@ -54,6 +54,7 @@ export const resumeAPI = {
 export const candidateAPI = {
   list: (status = 'all') => api.get('/candidates', { params: { status } }),
   updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
+  updateProfile: (candidateId, profileData) => api.put(`/candidates/${candidateId}/profile`, profileData),
   reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
   accept: (candidateId) => api.put(`/candidates/${candidateId}/accept`),
   sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
@@ -87,13 +88,13 @@ export const jobAPI = {
 
 // Matching endpoints
 export const matchingAPI = {
-  findMatches: (companyName, jobTitle, topK = 10, useCohort = true) =>
+  findMatches: (companyName, jobTitle, topK = 10, useCohort = true, config = {}) =>
     api.post('/matches/find', {
       company_name: companyName,
       job_title: jobTitle,
       top_k: topK,
       use_cohort: useCohort,
-    }),
+    }, config),
 };
 
 // Authentication endpoints

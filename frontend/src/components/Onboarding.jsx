@@ -171,7 +171,7 @@ function Onboarding() {
       {/* Welcome Section */}
       <Box mb={4}>
         <Typography variant="h4" gutterBottom>
-          Welcome, {user?.name}!
+          Welcome, {user?.full_name}!
         </Typography>
         <Typography variant="body1" color="text.secondary">
           {isOnboardingComplete 

@@ -1,9 +1,12 @@
 # Pydantic models for API responses related to candidates, jobs, and matching results.
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 # Candidate Models
+
 class CandidateInfo(BaseModel):
+    """ Recruiter's view of candidate profile """
     id: Optional[str] = None
     name: str
     email: Optional[str] = None
@@ -24,6 +27,56 @@ class CandidateListResponse(BaseModel):
     success: bool
     count: int
     candidates: List[CandidateInfo]
+
+
+# Candidate Self-Service Profile Models
+class CandidateProfileResponse(BaseModel):
+    """Candidate's view of their own profile - excludes
+    recruiter-only data and detailed resume info"""
+    id: str
+    full_name: str
+    email: str
+    location: Optional[str] = None
+    clifton_strengths: List[str] = []
+    status: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    """Request to update candidate's own profile"""
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    location: Optional[str] = Field(None, max_length=200)
+
+
+class ProfileUpdateResponse(BaseModel):
+    """Response after profile update"""
+    success: bool
+    message: str
+    profile: CandidateProfileResponse
+    embeddings_regenerated: bool = False
+
+
+# Account Settings Models
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+class PasswordChangeResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str
+    confirm_deletion: bool = False
+
+
+class AccountDeleteResponse(BaseModel):
+    success: bool
+    message: str
+    deletion_type: str
+
 
 # Job Models
 class JobInfo(BaseModel):
@@ -76,13 +129,19 @@ class MatchScores(BaseModel):
     profile: float
     culture: float
 
+class RelevantExperience(BaseModel):
+    role: str
+    company: Optional[str] = None
+
 class MatchExplanation(BaseModel):
     keyword_overlap: List[str]
     relevant_roles: List[str]
+    relevant_experience: List[RelevantExperience] = []
     candidate_companies: List[str]
     summary: str
 
 class MatchResult(BaseModel):
+    candidate_id: Optional[str] = None
     rank: Optional[int] = None
     candidate_name: str
     email: Optional[str] = None

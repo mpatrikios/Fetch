@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Box, 
   Grid, 
@@ -19,8 +19,8 @@ import {
   IconButton,
   Menu
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
   SectionHeader, 
@@ -35,6 +35,7 @@ import {
 
 function Candidates() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [candidateDetails, setCandidateDetails] = useState(null);
@@ -48,14 +49,63 @@ function Candidates() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [notesLastSaved, setNotesLastSaved] = useState({});
+  const [savedNotesContent, setSavedNotesContent] = useState({});
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    location: '',
+    summary: '',
+    skills: ''
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Refs for timeout cleanup
+  const timeoutRefs = useRef([]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     loadCandidates();
   }, [statusFilter]);
+
+  // Auto-select candidate if navigated from recommendations page
+  useEffect(() => {
+    const selectedCandidateId = location.state?.selectedCandidateId;
+    if (selectedCandidateId && candidates.length > 0 && !selectedCandidate) {
+      const candidate = candidates.find(c =>
+        c.id === selectedCandidateId || c.candidate_id === selectedCandidateId
+      );
+      if (candidate) {
+        handleCandidateSelect(candidate);
+      }
+    }
+  }, [candidates, location.state, selectedCandidate]);
+
+  // Status labels for display
+  const statusLabels = {
+    pending: 'Pending',
+    registered: 'Registered',
+    accepted: 'Accepted',
+    rejected: 'Rejected',
+    scheduled_intake: 'Scheduled Intake',
+    completed_assessment: 'Completed Assessment',
+    uploaded_results: 'Uploaded Results',
+    uploaded_resume: 'Uploaded Resume',
+    completed_onboarding: 'Completed Onboarding'
+  };
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -65,23 +115,44 @@ function Candidates() {
     return [...new Set(locations)].sort();
   }, [candidates]);
 
-  // Filter candidates based on search query and location
+  // Get unique statuses for filter dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statuses = candidates
+      .map(candidate => candidate.status || 'pending')
+      .filter(status => status && status.trim() !== '');
+    return [...new Set(statuses)].sort();
+  }, [candidates]);
+
+  // Filter locations based on search query
+  const filteredLocations = useMemo(() => {
+    if (!locationSearchQuery) return uniqueLocations;
+    return uniqueLocations.filter(loc =>
+      loc.toLowerCase().includes(locationSearchQuery.toLowerCase())
+    );
+  }, [uniqueLocations, locationSearchQuery]);
+
+  // Filter candidates based on search query, location, and status
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
-      const matchesSearch = searchQuery === '' || 
+      const matchesSearch = searchQuery === '' ||
         candidate.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesLocation = selectedLocation === '' || 
+
+      const matchesLocation = selectedLocation === '' ||
         candidate.location === selectedLocation;
-      
-      return matchesSearch && matchesLocation;
+
+      const candidateStatus = candidate.status || 'pending';
+      const matchesStatus = selectedCandidateStatus === '' ||
+        candidateStatus === selectedCandidateStatus;
+
+      return matchesSearch && matchesLocation && matchesStatus;
     });
-  }, [candidates, searchQuery, selectedLocation]);
+  }, [candidates, searchQuery, selectedLocation, selectedCandidateStatus]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedLocation('');
+    setSelectedCandidateStatus('');
   };
 
   // Get status indicator - only blue dot for pending, nothing for accepted
@@ -138,6 +209,13 @@ function Candidates() {
         ...prev,
         [candidate.id]: currentNotes
       }));
+      // Initialize saved content if not already set (to track unsaved changes)
+      if (savedNotesContent[candidate.id] === undefined) {
+        setSavedNotesContent(prev => ({
+          ...prev,
+          [candidate.id]: currentNotes
+        }));
+      }
     } catch (err) {
       console.error('Load candidate details error:', err);
     } finally {
@@ -148,12 +226,21 @@ function Candidates() {
   // notes update handler
   const handleNotesUpdate = async (candidateId) => {
     if (!candidateId) return;
-    
+
     try {
       const notes = candidateNotes[candidateId] || '';
       await candidateAPI.updateNotes(candidateId, notes);
       // Update local state
       setCandidateDetails(prev => (prev && prev.id === candidateId ? { ...prev, notes } : prev));
+      // Record the save timestamp and saved content
+      setNotesLastSaved(prev => ({
+        ...prev,
+        [candidateId]: new Date()
+      }));
+      setSavedNotesContent(prev => ({
+        ...prev,
+        [candidateId]: notes
+      }));
       // Clear any previous error on successful save
       setErrorMessage('');
     } catch (err) {
@@ -196,7 +283,7 @@ function Candidates() {
       console.error('Reject candidate error:', err);
       setErrorMessage('Failed to reject candidate. Please try again.');
       // Auto-hide error message after 5 seconds
-      setTimeout(() => setErrorMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setRejecting(false);
     }
@@ -231,14 +318,92 @@ function Candidates() {
       loadCandidates();
       
       // Auto-hide success message after 5 seconds
-      setTimeout(() => setSuccessMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
       console.error('Accept and send assessment error:', err);
       setErrorMessage('Failed to accept candidate or send assessment. Please try again.');
       // Auto-hide error message after 5 seconds
-      setTimeout(() => setErrorMessage(''), 5000);
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // Open edit dialog with current candidate data
+  const handleEditClick = () => {
+    if (!candidateDetails) return;
+    setEditFormData({
+      full_name: candidateDetails.name || '',
+      location: candidateDetails.location || '',
+      summary: candidateDetails.Summary || candidateDetails.jobTitle || '',
+      skills: (candidateDetails.skills || []).join(', ')
+    });
+    setShowEditDialog(true);
+  };
+
+  // Handle edit form field changes
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    if (!selectedCandidate) return;
+
+    try {
+      setSaving(true);
+      setErrorMessage('');
+
+      // Parse skills from comma-separated string
+      const skillsArray = editFormData.skills
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      await candidateAPI.updateProfile(selectedCandidate.id, {
+        full_name: editFormData.full_name,
+        location: editFormData.location,
+        summary: editFormData.summary,
+        skills: skillsArray
+      });
+
+      // Update local state
+      setCandidateDetails(prev => ({
+        ...prev,
+        name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        jobTitle: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      // Update the candidate in the list
+      setCandidates(prev => prev.map(c =>
+        c.id === selectedCandidate.id
+          ? { ...c, name: editFormData.full_name, location: editFormData.location, Summary: editFormData.summary, skills: skillsArray }
+          : c
+      ));
+
+      // Update selectedCandidate reference
+      setSelectedCandidate(prev => ({
+        ...prev,
+        name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Profile updated successfully!');
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setErrorMessage('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -344,11 +509,11 @@ function Candidates() {
                   ({filteredCandidates.length} of {candidates.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton 
-                    size="small" 
+                  <IconButton
+                    size="small"
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
                     title="Filter by location"
-                    sx={{ 
+                    sx={{
                       color: selectedLocation ? 'primary.main' : 'text.secondary',
                       backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
                       '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
@@ -356,42 +521,27 @@ function Candidates() {
                   >
                     <LocationOn fontSize="small" />
                   </IconButton>
-                  {(searchQuery || selectedLocation) && (
-                    <IconButton 
-                      size="small" 
+                  <IconButton
+                    size="small"
+                    onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+                    title="Filter by status"
+                    sx={{
+                      color: selectedCandidateStatus ? 'primary.main' : 'text.secondary',
+                      backgroundColor: selectedCandidateStatus ? 'primary.light' : 'transparent',
+                      '&:hover': { backgroundColor: selectedCandidateStatus ? 'primary.light' : 'grey.100' }
+                    }}
+                  >
+                    <LabelIcon fontSize="small" />
+                  </IconButton>
+                  {(searchQuery || selectedLocation || selectedCandidateStatus) && (
+                    <IconButton
+                      size="small"
                       onClick={clearFilters}
                       title="Clear filters"
                     >
                       <FilterListOff fontSize="small" />
                     </IconButton>
                   )}
-                </Box>
-              </Box>
-              
-              {/* Status Filter Tabs */}
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                    Status:
-                  </Typography>
-                  {['pending', 'all'].map((status) => (
-                    <Button
-                      key={status}
-                      size="small"
-                      variant={statusFilter === status ? 'contained' : 'outlined'}
-                      onClick={() => setStatusFilter(status)}
-                      sx={{
-                        minWidth: 'auto',
-                        px: 2,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                        textTransform: 'capitalize',
-                        borderRadius: 1
-                      }}
-                    >
-                      {status === 'all' ? 'All' : status}
-                    </Button>
-                  ))}
                 </Box>
               </Box>
               
@@ -446,7 +596,7 @@ function Candidates() {
                     No candidates found
                   </Typography>
                   <Typography variant="body2">
-                    {searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No candidates available'}
+                    {searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
                   </Typography>
                 </Box>
               ) : (
@@ -514,9 +664,19 @@ function Candidates() {
               <DetailPanel>
                 {/* Candidate Header */}
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                    {candidateDetails?.name}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                      {candidateDetails?.name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleEditClick}
+                      title="Edit candidate profile"
+                      sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {candidateDetails?.email}
                   </Typography>
@@ -620,8 +780,37 @@ function Candidates() {
                     value={candidateNotes[selectedCandidate?.id] || ''}
                     onChange={(e) => updateCandidateNotes(selectedCandidate?.id, e.target.value)}
                     placeholder="Enter candidate notes"
-                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)} // saves to mongo when the user finishes editing
+                    onBlur={() => handleNotesUpdate(selectedCandidate?.id)}
                   />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, mt: 1 }}>
+                    {(() => {
+                      const currentNotes = candidateNotes[selectedCandidate?.id] || '';
+                      const savedNotes = savedNotesContent[selectedCandidate?.id];
+                      const hasUnsavedChanges = savedNotes !== undefined && currentNotes !== savedNotes;
+
+                      if (hasUnsavedChanges) {
+                        return (
+                          <Typography variant="caption" color="warning.main">
+                            Unsaved changes
+                          </Typography>
+                        );
+                      } else if (notesLastSaved[selectedCandidate?.id]) {
+                        return (
+                          <Typography variant="caption" color="text.secondary">
+                            Last saved at {notesLastSaved[selectedCandidate?.id].toLocaleTimeString()}
+                          </Typography>
+                        );
+                      }
+                      return null;
+                    })()}
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleNotesUpdate(selectedCandidate?.id)}
+                    >
+                      Save Notes
+                    </Button>
+                  </Box>
                 </Box>
 
                 {/* Action Buttons */}
@@ -651,7 +840,10 @@ function Candidates() {
       <Menu
         anchorEl={locationMenuAnchor}
         open={Boolean(locationMenuAnchor)}
-        onClose={() => setLocationMenuAnchor(null)}
+        onClose={() => {
+          setLocationMenuAnchor(null);
+          setLocationSearchQuery('');
+        }}
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'right',
@@ -660,26 +852,114 @@ function Candidates() {
           vertical: 'top',
           horizontal: 'right',
         }}
+        slotProps={{
+          paper: {
+            sx: { width: 280 }
+          }
+        }}
       >
-        <MenuItem 
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem 
-            key={location} 
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
+        <Box sx={{ px: 1, py: 1, position: 'sticky', top: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search locations..."
+            value={locationSearchQuery}
+            onChange={(e) => setLocationSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: locationSearchQuery && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setLocationSearchQuery('')}
+                    edge="end"
+                  >
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
-            selected={selectedLocation === location}
+          />
+        </Box>
+        <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+          <MenuItem
+            onClick={() => {
+              setSelectedLocation('');
+              setLocationMenuAnchor(null);
+              setLocationSearchQuery('');
+            }}
+            selected={selectedLocation === ''}
           >
-            {location}
+            <em>All locations</em>
+          </MenuItem>
+          {filteredLocations.length === 0 ? (
+            <MenuItem disabled>
+              <Typography variant="body2" color="text.secondary">
+                No locations found
+              </Typography>
+            </MenuItem>
+          ) : (
+            filteredLocations.map((location) => (
+              <MenuItem
+                key={location}
+                onClick={() => {
+                  setSelectedLocation(location);
+                  setLocationMenuAnchor(null);
+                  setLocationSearchQuery('');
+                }}
+                selected={selectedLocation === location}
+              >
+                {location}
+              </MenuItem>
+            ))
+          )}
+        </Box>
+      </Menu>
+
+      {/* Status Filter Menu */}
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={() => setStatusMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        slotProps={{
+          paper: {
+            sx: { width: 220 }
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setSelectedCandidateStatus('');
+            setStatusMenuAnchor(null);
+          }}
+          selected={selectedCandidateStatus === ''}
+        >
+          <em>All statuses</em>
+        </MenuItem>
+        {uniqueStatuses.map((status) => (
+          <MenuItem
+            key={status}
+            onClick={() => {
+              setSelectedCandidateStatus(status);
+              setStatusMenuAnchor(null);
+            }}
+            selected={selectedCandidateStatus === status}
+          >
+            {statusLabels[status] || status}
           </MenuItem>
         ))}
       </Menu>
@@ -711,6 +991,74 @@ function Candidates() {
             disabled={rejecting}
           >
             {rejecting ? 'Rejecting...' : 'Reject Candidate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="edit-dialog-title"
+      >
+        <DialogTitle id="edit-dialog-title">
+          Edit Candidate Profile
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Full Name"
+              fullWidth
+              value={editFormData.full_name}
+              onChange={(e) => handleEditFormChange('full_name', e.target.value)}
+            />
+            <TextField
+              label="Location"
+              fullWidth
+              value={editFormData.location}
+              onChange={(e) => handleEditFormChange('location', e.target.value)}
+            />
+            <TextField
+              label="Summary / Position"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+            <TextField
+              label="Skills"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.skills}
+              onChange={(e) => handleEditFormChange('skills', e.target.value)}
+              helperText="Enter skills separated by commas"
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveProfile}
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>

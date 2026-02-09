@@ -81,9 +81,9 @@ async def upload_resume(
         # standardize and upsert candidate data
         standardized_data = standardize_resume(azure_result)
         
-        # Add authenticated user's information
-        standardized_data["full_name"] = user_name  
-        standardized_data["Email"] = user_email  
+        # Add authenticated user's information and set lowercase field names (email, not Email) for consistency with authentication system
+        standardized_data["full_name"] = user_name
+        standardized_data["email"] = user_email
         standardized_data["status"] = "uploaded_resume"  # Update status
         
         # Use existing upsert_candidate function with user_id parameter
@@ -114,8 +114,8 @@ async def upload_resume(
             message=f"Resume processed successfully",
             candidate={
                 "name": candidate_doc.get("full_name", user_name),
-                "email": candidate_doc.get("Email"),
-                "location": candidate_doc.get("Location"),
+                "email": candidate_doc.get("email", candidate_doc.get("Email", "")),
+                "location": candidate_doc.get("location", candidate_doc.get("Location", "")),
                 "skills": candidate_doc.get("Skills", [])[:10],
                 "has_embeddings": "profile_embedding" in candidate_doc
             }

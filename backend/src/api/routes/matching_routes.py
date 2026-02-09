@@ -1,5 +1,5 @@
 # API routes for matching candidates to job descriptions.
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 import sys
@@ -12,9 +12,10 @@ from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import get_job_description
 from src.services.matching.cosine_similarity import profile_matching_candidate
 from src.api.models import MatchRequest, MatchResponse
+from src.api.auth_utils import get_current_mlg_recruiter
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 # API endpoint to find matching candidates for a job description
 @router.post("/matches/find", response_model=MatchResponse)
@@ -63,10 +64,11 @@ async def find_matches(request: MatchRequest):
             
             # Build formatted match entry
             formatted_match = {
+                "candidate_id": str(candidate.get("_id")) if candidate.get("_id") else None,
                 "rank": rank if not request.use_cohort else None,
                 "candidate_name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("Email"),
-                "location": candidate.get("Location"),
+                "email": candidate.get("email", candidate.get("Email", "")),
+                "location": candidate.get("location", candidate.get("Location", "")),
                 "distance_km": match.get("distance_km"),
                 "scores": None if request.use_cohort else {
                     "combined": round(match["combined_similarity_score"], 3),
@@ -76,6 +78,7 @@ async def find_matches(request: MatchRequest):
                 "explanation": {
                     "keyword_overlap": match.get("explanation", {}).get("keyword_overlap", [])[:10],
                     "relevant_roles": match.get("explanation", {}).get("relevant_roles", [])[:3],
+                    "relevant_experience": match.get("explanation", {}).get("relevant_experience", [])[:3],
                     "candidate_companies": match.get("explanation", {}).get("candidate_companies", [])[:3],
                     "summary": match.get("explanation", {}).get("summary", "No summary available")
                 },

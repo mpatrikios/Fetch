@@ -2,16 +2,15 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional
 
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
-from src.api.routes.auth_routes import get_current_user
-from src.api.auth_utils import verify_mlg_recruiter_role
+from src.api.auth_utils import get_current_mlg_recruiter
 from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 def validate_object_id(candidate_id: str) -> None:
     """Validate that candidate_id is a valid ObjectId format."""
@@ -27,12 +26,8 @@ def validate_object_id(candidate_id: str) -> None:
 # API endpoint to list candidates with basic info
 @router.get("/candidates", response_model=CandidateListResponse)
 async def list_candidates(
-    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all"),
-    current_user: Dict = Depends(get_current_user)
+    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all")
 ):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
     try:
         # Define common query patterns
         pending_query = {
@@ -65,8 +60,10 @@ async def list_candidates(
             {
                 "_id": 1,
                 "full_name": 1,
-                "Email": 1,
-                "Location": 1,
+                "email": 1,
+                "Email": 1,  # Legacy field support
+                "location": 1,
+                "Location": 1,  # Legacy field support
                 "Summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
@@ -92,8 +89,8 @@ async def list_candidates(
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
                 "name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("Email"),
-                "location": candidate.get("Location"),
+                "email": candidate.get("email", candidate.get("Email", "")),
+                "location": candidate.get("location", candidate.get("Location", "")),
                 "Summary": candidate.get("Summary"),
                 "skills": candidate.get("Skills", []),
                 "clifton_strengths": clifton_strengths_names,
@@ -114,13 +111,7 @@ async def list_candidates(
 
 # API endpoint to reject a candidate
 @router.put("/candidates/{candidate_id}/reject")
-async def reject_candidate(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def reject_candidate(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -149,13 +140,7 @@ async def reject_candidate(
 
 # API endpoint to accept a candidate
 @router.put("/candidates/{candidate_id}/accept")
-async def accept_candidate(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def accept_candidate(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -184,13 +169,7 @@ async def accept_candidate(
 
 # API endpoint to send assessment to candidate (placeholder)
 @router.post("/candidates/{candidate_id}/send-assessment")
-async def send_assessment(
-    candidate_id: str,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def send_assessment(candidate_id: str):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
@@ -229,16 +208,52 @@ async def send_assessment(
         logger.error(f"Failed to send assessment to candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# API endpoint to update candidate profile (for MLG recruiters)
+@router.put("/candidates/{candidate_id}/profile")
+async def update_candidate_profile(candidate_id: str, profile_data: dict):
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
+
+    try:
+        from bson import ObjectId
+
+        # Extract allowed fields from the request
+        update_fields = {}
+
+        if "full_name" in profile_data:
+            update_fields["full_name"] = profile_data["full_name"]
+        if "location" in profile_data:
+            update_fields["location"] = profile_data["location"]
+        if "summary" in profile_data:
+            update_fields["Summary"] = profile_data["summary"]
+        if "skills" in profile_data:
+            update_fields["Skills"] = profile_data["skills"]
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+
+        update_fields["profile_updated_at"] = datetime.now(timezone.utc)
+
+        result = mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id)},
+            {"$set": update_fields}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+
+        logger.info(f"Profile updated for candidate {candidate_id}")
+        return {"success": True, "message": "Profile updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update profile for candidate {candidate_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # API endpoint to update candidate notes
 @router.put("/candidates/{candidate_id}/notes")
-async def update_candidate_notes(
-    candidate_id: str, 
-    notes_data: dict,
-    current_user: Dict = Depends(get_current_user)
-):
-    # Verify user has mlg-recruiter role
-    verify_mlg_recruiter_role(current_user)
-    
+async def update_candidate_notes(candidate_id: str, notes_data: dict):
     # Validate ObjectId format
     validate_object_id(candidate_id)
     
