@@ -45,6 +45,7 @@ async def find_matches(request: MatchRequest):
             mongo_connection.database,
             job_doc,
             top_k=request.top_k or 10,
+            top_k_percent=request.top_k_percent or 0.75,
             use_cohort=request.use_cohort or False
         )
         
@@ -106,7 +107,7 @@ async def find_matches(request: MatchRequest):
 
 # endpoint to get matches via GET request using URL. Might be useful for testing or caching.
 @router.get("/matches/job/{company_name}/{job_title}")
-async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, use_cohort: bool = True):
+async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, top_k_percent: float = 0.75, use_cohort: bool = True):
     """
     Alternative GET endpoint for finding matches.
     Useful for direct URL access or caching.
@@ -115,6 +116,7 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, us
         company_name=company_name,
         job_title=job_title,
         top_k=top_k,
+        top_k_percent=top_k_percent,
         use_cohort=use_cohort
     )
     return await find_matches(request)

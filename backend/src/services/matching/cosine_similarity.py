@@ -94,7 +94,7 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
-def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True):
+def profile_matching_candidate(db, job_doc, top_k: int = 10, top_k_percent: float = 0.75, use_cohort: bool = True):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
@@ -109,6 +109,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
         db: The database connection object, expected to have a "Candidates" collection.
         job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
+        top_k_percent (float, optional): If specified, takes all candidates above this percentile of combined similarity instead of a fixed top_k. Defaults to 0.75.
         use_cohort (bool, optional): If True, randomizes the order of top_k candidates to reduce ranking bias. Defaults to True.
 
     Returns:
@@ -173,8 +174,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
 
     # Sort and take top_k candidates
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
-    top_candidates = scored[:top_k]
-
+    # top_candidates = scored[:top_k]
+    scores = [x["combined_similarity_score"] for x in scored]
+    top_k_percent_threshold = np.quantile(scores, 0.75)  # Take top 25% candidates based on combined similarity
+    top_candidates = [c for c in scored if c["combined_similarity_score"] >= top_k_percent_threshold]
     # Generate LLM explanations ONLY for top_k candidates (slow, but limited)
     for match in top_candidates:
         try:
