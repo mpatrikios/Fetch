@@ -186,3 +186,40 @@ class DashboardStatsResponse(BaseModel):
     candidates: CandidateStats
     jobs: JobStats
     clients: ClientStats
+
+
+# Client Models
+class ClientInfo(BaseModel):
+    """Basic client information for list view"""
+    id: str
+    company_name: str
+    status: Optional[str] = None
+    contact_email: Optional[str] = None
+    locations: List[str] = []
+    posted_jobs_count: int = 0
+
+
+class ClientDetails(BaseModel):
+    """Full client details for detail view"""
+    id: str
+    company_name: str
+    status: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_number: Optional[str] = None
+    contact_recruiter: Optional[str] = None
+    summary: Optional[str] = None
+    locations: List[str] = []
+    posted_jobs: List[str] = []
+
+
+class ClientListResponse(BaseModel):
+    """Response for listing clients"""
+    success: bool
+    count: int
+    clients: List[ClientInfo]
+
+
+class ClientDetailsResponse(BaseModel):
+    """Response for single client details"""
+    success: bool
+    client: ClientDetails
