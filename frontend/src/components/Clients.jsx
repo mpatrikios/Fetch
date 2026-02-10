@@ -43,7 +43,7 @@ function Clients() {
 
   useEffect(() => {
     loadClients();
-  }, [statusFilter]);
+  }, []);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -59,7 +59,7 @@ function Clients() {
     return [...new Set(statuses)].sort();
   }, [clients]);
 
-  // Filter clients based on search query and location
+  // Filter clients based on search query, location, and status
   const filteredClients = useMemo(() => {
     return clients.filter(client => {
       const matchesSearch = searchQuery === '' ||
@@ -68,9 +68,12 @@ function Clients() {
       const matchesLocation = selectedLocation === '' ||
         (client.locations && client.locations.includes(selectedLocation));
 
-      return matchesSearch && matchesLocation;
+      const matchesStatus = statusFilter === '' ||
+        client.status === statusFilter;
+
+      return matchesSearch && matchesLocation && matchesStatus;
     });
-  }, [clients, searchQuery, selectedLocation]);
+  }, [clients, searchQuery, selectedLocation, statusFilter]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -95,7 +98,7 @@ function Clients() {
   const loadClients = async () => {
     try {
       setLoading(true);
-      const response = await clientAPI.list(statusFilter || null);
+      const response = await clientAPI.list();
       setClients(response.data.clients || []);
     } catch (err) {
       setError('Failed to load clients');

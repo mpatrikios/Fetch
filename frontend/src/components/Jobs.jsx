@@ -130,28 +130,6 @@ function Jobs() {
     }
   };
 
-  // const handleJobSelect = useCallback(async (job) => {
-  //   if (selectedJob?.job_id === job.job_id) return;
-
-  //   setSelectedJob(job);
-  //   setDetailsLoading(true);
-  //   setJobDetails(null);
-  //   setExpandedSummary(false);
-  //   setExpandedResponsibilities(false);
-  //   setExpandedQualifications(false);
-  //   setExpandedCultureIndex(false);
-
-  //   try {
-  //     const response = await jobAPI.getDetails(job.company, job.title);
-  //     setJobDetails(response.data.job);
-  //   } catch (err) {
-  //     console.error('Load job details error:', err);
-  //     setError('Failed to load job details');
-  //   } finally {
-  //     setDetailsLoading(false);
-  //   }
-  // }, [selectedJob]);
-
   const handleFindRecommendations = () => {
     if (!jobDetails) return;
     navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/matches`);
