@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Box, 
   Grid, 
@@ -81,7 +81,7 @@ function Candidates() {
         handleCandidateSelect(candidate);
       }
     }
-  }, [candidates, location.state, selectedCandidate]);
+  }, [candidates, location.state, selectedCandidate, handleCandidateSelect]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -135,7 +135,7 @@ function Candidates() {
     }
   };
 
-  const handleCandidateSelect = async (candidate) => {
+  const handleCandidateSelect = useCallback(async (candidate) => {
     if (selectedCandidate?.id === candidate.id) return;
     
     setSelectedCandidate(candidate);
@@ -176,7 +176,7 @@ function Candidates() {
     } finally {
       setDetailsLoading(false);
     }
-  };
+  }, [selectedCandidate, candidateNotes, savedNotesContent]);
 
   // notes update handler
   const handleNotesUpdate = async (candidateId) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -18,7 +18,7 @@ import {
   ListItemText
 } from '@mui/material';
 import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Work, Description } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { jobAPI } from '../utils/api';
 import {
   SectionHeader,
@@ -30,6 +30,7 @@ import {
 
 function Jobs() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -47,6 +48,46 @@ function Jobs() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  const handleJobSelect = useCallback(async (job) => {
+    if (selectedJob?.job_id === job.job_id) return;
+
+    setSelectedJob(job);
+    setDetailsLoading(true);
+    setJobDetails(null);
+    setExpandedSummary(false);
+    setExpandedResponsibilities(false);
+    setExpandedQualifications(false);
+    setExpandedCultureIndex(false);
+
+    try {
+      const response = await jobAPI.getDetails(job.company, job.title);
+      setJobDetails(response.data.job);
+    } catch (err) {
+      console.error('Load job details error:', err);
+      setError('Failed to load job details');
+    } finally {
+      setDetailsLoading(false);
+    }
+  }, [selectedJob]);
+
+  /* automatically select job if navigated to by the clients page */
+  useEffect(() => {
+    const { selectedJobId, selectedJobTitle, selectedCompany } = location.state || {};
+    if (jobs.length > 0 && !selectedJob) {
+      let job = null;
+      if (selectedJobId) {
+        job = jobs.find(j => j.id === selectedJobId || j.job_id === selectedJobId);
+      } else if (selectedJobTitle && selectedCompany) {
+        job = jobs.find(j =>
+          j.title === selectedJobTitle && j.company === selectedCompany
+        );
+      }
+      if (job) {
+        handleJobSelect(job);
+      }
+    }
+  }, [jobs, selectedJob, handleJobSelect, location.state]);
 
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
@@ -89,27 +130,27 @@ function Jobs() {
     }
   };
 
-  const handleJobSelect = async (job) => {
-    if (selectedJob?.job_id === job.job_id) return;
+  // const handleJobSelect = useCallback(async (job) => {
+  //   if (selectedJob?.job_id === job.job_id) return;
 
-    setSelectedJob(job);
-    setDetailsLoading(true);
-    setJobDetails(null);
-    setExpandedSummary(false);
-    setExpandedResponsibilities(false);
-    setExpandedQualifications(false);
-    setExpandedCultureIndex(false);
+  //   setSelectedJob(job);
+  //   setDetailsLoading(true);
+  //   setJobDetails(null);
+  //   setExpandedSummary(false);
+  //   setExpandedResponsibilities(false);
+  //   setExpandedQualifications(false);
+  //   setExpandedCultureIndex(false);
 
-    try {
-      const response = await jobAPI.getDetails(job.company, job.title);
-      setJobDetails(response.data.job);
-    } catch (err) {
-      console.error('Load job details error:', err);
-      setError('Failed to load job details');
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
+  //   try {
+  //     const response = await jobAPI.getDetails(job.company, job.title);
+  //     setJobDetails(response.data.job);
+  //   } catch (err) {
+  //     console.error('Load job details error:', err);
+  //     setError('Failed to load job details');
+  //   } finally {
+  //     setDetailsLoading(false);
+  //   }
+  // }, [selectedJob]);
 
   const handleFindRecommendations = () => {
     if (!jobDetails) return;

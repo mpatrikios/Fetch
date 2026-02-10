@@ -59,6 +59,15 @@ export const candidateAPI = {
   sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
 };
 
+// Client endpoints
+export const clientAPI = {
+  list: (status = null) => {
+    const params = status ? { status } : {};
+    return api.get('/clients', { params });
+  },
+  getDetails: (clientId) => api.get(`/clients/${clientId}`),
+};
+
 export const cliftonStrengthsAPI = {
   upload: (file) => {
     const formData = new FormData();

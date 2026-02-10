@@ -219,7 +219,7 @@ async def login(user_credentials: UserLogin):
     
     user_response = {
         "id": str(user["_id"]),
-        "name": user["name"],
+        "name": user.get("name", user.get("full_name", "")),
         "email": user["email"],
         "role": user.get("role", "user"),
         "status": user.get("status", "registered")
@@ -236,7 +236,7 @@ async def login(user_credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     return {
         "id": current_user["_id"],
-        "name": current_user["name"],
+        "name": current_user.get("name", current_user.get("full_name", "")),
         "email": current_user["email"],
         "role": current_user.get("role", "user"),
         "status": current_user.get("status", "registered")
