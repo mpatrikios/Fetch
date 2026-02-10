@@ -54,6 +54,7 @@ export const resumeAPI = {
 export const candidateAPI = {
   list: (status = 'all') => api.get('/candidates', { params: { status } }),
   updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
+  updateProfile: (candidateId, profileData) => api.put(`/candidates/${candidateId}/profile`, profileData),
   reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
   accept: (candidateId) => api.put(`/candidates/${candidateId}/accept`),
   sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),

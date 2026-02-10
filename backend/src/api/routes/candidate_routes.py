@@ -208,6 +208,49 @@ async def send_assessment(candidate_id: str):
         logger.error(f"Failed to send assessment to candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# API endpoint to update candidate profile (for MLG recruiters)
+@router.put("/candidates/{candidate_id}/profile")
+async def update_candidate_profile(candidate_id: str, profile_data: dict):
+    # Validate ObjectId format
+    validate_object_id(candidate_id)
+
+    try:
+        from bson import ObjectId
+
+        # Extract allowed fields from the request
+        update_fields = {}
+
+        if "full_name" in profile_data:
+            update_fields["full_name"] = profile_data["full_name"]
+        if "location" in profile_data:
+            update_fields["location"] = profile_data["location"]
+        if "summary" in profile_data:
+            update_fields["Summary"] = profile_data["summary"]
+        if "skills" in profile_data:
+            update_fields["Skills"] = profile_data["skills"]
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+
+        update_fields["profile_updated_at"] = datetime.now(timezone.utc)
+
+        result = mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id)},
+            {"$set": update_fields}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Candidate not found")
+
+        logger.info(f"Profile updated for candidate {candidate_id}")
+        return {"success": True, "message": "Profile updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update profile for candidate {candidate_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # API endpoint to update candidate notes
 @router.put("/candidates/{candidate_id}/notes")
 async def update_candidate_notes(candidate_id: str, notes_data: dict):
