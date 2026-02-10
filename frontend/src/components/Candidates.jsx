@@ -92,7 +92,7 @@ function Candidates() {
         handleCandidateSelect(candidate);
       }
     }
-  }, [candidates, location.state, selectedCandidate, handleCandidateSelect]);
+  }, [candidates, location.state, selectedCandidate]);
 
   // Status labels for display
   const statusLabels = {
