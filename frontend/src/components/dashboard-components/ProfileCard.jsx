@@ -25,11 +25,11 @@ function ProfileCard({ user }) {
             bgcolor: 'primary.main' 
           }}
         >
-          {user?.name?.charAt(0) || 'C'}
+          {user?.full_name?.charAt(0) || 'C'}
         </Avatar>
         <Box>
           <Typography variant="h6" gutterBottom>
-            {user?.name || 'Candidate Name'}
+            {user?.full_name || 'Candidate Name'}
           </Typography>
         </Box>
       </Box>

@@ -15,7 +15,7 @@ import { authAPI } from '../utils/api';
 function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
+    full_name: '',
     email: '',
     password: '',
     confirmPassword: ''
@@ -31,7 +31,7 @@ function Register() {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.password) {
+    if (!formData.full_name || !formData.email || !formData.password) {
       setError('All fields are required');
       return false;
     }
@@ -67,7 +67,7 @@ function Register() {
 
     try {
       const response = await authAPI.register({
-        name: formData.name,
+        full_name: formData.full_name,
         email: formData.email,
         password: formData.password
       });
@@ -124,12 +124,12 @@ function Register() {
               margin="normal"
               required
               fullWidth
-              id="name"
+              id="full_name"
               label="Full Name"
-              name="name"
+              name="full_name"
               autoComplete="name"
               autoFocus
-              value={formData.name}
+              value={formData.full_name}
               onChange={handleChange}
               disabled={loading}
             />
@@ -176,7 +176,7 @@ function Register() {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={loading || !formData.name || !formData.email || !formData.password || !formData.confirmPassword}
+              disabled={loading || !formData.full_name || !formData.email || !formData.password || !formData.confirmPassword}
             >
               {loading ? 'Creating Account...' : 'Sign Up'}
             </Button>

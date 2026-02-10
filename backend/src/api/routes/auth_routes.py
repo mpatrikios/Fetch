@@ -98,7 +98,7 @@ PASSWORD_SALT = os.getenv("PASSWORD_SALT", "fetch-recruitment-salt")
 
 
 class UserRegister(BaseModel):
-    name: str
+    full_name: str
     email: EmailStr
     password: str
 
@@ -170,7 +170,7 @@ async def register(user_data: UserRegister):
     hashed_password = hash_password_sha256(user_data.password)
     
     user_dict = {
-        "name": user_data.name,
+        "full_name": user_data.full_name,
         "email": user_data.email,
         "password": hashed_password,
         "created_at": datetime.now(timezone.utc),
@@ -188,7 +188,7 @@ async def register(user_data: UserRegister):
     
     user_response = {
         "id": user_dict["_id"],
-        "name": user_dict["name"],
+        "full_name": user_dict["full_name"],
         "email": user_dict["email"],
         "role": user_dict["role"],
         "status": user_dict["status"]
@@ -219,7 +219,7 @@ async def login(user_credentials: UserLogin):
     
     user_response = {
         "id": str(user["_id"]),
-        "name": user.get("name", user.get("full_name", "")),
+        "full_name": user["full_name"],
         "email": user["email"],
         "role": user.get("role", "user"),
         "status": user.get("status", "registered")
@@ -236,7 +236,7 @@ async def login(user_credentials: UserLogin):
 async def get_me(current_user: dict = Depends(get_current_user)):
     return {
         "id": current_user["_id"],
-        "name": current_user.get("name", current_user.get("full_name", "")),
+        "full_name": current_user["full_name"],
         "email": current_user["email"],
         "role": current_user.get("role", "user"),
         "status": current_user.get("status", "registered")
