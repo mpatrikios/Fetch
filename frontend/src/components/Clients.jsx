@@ -13,9 +13,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  List,
-  ListItem,
-  ListItemText
+  List
 } from '@mui/material';
 import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Business } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
