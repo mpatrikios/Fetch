@@ -161,13 +161,13 @@ function Jobs() {
   const handleEditClick = () => {
     if (!jobDetails) return;
     setEditFormData({
-      summary: jobDetails.summary || '',
-      locations: (jobDetails.locations || []).join(', '),
-      skills: (jobDetails.skills || []).join(', '),
-      responsibilities: (jobDetails.responsibilities || []).join('\n'),
-      qualifications: (jobDetails.qualifications || []).join('\n'),
-      min_years: jobDetails.min_years || '',
-      culture_index: jobDetails.culture_index || '',
+      summary: jobDetails.summary ?? '',
+      locations: (jobDetails.locations ?? []).join(', '),
+      skills: (jobDetails.skills ?? []).join(', '),
+      responsibilities: (jobDetails.responsibilities ?? []).join('\n'),
+      qualifications: (jobDetails.qualifications ?? []).join('\n'),
+      min_years: jobDetails.min_years ?? '',
+      culture_index: jobDetails.culture_index ?? '',
     });
     setShowEditDialog(true);
   };
@@ -493,6 +493,7 @@ function Jobs() {
                         size="small"
                         onClick={handleEditClick}
                         title="Edit job details"
+                        aria-label="Edit job details"
                         sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                       >
                         <EditIcon fontSize="small" />
