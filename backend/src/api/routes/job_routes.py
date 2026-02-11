@@ -241,6 +241,11 @@ async def update_job(job_id: str, job_data: dict):
 
         update_fields["profile_updated_at"] = datetime.now(timezone.utc)
 
+        # Keep singular Location field in sync for the list endpoint
+        if "Locations" in update_fields:
+            locations = update_fields["Locations"]
+            update_fields["Location"] = locations[0] if locations else ""
+
         result = mongo_connection.job_descriptions_collection.update_one(
             {"_id": ObjectId(job_id)},
             {"$set": update_fields}
