@@ -493,6 +493,7 @@ function Jobs() {
                         size="small"
                         onClick={handleEditClick}
                         title="Edit job details"
+                        aria-label="Edit job details"
                         sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                       >
                         <EditIcon fontSize="small" />
