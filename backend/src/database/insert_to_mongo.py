@@ -7,9 +7,9 @@ from .connection import mongo_connection
 
 # Get database and collections from centralized connection
 database = mongo_connection.database
-collection = mongo_connection.candidates_collection
+candidates_collection = mongo_connection.candidates_collection
 job_descriptions_collection = mongo_connection.job_descriptions_collection
-
+matches_collection = mongo_connection.matches_collection
 logging.basicConfig(level=logging.INFO)
 
 def upsert_candidate(candidate_data: Dict[str, Any], user_id: str = None) -> Dict[str, Any]:
@@ -41,7 +41,7 @@ def upsert_candidate(candidate_data: Dict[str, Any], user_id: str = None) -> Dic
             "$set": candidate_data
         }
         
-        result = collection.update_one(
+        result = candidates_collection.update_one(
             filter_query,
             update_operation,
             upsert=True
@@ -100,7 +100,7 @@ def get_candidate(full_name: str = None, user_id: str = None) -> Dict[str, Any] 
         else:
             raise ValueError("Either full_name or user_id must be provided")
         
-        candidate = collection.find_one(query)
+        candidate = candidates_collection.find_one(query)
         if candidate:
             logging.info(f"Retrieved candidate: {identifier}")
             return candidate
@@ -186,4 +186,37 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
                 return None
     except Exception as e:
         logging.error(f"Error retrieving job description(s) for {company_name}: {str(e)}")
+        return None
+    
+
+def get_match(job_id: str, company_name: str = None, job_title: str = None) -> Dict[str, Any] | None:
+    """
+    Retrieve match document from MongoDB by (companyName and JobTitle) or job_id.
+    
+    Args:
+        company_name: The company name
+        job_title: The job title
+        job_id: The ObjectId string of the job)
+    """
+    try:
+        from bson import ObjectId
+        
+        if job_id:
+            query = {"job_id": job_id}
+            identifier = job_id
+        elif company_name and job_title:
+            query = {"companyName": company_name, "JobTitle": job_title}
+            identifier = f"{company_name} - {job_title}"
+        else:
+            raise ValueError("Either (company_name and job_title) or job_id must be provided")
+        
+        match = matches_collection.find_one(query)
+        if match:
+            logging.info(f"Retrieved match: {identifier}")
+            return match
+        else:
+            logging.warning(f"Match not found: {identifier}")
+            return None
+    except Exception as e:
+        logging.error(f"Error retrieving match {identifier}: {str(e)}")
         return None
