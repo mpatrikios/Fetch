@@ -45,10 +45,10 @@ async def find_matches(request: MatchRequest):
             mongo_connection.database,
             job_doc,
             top_k=request.top_k or 10,
-            top_k_percent=request.top_k_percent or 0.75,
+            percentile_threshold=request.percentile_threshold or 0.75,
             use_cohort=request.use_cohort or False
         )
-        
+
         # Format results
         formatted_matches = []
         for rank, match in enumerate(matches, 1):
@@ -66,8 +66,8 @@ async def find_matches(request: MatchRequest):
             # Build formatted match entry
             formatted_match = {
                 "candidate_id": str(candidate.get("_id")) if candidate.get("_id") else None,
-                "rank": rank if not request.use_cohort else None,
-                "candidate_name": candidate.get("full_name", "Unknown"),
+                # "rank": rank if not request.use_cohort else None,
+                "full_name": candidate.get("full_name", "Unknown"),
                 "email": candidate.get("email", candidate.get("Email", "")),
                 "location": candidate.get("location", candidate.get("Location", "")),
                 "distance_km": match.get("distance_km"),
@@ -107,7 +107,7 @@ async def find_matches(request: MatchRequest):
 
 # endpoint to get matches via GET request using URL. Might be useful for testing or caching.
 @router.get("/matches/job/{company_name}/{job_title}")
-async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, top_k_percent: float = 0.75, use_cohort: bool = True):
+async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, percentile_threshold: float = 0.75, use_cohort: bool = False):
     """
     Alternative GET endpoint for finding matches.
     Useful for direct URL access or caching.
@@ -116,7 +116,7 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, to
         company_name=company_name,
         job_title=job_title,
         top_k=top_k,
-        top_k_percent=top_k_percent,
+        percentile_threshold=percentile_threshold,
         use_cohort=use_cohort
     )
     return await find_matches(request)

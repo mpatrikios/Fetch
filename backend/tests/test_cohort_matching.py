@@ -20,7 +20,7 @@ def test_ranked_matching():
         "company_name": COMPANY_NAME,
         "job_title": JOB_TITLE,
         "top_k": 30,
-        "top_k_percent": 0.75,
+        "percentile_threshold": 0.75,
         "use_cohort": False
     }
 
@@ -55,6 +55,7 @@ def test_cohort_matching():
         "company_name": COMPANY_NAME,
         "job_title": JOB_TITLE,
         "top_k": 30,
+        "percentile_threshold": 0.75,
         "use_cohort": True
     }
 

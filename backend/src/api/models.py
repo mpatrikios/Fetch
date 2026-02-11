@@ -122,7 +122,7 @@ class MatchRequest(BaseModel):
     company_name: str
     job_title: str
     top_k: Optional[int] = 10
-    top_k_percent: Optional[float] = 0.75
+    percentile_threshold: Optional[float] = 0.75
     use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
