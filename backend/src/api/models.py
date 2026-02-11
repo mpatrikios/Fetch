@@ -144,7 +144,7 @@ class MatchExplanation(BaseModel):
 class MatchResult(BaseModel):
     candidate_id: Optional[str] = None
     rank: Optional[int] = None
-    candidate_name: str
+    full_name: str
     email: Optional[str] = None
     location: Optional[str] = None
     distance_km: Optional[float] = None
