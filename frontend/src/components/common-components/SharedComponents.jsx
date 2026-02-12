@@ -251,6 +251,8 @@ export const FilterIconButton = ({
       size="small"
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       sx={{
         color: active ? 'primary.main' : 'text.secondary',
         backgroundColor: active ? 'primary.light' : 'transparent',
