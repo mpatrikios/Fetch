@@ -37,7 +37,7 @@ export const SummaryDisplay = ({
       {shouldTruncate && (
         <Button
           size="small"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setExpanded(prev => !prev)}
           sx={{
             p: 0,
             textTransform: 'none',
