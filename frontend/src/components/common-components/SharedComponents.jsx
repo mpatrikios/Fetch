@@ -168,6 +168,7 @@ export const FilterMenu = ({
                       size="small"
                       onClick={() => setSearchQuery('')}
                       edge="end"
+                      aria-label="Clear filter search"
                     >
                       <Clear fontSize="small" />
                     </IconButton>
