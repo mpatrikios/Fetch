@@ -8,14 +8,10 @@ import {
   Button,
   Divider,
   Chip,
-  TextField,
-  InputAdornment,
-  IconButton,
-  Menu,
-  MenuItem,
-  List
+  List,
+  IconButton
 } from '@mui/material';
-import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Business } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Business } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../utils/api';
 import {
@@ -24,6 +20,13 @@ import {
   SelectableListItem,
   DetailPanel
 } from './common-components/StyledComponents';
+import {
+  SummaryDisplay,
+  SearchField,
+  FilterMenu,
+  EmptyState,
+  FilterIconButton
+} from './common-components/SharedComponents';
 
 function Clients() {
   const navigate = useNavigate();
@@ -33,7 +36,6 @@ function Clients() {
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [expandedSummary, setExpandedSummary] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
@@ -112,7 +114,6 @@ function Clients() {
     setSelectedClient(client);
     setDetailsLoading(true);
     setClientDetails(null);
-    setExpandedSummary(false);
 
     try {
       const response = await clientAPI.getDetails(client.id);
@@ -125,37 +126,6 @@ function Clients() {
     }
   };
 
-  const SummaryDisplay = ({ summary }) => {
-    if (!summary) return <Typography variant="body1" color="text.secondary">No summary available</Typography>;
-
-    const words = summary.split(' ');
-    const shouldTruncate = words.length > 40;
-    const truncatedSummary = shouldTruncate ? words.slice(0, 40).join(' ') + ' ...' : summary;
-
-    return (
-      <Box>
-        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
-          {expandedSummary ? summary : truncatedSummary}
-        </Typography>
-        {shouldTruncate && (
-          <Button
-            size="small"
-            onClick={() => setExpandedSummary(!expandedSummary)}
-            sx={{
-              p: 0,
-              textTransform: 'none',
-              color: 'primary.main',
-              fontSize: '0.875rem',
-              minHeight: 'auto',
-              lineHeight: 1
-            }}
-          >
-            {expandedSummary ? 'Show less' : 'Read more...'}
-          </Button>
-        )}
-      </Box>
-    );
-  };
 
   if (loading) {
     return (
@@ -213,18 +183,12 @@ function Clients() {
                   ({filteredClients.length} of {clients.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton
-                    size="small"
+                  <FilterIconButton
+                    active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
+                    icon={LocationOn}
                     title="Filter by location"
-                    sx={{
-                      color: selectedLocation ? 'primary.main' : 'text.secondary',
-                      backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
-                      '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
-                    }}
-                  >
-                    <LocationOn fontSize="small" />
-                  </IconButton>
+                  />
                   {(searchQuery || selectedLocation) && (
                     <IconButton
                       size="small"
@@ -279,30 +243,11 @@ function Clients() {
               )}
 
               {/* Search Field */}
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search by company name..."
+              <SearchField
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        edge="end"
-                      >
-                        <Clear fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by company name..."
               />
             </Box>
 
@@ -317,21 +262,10 @@ function Clients() {
               }
             }}>
               {filteredClients.length === 0 ? (
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '200px',
-                  flexDirection: 'column',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    No clients found
-                  </Typography>
-                  <Typography variant="body2">
-                    {searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No clients available'}
-                  </Typography>
-                </Box>
+                <EmptyState
+                  title="No clients found"
+                  subtitle={searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No clients available'}
+                />
               ) : (
                 filteredClients.map((client, index) => (
                   <SelectableListItem
@@ -503,41 +437,14 @@ function Clients() {
       </Grid>
 
       {/* Location Filter Menu */}
-      <Menu
+      <FilterMenu
         anchorEl={locationMenuAnchor}
-        open={Boolean(locationMenuAnchor)}
         onClose={() => setLocationMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem
-            key={location}
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
-            }}
-            selected={selectedLocation === location}
-          >
-            {location}
-          </MenuItem>
-        ))}
-      </Menu>
+        items={uniqueLocations}
+        selectedItem={selectedLocation}
+        onSelect={setSelectedLocation}
+        allLabel="All locations"
+      />
     </Box>
   );
 }

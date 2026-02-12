@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { 
-  Box, 
-  Grid, 
-  Typography, 
-  CircularProgress, 
+import {
+  Box,
+  Grid,
+  Typography,
+  CircularProgress,
   Alert,
   Button,
   Divider,
@@ -14,24 +14,28 @@ import {
   DialogActions,
   DialogContentText,
   TextField,
-  MenuItem,
-  InputAdornment,
-  IconButton,
-  Menu
+  IconButton
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
-import { 
-  SectionHeader, 
-  CardSection, 
-  SelectableListItem, 
-  DetailPanel, 
-  FileLink, 
-  NotesField, 
-  PrimaryButton, 
-  SecondaryButton 
+import {
+  SectionHeader,
+  CardSection,
+  SelectableListItem,
+  DetailPanel,
+  FileLink,
+  NotesField,
+  PrimaryButton,
+  SecondaryButton
 } from './common-components/StyledComponents';
+import {
+  SummaryDisplay,
+  SearchField,
+  FilterMenu,
+  EmptyState,
+  FilterIconButton
+} from './common-components/SharedComponents';
 
 function Candidates() {
   const navigate = useNavigate();
@@ -43,7 +47,6 @@ function Candidates() {
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [expandedSummary, setExpandedSummary] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,11 +57,10 @@ function Candidates() {
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const statusFilter = 'all';
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [editFormData, setEditFormData] = useState({
     full_name: '',
     location: '',
@@ -123,14 +125,6 @@ function Candidates() {
     return [...new Set(statuses)].sort();
   }, [candidates]);
 
-  // Filter locations based on search query
-  const filteredLocations = useMemo(() => {
-    if (!locationSearchQuery) return uniqueLocations;
-    return uniqueLocations.filter(loc =>
-      loc.toLowerCase().includes(locationSearchQuery.toLowerCase())
-    );
-  }, [uniqueLocations, locationSearchQuery]);
-
   // Filter candidates based on search query, location, and status
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
@@ -186,7 +180,6 @@ function Candidates() {
     setSelectedCandidate(candidate);
     setDetailsLoading(true);
     setCandidateDetails(null);
-    setExpandedSummary(false); // Reset summary expansion
     
     try {
       // Use the candidate data from MongoDB
@@ -273,11 +266,10 @@ function Candidates() {
       // Clear candidate details and selection
       setSelectedCandidate(null);
       setCandidateDetails(null);
-      setExpandedSummary(false);
-      
+
       // Refresh candidates list
       loadCandidates();
-      
+
       setShowRejectDialog(false);
     } catch (err) {
       console.error('Reject candidate error:', err);
@@ -312,11 +304,10 @@ function Candidates() {
       // Clear candidate details and selection
       setSelectedCandidate(null);
       setCandidateDetails(null);
-      setExpandedSummary(false);
-      
+
       // Refresh candidates list
       loadCandidates();
-      
+
       // Auto-hide success message after 5 seconds
       timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
@@ -407,37 +398,6 @@ function Candidates() {
     }
   };
 
-  const SummaryDisplay = ({ summary }) => {
-    if (!summary) return <Typography variant="body1" color="text.primary">Position information not available</Typography>;
-    
-    const words = summary.split(' ');
-    const shouldTruncate = words.length > 25; // Roughly 2 lines
-    const truncatedSummary = shouldTruncate ? words.slice(0, 25).join(' ') + ' ...': summary;
-    
-    return (
-      <Box>
-        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
-          {expandedSummary ? summary : truncatedSummary}
-        </Typography>
-        {shouldTruncate && (
-          <Button
-            size="small"
-            onClick={() => setExpandedSummary(!expandedSummary)}
-            sx={{ 
-              p: 0,
-              textTransform: 'none',
-              color: 'primary.main',
-              fontSize: '0.875rem',
-              minHeight: 'auto',
-              lineHeight: 1
-            }}
-          >
-            {expandedSummary ? 'Show less' : 'Read more...'}
-          </Button>
-        )}
-      </Box>
-    );
-  };
 
   if (loading) {
     return (
@@ -509,30 +469,18 @@ function Candidates() {
                   ({filteredCandidates.length} of {candidates.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton
-                    size="small"
+                  <FilterIconButton
+                    active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
+                    icon={LocationOn}
                     title="Filter by location"
-                    sx={{
-                      color: selectedLocation ? 'primary.main' : 'text.secondary',
-                      backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
-                      '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
-                    }}
-                  >
-                    <LocationOn fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
+                  />
+                  <FilterIconButton
+                    active={!!selectedCandidateStatus}
                     onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+                    icon={LabelIcon}
                     title="Filter by status"
-                    sx={{
-                      color: selectedCandidateStatus ? 'primary.main' : 'text.secondary',
-                      backgroundColor: selectedCandidateStatus ? 'primary.light' : 'transparent',
-                      '&:hover': { backgroundColor: selectedCandidateStatus ? 'primary.light' : 'grey.100' }
-                    }}
-                  >
-                    <LabelIcon fontSize="small" />
-                  </IconButton>
+                  />
                   {(searchQuery || selectedLocation || selectedCandidateStatus) && (
                     <IconButton
                       size="small"
@@ -545,31 +493,11 @@ function Candidates() {
                 </Box>
               </Box>
               
-              {/* Search Field */}
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search by name..."
+              <SearchField
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        edge="end"
-                      >
-                        <Clear fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by name..."
               />
             </Box>
             
@@ -584,21 +512,10 @@ function Candidates() {
               }
             }}>
               {filteredCandidates.length === 0 ? (
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '200px',
-                  flexDirection: 'column',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    No candidates found
-                  </Typography>
-                  <Typography variant="body2">
-                    {searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
-                  </Typography>
-                </Box>
+                <EmptyState
+                  title="No candidates found"
+                  subtitle={searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
+                />
               ) : (
                 filteredCandidates.map((candidate, index) => {
                   const statusIndicator = getStatusIndicator(candidate.status);
@@ -685,7 +602,7 @@ function Candidates() {
                       {candidateDetails.location}
                     </Typography>
                   )}
-                  <SummaryDisplay summary={candidateDetails?.jobTitle} />
+                  <SummaryDisplay summary={candidateDetails?.jobTitle} emptyText="Position information not available" wordLimit={25} />
                 </Box>
 
                 <Divider />
@@ -837,132 +754,28 @@ function Candidates() {
       </Grid>
 
       {/* Location Filter Menu */}
-      <Menu
+      <FilterMenu
         anchorEl={locationMenuAnchor}
-        open={Boolean(locationMenuAnchor)}
-        onClose={() => {
-          setLocationMenuAnchor(null);
-          setLocationSearchQuery('');
-        }}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        slotProps={{
-          paper: {
-            sx: { width: 280 }
-          }
-        }}
-      >
-        <Box sx={{ px: 1, py: 1, position: 'sticky', top: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
-          <TextField
-            size="small"
-            fullWidth
-            placeholder="Search locations..."
-            value={locationSearchQuery}
-            onChange={(e) => setLocationSearchQuery(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-              endAdornment: locationSearchQuery && (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={() => setLocationSearchQuery('')}
-                    edge="end"
-                  >
-                    <Clear fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              )
-            }}
-          />
-        </Box>
-        <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
-          <MenuItem
-            onClick={() => {
-              setSelectedLocation('');
-              setLocationMenuAnchor(null);
-              setLocationSearchQuery('');
-            }}
-            selected={selectedLocation === ''}
-          >
-            <em>All locations</em>
-          </MenuItem>
-          {filteredLocations.length === 0 ? (
-            <MenuItem disabled>
-              <Typography variant="body2" color="text.secondary">
-                No locations found
-              </Typography>
-            </MenuItem>
-          ) : (
-            filteredLocations.map((location) => (
-              <MenuItem
-                key={location}
-                onClick={() => {
-                  setSelectedLocation(location);
-                  setLocationMenuAnchor(null);
-                  setLocationSearchQuery('');
-                }}
-                selected={selectedLocation === location}
-              >
-                {location}
-              </MenuItem>
-            ))
-          )}
-        </Box>
-      </Menu>
+        onClose={() => setLocationMenuAnchor(null)}
+        items={uniqueLocations}
+        selectedItem={selectedLocation}
+        onSelect={setSelectedLocation}
+        allLabel="All locations"
+        searchable={true}
+        searchPlaceholder="Search locations..."
+        width={280}
+      />
 
       {/* Status Filter Menu */}
-      <Menu
+      <FilterMenu
         anchorEl={statusMenuAnchor}
-        open={Boolean(statusMenuAnchor)}
         onClose={() => setStatusMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        slotProps={{
-          paper: {
-            sx: { width: 220 }
-          }
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            setSelectedCandidateStatus('');
-            setStatusMenuAnchor(null);
-          }}
-          selected={selectedCandidateStatus === ''}
-        >
-          <em>All statuses</em>
-        </MenuItem>
-        {uniqueStatuses.map((status) => (
-          <MenuItem
-            key={status}
-            onClick={() => {
-              setSelectedCandidateStatus(status);
-              setStatusMenuAnchor(null);
-            }}
-            selected={selectedCandidateStatus === status}
-          >
-            {statusLabels[status] || status}
-          </MenuItem>
-        ))}
-      </Menu>
+        items={uniqueStatuses}
+        selectedItem={selectedCandidateStatus}
+        onSelect={setSelectedCandidateStatus}
+        allLabel="All statuses"
+        labelFn={(status) => statusLabels[status] || status}
+      />
 
       {/* Rejection Confirmation Dialog */}
       <Dialog
