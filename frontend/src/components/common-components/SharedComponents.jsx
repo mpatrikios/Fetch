@@ -83,6 +83,7 @@ export const SearchField = ({
                 size="small"
                 onClick={onClear}
                 edge="end"
+                aria-label="Clear search"
               >
                 <Clear fontSize="small" />
               </IconButton>
