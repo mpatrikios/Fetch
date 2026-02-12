@@ -47,6 +47,7 @@ function Jobs() {
   const [expandedResponsibilities, setExpandedResponsibilities] = useState(false);
   const [expandedQualifications, setExpandedQualifications] = useState(false);
   const [expandedCultureIndex, setExpandedCultureIndex] = useState(false);
+  const [expandedSummary, setExpandedSummary] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
