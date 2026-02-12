@@ -8,6 +8,7 @@ import {
   Button,
   Divider,
   Chip,
+  List,
   IconButton
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Business } from '@mui/icons-material';
