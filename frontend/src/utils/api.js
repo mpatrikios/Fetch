@@ -60,6 +60,15 @@ export const candidateAPI = {
   sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
 };
 
+// Client endpoints
+export const clientAPI = {
+  list: (status = null) => {
+    const params = status ? { status } : {};
+    return api.get('/clients', { params });
+  },
+  getDetails: (clientId) => api.get(`/clients/${clientId}`),
+};
+
 export const cliftonStrengthsAPI = {
   upload: (file) => {
     const formData = new FormData();
@@ -84,6 +93,7 @@ export const jobAPI = {
   list: () => api.get('/jobs'),
   getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
   getCompanies: () => api.get('/companies'),
+  updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
 };
 
 // Matching endpoints
