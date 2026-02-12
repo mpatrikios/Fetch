@@ -261,11 +261,3 @@ export const FilterIconButton = ({
     </IconButton>
   );
 };
-
-export default {
-  SummaryDisplay,
-  SearchField,
-  FilterMenu,
-  EmptyState,
-  FilterIconButton
-};
