@@ -9,6 +9,7 @@ import MLGDashboard from './components/MlgDashboard';
 import CandidateDashboard from './components/CandidateDashboard';
 import Candidates from './components/Candidates';
 import Jobs from './components/Jobs';
+import Clients from './components/Clients';
 import JobRecommendations from './components/JobRecommendations';
 import ExecutiveInfo from './components/ExecutiveInfo';
 import RecruiterInfo from './components/RecruiterInfo';
@@ -55,6 +56,14 @@ function App() {
               element={
                 <RoleProtectedRoute requiredRole="mlg-recruiter">
                   <Jobs />
+                </RoleProtectedRoute>
+              }
+            />
+            <Route
+              path="/clients"
+              element={
+                <RoleProtectedRoute requiredRole="mlg-recruiter">
+                  <Clients />
                 </RoleProtectedRoute>
               }
             />
