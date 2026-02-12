@@ -15,9 +15,10 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  TextField
 } from '@mui/material';
-import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jobAPI } from '../utils/api';
 import {

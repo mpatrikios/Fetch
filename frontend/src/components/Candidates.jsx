@@ -57,7 +57,7 @@ function Candidates() {
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [statusFilter] = useState('all');
+  const statusFilter = 'all';
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
   const [showEditDialog, setShowEditDialog] = useState(false);
