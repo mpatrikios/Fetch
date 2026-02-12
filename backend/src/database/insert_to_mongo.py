@@ -188,7 +188,6 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         logging.error(f"Error retrieving job description(s) for {company_name}: {str(e)}")
         return None
     
-
 def get_match(job_id: str, company_name: str = None, job_title: str = None) -> Dict[str, Any] | None:
     """
     Retrieve match document from MongoDB by (companyName and JobTitle) or job_id.
@@ -202,7 +201,7 @@ def get_match(job_id: str, company_name: str = None, job_title: str = None) -> D
         from bson import ObjectId
         
         if job_id:
-            query = {"job_id": job_id}
+            query = {"JobId": job_id}
             identifier = job_id
         elif company_name and job_title:
             query = {"companyName": company_name, "JobTitle": job_title}
@@ -220,3 +219,41 @@ def get_match(job_id: str, company_name: str = None, job_title: str = None) -> D
     except Exception as e:
         logging.error(f"Error retrieving match {identifier}: {str(e)}")
         return None
+
+def insert_match(match_data: Dict[str, Any]):
+    """
+    Insert a match document in Mongo
+    Args:
+        match_data: Dictionary that contains a job and the matched candidates information
+    Returns:
+        Dictionary with operation result
+    """
+    try:
+        job_id = match_data.get("JobId", "")
+        company_name = match_data.get("companyName", "")
+        job_title = match_data.get("JobTitle", "")
+        if (company_name == "" and job_title == "") and job_id == "":
+            raise ValueError("Either (company_name and job_title) or job_id must be provided for insertion")
+        
+        result = matches_collection.insert_one(match_data)
+        
+        if job_id != "":
+            logging.info(f"New match created: {job_id}")
+        else:
+            logging.info(f"New match created: {company_name} - {job_title}")
+
+        return {
+            "success": True,
+            "operation": "inserted",
+            "company_name": company_name,
+            "job_title": job_title,
+            # "document_id": str(result.inserted_id)
+        }
+    except Exception as e:
+        logging.error(f"Error inserting match {match_data.get('companyName', 'Unknown')} - {match_data.get('JobTitle', 'Unknown')}: {str(e)}")
+        return {
+                "success": False,
+                "error": str(e),
+                "company_name": match_data.get('companyName', 'Unknown'),
+                "job_title": match_data.get('JobTitle', 'Unknown')
+            }

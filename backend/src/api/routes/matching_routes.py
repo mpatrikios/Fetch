@@ -9,8 +9,14 @@ import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.database.connection import mongo_connection
-from src.database.insert_to_mongo import get_job_description
-from src.services.matching.cosine_similarity import profile_matching_candidate
+from src.database.insert_to_mongo import (
+    get_job_description,
+    insert_match
+)
+from src.services.matching.cosine_similarity import (
+    profile_matching_candidate,
+    build_match_doc,
+)
 from src.api.models import MatchRequest, MatchResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 
@@ -84,10 +90,18 @@ async def find_matches(request: MatchRequest):
                     "summary": match.get("explanation", {}).get("summary", "No summary available")
                 },
                 "clifton_strengths": clifton_strengths,
-                "skills": candidate.get("Skills", [])[:10]
+                "skills": candidate.get("Skills", [])[:10],
+                "review_status": None,
+                "reviewed_at": None,
+                "reviewed_by": None
             }
             formatted_matches.append(formatted_match)
-        
+
+        match = build_match_doc(job_doc, formatted_matches)
+        mongo_result = insert_match(match)
+        if not mongo_result.get("success"):
+            raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
+                
         # Return response with matches
         return MatchResponse(
             success=True,

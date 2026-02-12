@@ -2,6 +2,7 @@ from typing import Set
 import numpy as np
 import re
 import random
+from datetime import datetime
 import logging
 from openai import OpenAI
 import os
@@ -357,3 +358,16 @@ Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not s
     # Attach LLM summary to structured features
     features["summary"] = summary_text
     return features
+
+def build_match_doc(job_doc, formatted_matches) -> dict:
+    job_id = job_doc.get("_id")
+    job_id_str = str(job_id) if job_id is not None else ""
+    company_name = job_doc.get("companyName", "Unknown Company")
+    job_title = job_doc.get("JobTitle", "Unknown Job Title")
+    return {
+        "JobId": job_id_str,
+        "companyName": company_name,
+        "JobTitle": job_title,
+        "created_at": datetime.now().isoformat(),
+        "candidates": formatted_matches,
+    }
