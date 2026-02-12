@@ -93,6 +93,7 @@ export const jobAPI = {
   list: () => api.get('/jobs'),
   getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
   getCompanies: () => api.get('/companies'),
+  updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
 };
 
 // Matching endpoints

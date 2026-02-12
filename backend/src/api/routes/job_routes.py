@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
 from typing import List, Optional
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 import sys
@@ -137,7 +138,7 @@ async def list_jobs():
         jobs = list(mongo_connection.job_descriptions_collection.find(
             {"profile_embedding": {"$exists": True}},
             {
-                "_id": 0,
+                "_id": 1,
                 "companyName": 1,
                 "JobTitle": 1,
                 "Location": 1,
@@ -153,7 +154,8 @@ async def list_jobs():
                 "location": job.get("Location"),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}"
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
+                "mongo_id": str(job.get("_id"))
             })
         
         return JobListResponse(
@@ -183,6 +185,7 @@ async def get_job_details(company_name: str, job_title: str):
             success=True,
             job={
                 "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
+                "mongo_id": str(job.get("_id")),
                 "company": job.get("companyName", ""),
                 "title": job.get("JobTitle", ""),
                 "summary": job.get("Summary"),
@@ -201,6 +204,86 @@ async def get_job_details(company_name: str, job_title: str):
         raise
     except Exception as e:
         logger.error(f"Failed to fetch job details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Endpoint to update editable fields of a job description
+@router.put("/jobs/{job_id}/update")
+async def update_job(job_id: str, job_data: dict):
+    """Update editable fields of a job description (MLG recruiter only)"""
+    try:
+        from bson import ObjectId
+        from bson.errors import InvalidId
+
+        try:
+            ObjectId(job_id)
+        except InvalidId:
+            raise HTTPException(status_code=400, detail=f"Invalid job ID format: {job_id}")
+
+        # Whitelist allowed fields, mapping API names to MongoDB field names
+        field_mapping = {
+            "summary": "Summary",
+            "locations": "Locations",
+            "skills": "Skills",
+            "responsibilities": "Responsibilities",
+            "qualifications": "Qualifications",
+            "min_years": "MinYears",
+            "culture_index": "CultureIndex",
+        }
+
+        update_fields = {}
+        for api_field, mongo_field in field_mapping.items():
+            if api_field in job_data:
+                update_fields[mongo_field] = job_data[api_field]
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+
+        update_fields["profile_updated_at"] = datetime.now(timezone.utc)
+
+        # Keep singular Location field in sync for the list endpoint
+        if "Locations" in update_fields:
+            locations = update_fields["Locations"]
+            update_fields["Location"] = locations[0] if locations else ""
+
+        result = mongo_connection.job_descriptions_collection.update_one(
+            {"_id": ObjectId(job_id)},
+            {"$set": update_fields}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        # Regenerate embeddings if content-relevant fields changed
+        embedding_fields = {"Summary", "Skills", "Responsibilities", "Qualifications"}
+        location_fields = {"Locations"}
+        needs_profile_embedding = bool(embedding_fields & set(update_fields.keys()))
+        needs_location_embedding = bool(location_fields & set(update_fields.keys()))
+
+        if needs_profile_embedding or needs_location_embedding:
+            try:
+                job_doc = mongo_connection.job_descriptions_collection.find_one(
+                    {"_id": ObjectId(job_id)}
+                )
+                if job_doc:
+                    openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+                    if openai_api_key:
+                        if needs_profile_embedding:
+                            embed_job_description_profile(job_doc)
+                        if needs_location_embedding:
+                            embed_job_description_location(job_doc)
+                    else:
+                        logger.warning("OpenAI API key not set - skipping embedding regeneration")
+            except Exception as e:
+                logger.error(f"Embedding regeneration failed after job update: {e}")
+
+        logger.info(f"Job {job_id} updated successfully")
+        return {"success": True, "message": "Job updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update job {job_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -86,6 +86,7 @@ class JobInfo(BaseModel):
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str
+    mongo_id: Optional[str] = None
 
 class JobResponse(BaseModel):
     success: bool
@@ -111,6 +112,7 @@ class JobDetails(BaseModel):
     qualifications: List[str] = []
     clifton_strengths: List[str] = []
     has_embeddings: bool = False
+    mongo_id: Optional[str] = None
 
 
 class JobDetailsResponse(BaseModel):

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Box,
   Grid,
@@ -11,9 +11,13 @@ import {
   IconButton,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description } from '@mui/icons-material';
+import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jobAPI } from '../utils/api';
 import {
@@ -46,6 +50,25 @@ function Jobs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    summary: '',
+    locations: '',
+    skills: '',
+    responsibilities: '',
+    qualifications: '',
+    min_years: '',
+    culture_index: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const timeoutRefs = useRef([]);
+
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(clearTimeout);
+    };
+  }, []);
 
   useEffect(() => {
     loadJobs();
@@ -136,6 +159,125 @@ function Jobs() {
     navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/matches`);
   };
 
+  const handleEditClick = () => {
+    if (!jobDetails) return;
+    setEditFormData({
+      summary: jobDetails.summary ?? '',
+      locations: (jobDetails.locations ?? []).join(', '),
+      skills: (jobDetails.skills ?? []).join(', '),
+      responsibilities: (jobDetails.responsibilities ?? []).join('\n'),
+      qualifications: (jobDetails.qualifications ?? []).join('\n'),
+      min_years: jobDetails.min_years ?? '',
+      culture_index: jobDetails.culture_index ?? '',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveJob = async () => {
+    if (!jobDetails) return;
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const skillsArray = editFormData.skills
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const locationsArray = editFormData.locations
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const responsibilitiesArray = editFormData.responsibilities
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const qualificationsArray = editFormData.qualifications
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const updatePayload = {
+        summary: editFormData.summary,
+        locations: locationsArray,
+        skills: skillsArray,
+        responsibilities: responsibilitiesArray,
+        qualifications: qualificationsArray,
+        min_years: editFormData.min_years,
+        culture_index: editFormData.culture_index,
+      };
+
+      await jobAPI.updateJob(jobDetails.mongo_id, updatePayload);
+
+      setJobDetails(prev => ({
+        ...prev,
+        summary: editFormData.summary,
+        locations: locationsArray,
+        skills: skillsArray,
+        responsibilities: responsibilitiesArray,
+        qualifications: qualificationsArray,
+        min_years: editFormData.min_years,
+        culture_index: editFormData.culture_index,
+      }));
+
+      setJobs(prev => prev.map(j =>
+        j.job_id === jobDetails.job_id
+          ? { ...j, location: locationsArray.join(', '), skills: skillsArray.slice(0, 10) }
+          : j
+      ));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Job updated successfully!');
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update job error:', err);
+      setError('Failed to update job. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const SummaryDisplay = ({ summary }) => {
+    if (!summary) return <Typography variant="body1" color="text.primary">No summary available</Typography>;
+
+    const words = summary.split(' ');
+    const shouldTruncate = words.length > 40;
+    const truncatedSummary = shouldTruncate ? words.slice(0, 40).join(' ') + ' ...': summary;
+
+    return (
+      <Box>
+        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
+          {expandedSummary ? summary : truncatedSummary}
+        </Typography>
+        {shouldTruncate && (
+          <Button
+            size="small"
+            onClick={() => setExpandedSummary(!expandedSummary)}
+            sx={{
+              p: 0,
+              textTransform: 'none',
+              color: 'primary.main',
+              fontSize: '0.875rem',
+              minHeight: 'auto',
+              lineHeight: 1
+            }}
+          >
+            {expandedSummary ? 'Show less' : 'Read more...'}
+          </Button>
+        )}
+      </Box>
+    );
+  };
 
   if (loading) {
     return (
@@ -172,6 +314,11 @@ function Jobs() {
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage('')} sx={{ mb: 2 }}>
+          {successMessage}
         </Alert>
       )}
 
@@ -302,9 +449,20 @@ function Jobs() {
                 {/* Job Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {jobDetails?.title}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                        {jobDetails?.title}
+                      </Typography>
+                      <IconButton
+                        size="small"
+                        onClick={handleEditClick}
+                        title="Edit job details"
+                        aria-label="Edit job details"
+                        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
                       {jobDetails?.company}
                     </Typography>
@@ -553,6 +711,120 @@ function Jobs() {
         onSelect={setSelectedLocation}
         allLabel="All locations"
       />
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setSelectedLocation('');
+            setLocationMenuAnchor(null);
+          }}
+          selected={selectedLocation === ''}
+        >
+          <em>All locations</em>
+        </MenuItem>
+        {uniqueLocations.map((location) => (
+          <MenuItem
+            key={location}
+            onClick={() => {
+              setSelectedLocation(location);
+              setLocationMenuAnchor(null);
+            }}
+            selected={selectedLocation === location}
+          >
+            {location}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Edit Job Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Edit Job Details</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Summary"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+            />
+            <TextField
+              label="Locations"
+              fullWidth
+              value={editFormData.locations}
+              onChange={(e) => handleEditFormChange('locations', e.target.value)}
+              helperText="Separate locations with commas"
+            />
+            <TextField
+              label="Skills"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.skills}
+              onChange={(e) => handleEditFormChange('skills', e.target.value)}
+              helperText="Separate skills with commas"
+            />
+            <TextField
+              label="Minimum Years of Experience"
+              fullWidth
+              value={editFormData.min_years}
+              onChange={(e) => handleEditFormChange('min_years', e.target.value)}
+            />
+            <TextField
+              label="Responsibilities"
+              fullWidth
+              multiline
+              minRows={4}
+              value={editFormData.responsibilities}
+              onChange={(e) => handleEditFormChange('responsibilities', e.target.value)}
+              helperText="Enter each responsibility on a new line"
+            />
+            <TextField
+              label="Qualifications"
+              fullWidth
+              multiline
+              minRows={4}
+              value={editFormData.qualifications}
+              onChange={(e) => handleEditFormChange('qualifications', e.target.value)}
+              helperText="Enter each qualification on a new line"
+            />
+            <TextField
+              label="Culture Index"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.culture_index}
+              onChange={(e) => handleEditFormChange('culture_index', e.target.value)}
+              helperText="Separate traits with semicolons"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveJob}
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
