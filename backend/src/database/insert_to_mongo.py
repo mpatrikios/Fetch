@@ -247,7 +247,7 @@ def insert_match(match_data: Dict[str, Any]):
             "operation": "inserted",
             "company_name": company_name,
             "job_title": job_title,
-            # "document_id": str(result.inserted_id)
+            "document_id": str(result.inserted_id)
         }
     except Exception as e:
         logging.error(f"Error inserting match {match_data.get('companyName', 'Unknown')} - {match_data.get('JobTitle', 'Unknown')}: {str(e)}")
