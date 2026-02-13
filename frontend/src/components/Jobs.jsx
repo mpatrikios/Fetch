@@ -16,7 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  MenuItem
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -712,7 +713,6 @@ function Jobs() {
         selectedItem={selectedLocation}
         onSelect={setSelectedLocation}
         allLabel="All locations"
-      />
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'right',
@@ -721,7 +721,7 @@ function Jobs() {
           vertical: 'top',
           horizontal: 'right',
         }}
-      >
+      />
         <MenuItem
           onClick={() => {
             setSelectedLocation('');
@@ -743,7 +743,6 @@ function Jobs() {
             {location}
           </MenuItem>
         ))}
-      </Menu>
 
       {/* Edit Job Dialog */}
       <Dialog
