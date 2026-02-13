@@ -71,7 +71,7 @@ function JobRecommendations() {
   // Filter candidates based on search query (name only)
   const filteredRecommendations = useMemo(() => {
     return recommendations.filter(candidate => {
-      const name = candidate.full_name || full.name || '';
+      const name = candidate.full_name || candidate.name || candidate.candidate_name || '';
       return searchQuery === '' ||
         name.toLowerCase().includes(searchQuery.toLowerCase());
     });
