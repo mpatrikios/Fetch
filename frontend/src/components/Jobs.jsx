@@ -722,27 +722,6 @@ function Jobs() {
           horizontal: 'right',
         }}
       />
-        <MenuItem
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem
-            key={location}
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
-            }}
-            selected={selectedLocation === location}
-          >
-            {location}
-          </MenuItem>
-        ))}
 
       {/* Edit Job Dialog */}
       <Dialog
