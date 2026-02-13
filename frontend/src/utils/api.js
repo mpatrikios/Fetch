@@ -67,6 +67,7 @@ export const clientAPI = {
     return api.get('/clients', { params });
   },
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
+  updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
 };
 
 export const cliftonStrengthsAPI = {
