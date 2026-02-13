@@ -721,7 +721,7 @@ function Jobs() {
           vertical: 'top',
           horizontal: 'right',
         }}
-      >
+      />
         <MenuItem
           onClick={() => {
             setSelectedLocation('');
@@ -743,7 +743,6 @@ function Jobs() {
             {location}
           </MenuItem>
         ))}
-      </FilterMenu>
 
       {/* Edit Job Dialog */}
       <Dialog
