@@ -197,9 +197,9 @@ def get_match(job_id: str, company_name: str = None, job_title: str = None) -> D
         job_title: The job title
         job_id: The ObjectId string of the job)
     """
+    identifier = ""
     try:
         from bson import ObjectId
-        
         if job_id:
             query = {"JobId": job_id}
             identifier = job_id
