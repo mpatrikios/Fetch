@@ -2,7 +2,7 @@ from typing import Set
 import numpy as np
 import re
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from openai import OpenAI
 import os
@@ -368,6 +368,6 @@ def build_match_doc(job_doc, formatted_matches) -> dict:
         "JobId": job_id_str,
         "companyName": company_name,
         "JobTitle": job_title,
-        "created_at": datetime.now().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "candidates": formatted_matches,
     }
