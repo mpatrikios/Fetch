@@ -166,7 +166,7 @@ function Jobs() {
     if (!jobDetails) return;
     setEditFormData({
       summary: jobDetails.summary ?? '',
-      locations: (jobDetails.locations ?? []).join(', '),
+      locations: (jobDetails.locations ?? []).join('; '),
       skills: (jobDetails.skills ?? []).join(', '),
       responsibilities: (jobDetails.responsibilities ?? []).join('\n'),
       qualifications: (jobDetails.qualifications ?? []).join('\n'),
@@ -196,7 +196,7 @@ function Jobs() {
         .filter(s => s.length > 0);
 
       const locationsArray = editFormData.locations
-        .split(',')
+        .split(';')
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
@@ -644,7 +644,7 @@ function Jobs() {
                       </Typography>
                       {(() => {
                         const traits = jobDetails.culture_index
-                          .split(';')
+                          .split(',')
                           .map(t => t.trim())
                           .filter(t => t.length > 0);
                         const displayTraits = expandedCultureIndex ? traits : traits.slice(0, 3);
@@ -746,7 +746,7 @@ function Jobs() {
               fullWidth
               value={editFormData.locations}
               onChange={(e) => handleEditFormChange('locations', e.target.value)}
-              helperText="Separate locations with commas"
+              helperText="Separate locations with semicolons"
             />
             <TextField
               label="Skills"
@@ -788,7 +788,7 @@ function Jobs() {
               minRows={2}
               value={editFormData.culture_index}
               onChange={(e) => handleEditFormChange('culture_index', e.target.value)}
-              helperText="Separate traits with semicolons"
+              helperText="Separate traits with commas"
             />
           </Box>
         </DialogContent>
