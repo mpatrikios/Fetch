@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Grid,
@@ -9,9 +9,14 @@ import {
   Divider,
   Chip,
   List,
-  IconButton
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Business } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { clientAPI } from '../utils/api';
 import {
@@ -40,9 +45,23 @@ function Clients() {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    company_name: '',
+    status: '',
+    contact_email: '',
+    contact_number: '',
+    contact_recruiter: '',
+    summary: '',
+    locations: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const timeoutRefs = useRef([]);
 
   useEffect(() => {
     loadClients();
+    return () => timeoutRefs.current.forEach(clearTimeout);
   }, []);
 
   // Get unique locations for filter dropdown
@@ -126,6 +145,87 @@ function Clients() {
     }
   };
 
+  const handleEditClick = () => {
+    if (!clientDetails) return;
+    setEditFormData({
+      company_name: clientDetails.company_name ?? '',
+      status: clientDetails.status ?? '',
+      contact_email: clientDetails.contact_email ?? '',
+      contact_number: clientDetails.contact_number ?? '',
+      contact_recruiter: clientDetails.contact_recruiter ?? '',
+      summary: clientDetails.summary ?? '',
+      locations: (clientDetails.locations ?? []).join('; '),
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveClient = async () => {
+    if (!clientDetails) return;
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const locationsArray = editFormData.locations
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const updatePayload = {
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        contact_email: editFormData.contact_email,
+        contact_number: editFormData.contact_number,
+        contact_recruiter: editFormData.contact_recruiter,
+        summary: editFormData.summary,
+        locations: locationsArray,
+      };
+
+      await clientAPI.updateClient(clientDetails.id, updatePayload);
+
+      setClientDetails(prev => ({
+        ...prev,
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        contact_email: editFormData.contact_email,
+        contact_number: editFormData.contact_number,
+        contact_recruiter: editFormData.contact_recruiter,
+        summary: editFormData.summary,
+        locations: locationsArray,
+      }));
+
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id
+          ? { ...c, company_name: editFormData.company_name, status: editFormData.status, contact_email: editFormData.contact_email, locations: locationsArray }
+          : c
+      ));
+
+      setSelectedClient(prev => ({
+        ...prev,
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        locations: locationsArray,
+      }));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Client updated successfully!');
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update client error:', err);
+      setError('Failed to update client. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -162,6 +262,12 @@ function Clients() {
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage('')} sx={{ mb: 2 }}>
+          {successMessage}
         </Alert>
       )}
 
@@ -343,6 +449,15 @@ function Clients() {
                         color={getStatusColor(clientDetails.status)}
                       />
                     )}
+                    <IconButton
+                      size="small"
+                      onClick={handleEditClick}
+                      title="Edit client"
+                      aria-label="Edit client"
+                      sx={{ ml: 'auto' }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                   {clientDetails?.locations?.length > 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -445,6 +560,84 @@ function Clients() {
         onSelect={setSelectedLocation}
         allLabel="All locations"
       />
+
+      {/* Edit Client Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={(event, reason) => {
+          if (saving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return;
+          }
+          setShowEditDialog(false);
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Edit Client</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Company Name"
+              fullWidth
+              value={editFormData.company_name}
+              onChange={(e) => handleEditFormChange('company_name', e.target.value)}
+            />
+            <TextField
+              label="Status"
+              fullWidth
+              value={editFormData.status}
+              onChange={(e) => handleEditFormChange('status', e.target.value)}
+            />
+            <TextField
+              label="Contact Email"
+              fullWidth
+              value={editFormData.contact_email}
+              onChange={(e) => handleEditFormChange('contact_email', e.target.value)}
+            />
+            <TextField
+              label="Contact Phone"
+              fullWidth
+              value={editFormData.contact_number}
+              onChange={(e) => handleEditFormChange('contact_number', e.target.value)}
+            />
+            <TextField
+              label="Contact Recruiter"
+              fullWidth
+              value={editFormData.contact_recruiter}
+              onChange={(e) => handleEditFormChange('contact_recruiter', e.target.value)}
+            />
+            <TextField
+              label="Summary"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+            />
+            <TextField
+              label="Locations"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.locations}
+              onChange={(e) => handleEditFormChange('locations', e.target.value)}
+              helperText="Separate locations with semicolons"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveClient}
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
