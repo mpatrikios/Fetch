@@ -216,6 +216,8 @@ function Clients() {
 
       setShowEditDialog(false);
       setSuccessMessage('Client updated successfully!');
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
       timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
       console.error('Update client error:', err);
@@ -451,6 +453,7 @@ function Clients() {
                       size="small"
                       onClick={handleEditClick}
                       title="Edit client"
+                      aria-label="Edit client"
                       sx={{ ml: 'auto' }}
                     >
                       <EditIcon fontSize="small" />
@@ -561,7 +564,12 @@ function Clients() {
       {/* Edit Client Dialog */}
       <Dialog
         open={showEditDialog}
-        onClose={() => setShowEditDialog(false)}
+        onClose={(event, reason) => {
+          if (saving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return;
+          }
+          setShowEditDialog(false);
+        }}
         maxWidth="sm"
         fullWidth
       >

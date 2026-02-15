@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from src.database.connection import mongo_connection
-from src.api.models import ClientListResponse, ClientDetailsResponse
+from src.api.models import ClientListResponse, ClientDetailsResponse, ClientUpdateRequest
 from src.api.auth_utils import get_current_mlg_recruiter
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -107,7 +107,7 @@ async def get_client_details(client_id: str):
 
 
 @router.put("/clients/{client_id}/update")
-async def update_client(client_id: str, client_data: dict):
+async def update_client(client_id: str, client_data: ClientUpdateRequest):
     """Update editable fields of a client (MLG recruiter only)"""
     validate_object_id(client_id)
 
@@ -123,10 +123,12 @@ async def update_client(client_id: str, client_data: dict):
             "locations": "locations",
         }
 
+        # Only include fields that were explicitly provided (not None)
+        provided_fields = client_data.model_dump(exclude_none=True)
         update_fields = {}
         for api_field, mongo_field in field_mapping.items():
-            if api_field in client_data:
-                update_fields[mongo_field] = client_data[api_field]
+            if api_field in provided_fields:
+                update_fields[mongo_field] = provided_fields[api_field]
 
         if not update_fields:
             raise HTTPException(status_code=400, detail="No valid fields to update")
