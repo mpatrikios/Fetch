@@ -1,9 +1,11 @@
 import { Box, Grid, Skeleton } from '@mui/material';
 import { Business, Assessment } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 import { useNavigate } from 'react-router-dom';
 
 function ClientStats({ stats, loading }) {
+  const navigate = useNavigate();
 
   const clientStats = {
     totalClients: stats?.clients?.total ?? 0,
@@ -57,7 +59,7 @@ function ClientStats({ stats, loading }) {
       </Grid>
       
       <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <DarkButton size="small">
+        <DarkButton size="small" onClick={() => navigate('/clients')}>
           View All Clients
         </DarkButton>
       </Box>

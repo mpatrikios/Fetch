@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Box, 
   Grid, 
@@ -19,7 +19,7 @@ import {
   IconButton,
   Menu
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, Search, Clear, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI } from '../utils/api';
 import { 
@@ -49,6 +49,8 @@ function Candidates() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -58,6 +60,15 @@ function Candidates() {
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    location: '',
+    summary: '',
+    skills: ''
+  });
+  const [saving, setSaving] = useState(false);
 
   // Refs for timeout cleanup
   const timeoutRefs = useRef([]);
@@ -86,6 +97,19 @@ function Candidates() {
     }
   }, [candidates, location.state, selectedCandidate]);
 
+  // Status labels for display
+  const statusLabels = {
+    pending: 'Pending',
+    registered: 'Registered',
+    accepted: 'Accepted',
+    rejected: 'Rejected',
+    scheduled_intake: 'Scheduled Intake',
+    completed_assessment: 'Completed Assessment',
+    uploaded_results: 'Uploaded Results',
+    uploaded_resume: 'Uploaded Resume',
+    completed_onboarding: 'Completed Onboarding'
+  };
+
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
     const locations = candidates
@@ -94,23 +118,44 @@ function Candidates() {
     return [...new Set(locations)].sort();
   }, [candidates]);
 
-  // Filter candidates based on search query and location
+  // Get unique statuses for filter dropdown
+  const uniqueStatuses = useMemo(() => {
+    const statuses = candidates
+      .map(candidate => candidate.status || 'pending')
+      .filter(status => status && status.trim() !== '');
+    return [...new Set(statuses)].sort();
+  }, [candidates]);
+
+  // Filter locations based on search query
+  const filteredLocations = useMemo(() => {
+    if (!locationSearchQuery) return uniqueLocations;
+    return uniqueLocations.filter(loc =>
+      loc.toLowerCase().includes(locationSearchQuery.toLowerCase())
+    );
+  }, [uniqueLocations, locationSearchQuery]);
+
+  // Filter candidates based on search query, location, and status
   const filteredCandidates = useMemo(() => {
     return candidates.filter(candidate => {
-      const matchesSearch = searchQuery === '' || 
-        candidate.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesLocation = selectedLocation === '' || 
+      const matchesSearch = searchQuery === '' ||
+        candidate.full_name.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesLocation = selectedLocation === '' ||
         candidate.location === selectedLocation;
-      
-      return matchesSearch && matchesLocation;
+
+      const candidateStatus = candidate.status || 'pending';
+      const matchesStatus = selectedCandidateStatus === '' ||
+        candidateStatus === selectedCandidateStatus;
+
+      return matchesSearch && matchesLocation && matchesStatus;
     });
-  }, [candidates, searchQuery, selectedLocation]);
+  }, [candidates, searchQuery, selectedLocation, selectedCandidateStatus]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedLocation('');
+    setSelectedCandidateStatus('');
   };
 
   // Get status indicator - only blue dot for pending, nothing for accepted
@@ -138,7 +183,7 @@ function Candidates() {
     }
   };
 
-  const handleCandidateSelect = async (candidate) => {
+  const handleCandidateSelect = useCallback(async (candidate) => {
     if (selectedCandidate?.id === candidate.id) return;
     
     setSelectedCandidate(candidate);
@@ -155,8 +200,8 @@ function Candidates() {
         skills: candidate.skills || [],
         cliftonStrengths: candidate.clifton_strengths || [],
         documents: [
-          { name: `${candidate.name.replace(/\s+/g, '_')} Resume`, type: 'resume' },
-          { name: `${candidate.name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }
+          { name: `${candidate.full_name.replace(/\s+/g, '_')} Resume`, type: 'resume' },
+          { name: `${candidate.full_name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }
         ],
         notes: candidate.notes || 'Enter candidate notes'
       });
@@ -179,7 +224,7 @@ function Candidates() {
     } finally {
       setDetailsLoading(false);
     }
-  };
+  }, [selectedCandidate, candidateNotes, savedNotesContent]);
 
   // notes update handler
   const handleNotesUpdate = async (candidateId) => {
@@ -265,7 +310,7 @@ function Candidates() {
       await candidateAPI.sendAssessment(selectedCandidate.id);
       
       // Show success message
-      setSuccessMessage(`${selectedCandidate.name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      setSuccessMessage(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
       
       // Clear candidate details and selection
       setSelectedCandidate(null);
@@ -284,6 +329,84 @@ function Candidates() {
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // Open edit dialog with current candidate data
+  const handleEditClick = () => {
+    if (!candidateDetails) return;
+    setEditFormData({
+      full_name: candidateDetails.full_name || '',
+      location: candidateDetails.location || '',
+      summary: candidateDetails.Summary || candidateDetails.jobTitle || '',
+      skills: (candidateDetails.skills || []).join(', ')
+    });
+    setShowEditDialog(true);
+  };
+
+  // Handle edit form field changes
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    if (!selectedCandidate) return;
+
+    try {
+      setSaving(true);
+      setErrorMessage('');
+
+      // Parse skills from comma-separated string
+      const skillsArray = editFormData.skills
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      await candidateAPI.updateProfile(selectedCandidate.id, {
+        full_name: editFormData.full_name,
+        location: editFormData.location,
+        summary: editFormData.summary,
+        skills: skillsArray
+      });
+
+      // Update local state
+      setCandidateDetails(prev => ({
+        ...prev,
+        full_name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        jobTitle: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      // Update the candidate in the list
+      setCandidates(prev => prev.map(c =>
+        c.id === selectedCandidate.id
+          ? { ...c, full_name: editFormData.full_name, location: editFormData.location, Summary: editFormData.summary, skills: skillsArray }
+          : c
+      ));
+
+      // Update selectedCandidate reference
+      setSelectedCandidate(prev => ({
+        ...prev,
+        full_name: editFormData.full_name,
+        location: editFormData.location,
+        Summary: editFormData.summary,
+        skills: skillsArray
+      }));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Profile updated successfully!');
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setErrorMessage('Failed to update profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -389,11 +512,11 @@ function Candidates() {
                   ({filteredCandidates.length} of {candidates.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton 
-                    size="small" 
+                  <IconButton
+                    size="small"
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
                     title="Filter by location"
-                    sx={{ 
+                    sx={{
                       color: selectedLocation ? 'primary.main' : 'text.secondary',
                       backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
                       '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
@@ -401,42 +524,27 @@ function Candidates() {
                   >
                     <LocationOn fontSize="small" />
                   </IconButton>
-                  {(searchQuery || selectedLocation) && (
-                    <IconButton 
-                      size="small" 
+                  <IconButton
+                    size="small"
+                    onClick={(e) => setStatusMenuAnchor(e.currentTarget)}
+                    title="Filter by status"
+                    sx={{
+                      color: selectedCandidateStatus ? 'primary.main' : 'text.secondary',
+                      backgroundColor: selectedCandidateStatus ? 'primary.light' : 'transparent',
+                      '&:hover': { backgroundColor: selectedCandidateStatus ? 'primary.light' : 'grey.100' }
+                    }}
+                  >
+                    <LabelIcon fontSize="small" />
+                  </IconButton>
+                  {(searchQuery || selectedLocation || selectedCandidateStatus) && (
+                    <IconButton
+                      size="small"
                       onClick={clearFilters}
                       title="Clear filters"
                     >
                       <FilterListOff fontSize="small" />
                     </IconButton>
                   )}
-                </Box>
-              </Box>
-              
-              {/* Status Filter Tabs */}
-              <Box sx={{ mb: 2 }}>
-                <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center' }}>
-                    Status:
-                  </Typography>
-                  {['pending', 'all'].map((status) => (
-                    <Button
-                      key={status}
-                      size="small"
-                      variant={statusFilter === status ? 'contained' : 'outlined'}
-                      onClick={() => setStatusFilter(status)}
-                      sx={{
-                        minWidth: 'auto',
-                        px: 2,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                        textTransform: 'capitalize',
-                        borderRadius: 1
-                      }}
-                    >
-                      {status === 'all' ? 'All' : status}
-                    </Button>
-                  ))}
                 </Box>
               </Box>
               
@@ -491,7 +599,7 @@ function Candidates() {
                     No candidates found
                   </Typography>
                   <Typography variant="body2">
-                    {searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No candidates available'}
+                    {searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
                   </Typography>
                 </Box>
               ) : (
@@ -507,7 +615,7 @@ function Candidates() {
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {candidate.name}
+                            {candidate.full_name}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             {candidate.email}
@@ -559,9 +667,19 @@ function Candidates() {
               <DetailPanel>
                 {/* Candidate Header */}
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                    {candidateDetails?.name}
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                      {candidateDetails?.full_name}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={handleEditClick}
+                      title="Edit candidate profile"
+                      sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {candidateDetails?.email}
                   </Typography>
@@ -725,7 +843,10 @@ function Candidates() {
       <Menu
         anchorEl={locationMenuAnchor}
         open={Boolean(locationMenuAnchor)}
-        onClose={() => setLocationMenuAnchor(null)}
+        onClose={() => {
+          setLocationMenuAnchor(null);
+          setLocationSearchQuery('');
+        }}
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'right',
@@ -734,26 +855,114 @@ function Candidates() {
           vertical: 'top',
           horizontal: 'right',
         }}
+        slotProps={{
+          paper: {
+            sx: { width: 280 }
+          }
+        }}
       >
-        <MenuItem 
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem 
-            key={location} 
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
+        <Box sx={{ px: 1, py: 1, position: 'sticky', top: 0, backgroundColor: 'background.paper', zIndex: 1 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="Search locations..."
+            value={locationSearchQuery}
+            onChange={(e) => setLocationSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search fontSize="small" />
+                </InputAdornment>
+              ),
+              endAdornment: locationSearchQuery && (
+                <InputAdornment position="end">
+                  <IconButton
+                    size="small"
+                    onClick={() => setLocationSearchQuery('')}
+                    edge="end"
+                  >
+                    <Clear fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              )
             }}
-            selected={selectedLocation === location}
+          />
+        </Box>
+        <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+          <MenuItem
+            onClick={() => {
+              setSelectedLocation('');
+              setLocationMenuAnchor(null);
+              setLocationSearchQuery('');
+            }}
+            selected={selectedLocation === ''}
           >
-            {location}
+            <em>All locations</em>
+          </MenuItem>
+          {filteredLocations.length === 0 ? (
+            <MenuItem disabled>
+              <Typography variant="body2" color="text.secondary">
+                No locations found
+              </Typography>
+            </MenuItem>
+          ) : (
+            filteredLocations.map((location) => (
+              <MenuItem
+                key={location}
+                onClick={() => {
+                  setSelectedLocation(location);
+                  setLocationMenuAnchor(null);
+                  setLocationSearchQuery('');
+                }}
+                selected={selectedLocation === location}
+              >
+                {location}
+              </MenuItem>
+            ))
+          )}
+        </Box>
+      </Menu>
+
+      {/* Status Filter Menu */}
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={() => setStatusMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        slotProps={{
+          paper: {
+            sx: { width: 220 }
+          }
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setSelectedCandidateStatus('');
+            setStatusMenuAnchor(null);
+          }}
+          selected={selectedCandidateStatus === ''}
+        >
+          <em>All statuses</em>
+        </MenuItem>
+        {uniqueStatuses.map((status) => (
+          <MenuItem
+            key={status}
+            onClick={() => {
+              setSelectedCandidateStatus(status);
+              setStatusMenuAnchor(null);
+            }}
+            selected={selectedCandidateStatus === status}
+          >
+            {statusLabels[status] || status}
           </MenuItem>
         ))}
       </Menu>
@@ -770,7 +979,7 @@ function Candidates() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="reject-dialog-description">
-            Are you sure you want to reject <strong>{selectedCandidate?.name}</strong>? 
+            Are you sure you want to reject <strong>{selectedCandidate?.full_name}</strong>? 
             This action will remove them from the active candidates list and cannot be undone.
           </DialogContentText>
         </DialogContent>
@@ -785,6 +994,74 @@ function Candidates() {
             disabled={rejecting}
           >
             {rejecting ? 'Rejecting...' : 'Reject Candidate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Profile Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={() => setShowEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="edit-dialog-title"
+      >
+        <DialogTitle id="edit-dialog-title">
+          Edit Candidate Profile
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Full Name"
+              fullWidth
+              value={editFormData.full_name}
+              onChange={(e) => handleEditFormChange('full_name', e.target.value)}
+            />
+            <TextField
+              label="Location"
+              fullWidth
+              value={editFormData.location}
+              onChange={(e) => handleEditFormChange('location', e.target.value)}
+            />
+            <TextField
+              label="Summary / Position"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+            <TextField
+              label="Skills"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.skills}
+              onChange={(e) => handleEditFormChange('skills', e.target.value)}
+              helperText="Enter skills separated by commas"
+              slotProps={{
+                input: {
+                  sx: { resize: 'vertical', overflow: 'auto' }
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveProfile}
+            variant="contained"
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
