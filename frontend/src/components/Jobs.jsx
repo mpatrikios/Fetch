@@ -162,7 +162,7 @@ function Jobs() {
     if (!jobDetails?.mongo_id) return;
     try {
       const response = await documentAPI.getJobDownloadUrl(jobDetails.mongo_id);
-      window.open(response.data.download_url, '_blank');
+      window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Download error:', err);
       setError('Failed to download document.');
