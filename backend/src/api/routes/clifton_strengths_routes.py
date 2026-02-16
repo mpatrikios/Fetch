@@ -54,7 +54,7 @@ async def upload_clifton_strengths(
         if processed_data.get("strengths_themes"):
             try:
                 mongo_connection.candidates_collection.update_one(
-                    {"Email": current_user["email"]},
+                    {"email": current_user["email"]},
                     {
                         "$set": {
                             "clifton_strengths": processed_data["strengths_themes"],
