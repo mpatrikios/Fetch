@@ -188,41 +188,12 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         logging.error(f"Error retrieving job description(s) for {company_name}: {str(e)}")
         return None
     
-def get_match(job_id: str, company_name: str = None, job_title: str = None) -> Dict[str, Any] | None:
-    """
-    Retrieve match document from MongoDB by (companyName and JobTitle) or job_id.
-    
-    Args:
-        company_name: The company name
-        job_title: The job title
-        job_id: The ObjectId string of the job)
-    """
-    identifier = ""
-    try:
-        from bson import ObjectId
-        if job_id:
-            query = {"JobId": job_id}
-            identifier = job_id
-        elif company_name and job_title:
-            query = {"companyName": company_name, "JobTitle": job_title}
-            identifier = f"{company_name} - {job_title}"
-        else:
-            raise ValueError("Either (company_name and job_title) or job_id must be provided")
-        
-        match = matches_collection.find_one(query)
-        if match:
-            logging.info(f"Retrieved match: {identifier}")
-            return match
-        else:
-            logging.warning(f"Match not found: {identifier}")
-            return None
-    except Exception as e:
-        logging.error(f"Error retrieving match {identifier}: {str(e)}")
-        return None
 
-def insert_match(match_data: Dict[str, Any]):
+def upsert_match(match_data: Dict[str, Any]):
     """
-    Insert a match document in Mongo
+    Insert a new match document in Mongo every time (creates history/duplicates).
+    Always creates a new document regardless of whether similar matches exist.
+    
     Args:
         match_data: Dictionary that contains a job and the matched candidates information
     Returns:
@@ -233,15 +204,17 @@ def insert_match(match_data: Dict[str, Any]):
         company_name = match_data.get("companyName", "")
         job_title = match_data.get("JobTitle", "")
         if (company_name == "" and job_title == "") and job_id == "":
-            raise ValueError("Either (company_name and job_title) or job_id must be provided for insertion")
+            raise ValueError("Either JobId or (companyName and JobTitle) must be provided for insertion")
         
         result = matches_collection.insert_one(match_data)
         
         if job_id != "":
-            logging.info(f"New match created: {job_id}")
+            identifier = job_id
         else:
-            logging.info(f"New match created: {company_name} - {job_title}")
-
+            identifier = f"{company_name} - {job_title}"
+            
+        logging.info(f"New match created: {identifier}")
+        
         return {
             "success": True,
             "operation": "inserted",
@@ -249,11 +222,13 @@ def insert_match(match_data: Dict[str, Any]):
             "job_title": job_title,
             "document_id": str(result.inserted_id)
         }
+            
     except Exception as e:
         logging.error(f"Error inserting match {match_data.get('companyName', 'Unknown')} - {match_data.get('JobTitle', 'Unknown')}: {str(e)}")
         return {
-                "success": False,
-                "error": str(e),
-                "company_name": match_data.get('companyName', 'Unknown'),
-                "job_title": match_data.get('JobTitle', 'Unknown')
-            }
+            "success": False,
+            "error": str(e),
+            "company_name": match_data.get('companyName', 'Unknown'),
+            "job_title": match_data.get('JobTitle', 'Unknown')
+        }
+
