@@ -331,7 +331,7 @@ function Candidates() {
       if (!apiCall) return;
 
       const response = await apiCall(candidateId);
-      window.open(response.data.download_url, '_blank');
+      window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Download error:', err);
       setErrorMessage('Failed to download document.');
