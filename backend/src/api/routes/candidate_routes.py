@@ -50,6 +50,12 @@ async def list_candidates(
             }
         elif status == "pending":
             query_filter = pending_query
+        elif status == "onboarding":
+            query_filter = {
+                "role": {"$ne": "mlg-recruiter"},
+                "status": {"$nin": ["accepted", "rejected", "interviewing"]},
+                "assessment_sent": {"$ne": True}
+            }
         else:
             # Log invalid status and default to pending logic
             logger.warning(f"Invalid status filter '{status}' provided, defaulting to 'pending'")

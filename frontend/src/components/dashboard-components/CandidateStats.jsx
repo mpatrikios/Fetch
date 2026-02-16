@@ -3,8 +3,6 @@ import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
-
-
 function CandidateStats({ stats, loading }) {
   const navigate = useNavigate();
 
@@ -23,7 +21,7 @@ function CandidateStats({ stats, loading }) {
     if (label === "Total Candidates") {
       navigate("/candidates?status=all");
     } else if (label === "Onboarding") {
-      navigate("/candidates?filter=onboarding");
+      navigate("/candidates?status=onboarding");
     } else if (label === "Pending Approval") {
       navigate("/candidates?status=pending");
     }
@@ -43,7 +41,7 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Total Candidates")}>
+            <div onClick={() => handleStatsClick("Total Candidates")} style={{ cursor: 'pointer' }}>
             <DashboardStatCard
               value={candidateStats.total}
               label="Total Candidates"
@@ -57,7 +55,7 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Onboarding")}>
+            <div onClick={() => handleStatsClick("Onboarding")} style={{ cursor: 'pointer' }}>
             <DashboardStatCard
               value={candidateStats.onboarding}
               label="Onboarding"
@@ -83,7 +81,7 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Pending Approval")}>
+            <div onClick={() => handleStatsClick("Pending Approval")} style={{ cursor: 'pointer' }}>
             <DashboardStatCard
               value={candidateStats.pending}
               label="Pending Approval"

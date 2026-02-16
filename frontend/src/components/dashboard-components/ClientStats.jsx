@@ -2,7 +2,6 @@ import { Box, Grid, Skeleton } from '@mui/material';
 import { Business, Assessment } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
-import { useNavigate } from 'react-router-dom';
 
 function ClientStats({ stats, loading }) {
   const navigate = useNavigate();
@@ -12,14 +11,12 @@ function ClientStats({ stats, loading }) {
     onboarding: stats?.clients?.onboarding ?? 0
   };
 
-  
-  const navigate = useNavigate();
   const handleStatsClick = (label) => {
     if (label === "Total Clients") {
-      navigate("/candidates?status=all");
+      navigate("/clients");
     } else if (label === "Clients in Intake Process") {
-      navigate("/candidates?filter=onboarding");
-    } 
+      navigate("/clients?status=onboarding");
+    }
   };
 
   return (
@@ -30,13 +27,13 @@ function ClientStats({ stats, loading }) {
           Client Statistics
         </SectionHeader>
       </Box>
-      
+
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Total Clients")}>
+            <div onClick={() => handleStatsClick("Total Clients")} style={{ cursor: 'pointer' }}>
             <DashboardStatCard
               value={clientStats.totalClients}
               label="Total Clients"
@@ -49,15 +46,17 @@ function ClientStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
+            <div onClick={() => handleStatsClick("Clients in Intake Process")} style={{ cursor: 'pointer' }}>
             <DashboardStatCard
               value={clientStats.onboarding}
               label="Clients in Intake Process"
               icon={Assessment}
             />
+            </div>
           )}
         </Grid>
       </Grid>
-      
+
       <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
         <DarkButton size="small" onClick={() => navigate('/clients')}>
           View All Clients

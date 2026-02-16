@@ -16,7 +16,7 @@ import {
   List
 } from '@mui/material';
 import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Business } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { clientAPI } from '../utils/api';
 import {
   SectionHeader,
@@ -27,6 +27,7 @@ import {
 
 function Clients() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientDetails, setClientDetails] = useState(null);
@@ -37,7 +38,10 @@ function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('');
+  // Initialize statusFilter from URL query param
+  const searchParams = new URLSearchParams(location.search);
+  const initialStatus = searchParams.get('status') || '';
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
 
   useEffect(() => {
     loadClients();
