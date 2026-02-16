@@ -26,13 +26,13 @@ function JobsMatching({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => navigate('/jobs')} style={{ cursor: 'pointer' }}>
+            <Box onClick={() => navigate('/jobs')} sx={{ cursor: 'pointer' }}>
               <DashboardStatCard
                 value={jobStats.totalJobs}
                 label="Total Jobs in Database"
                 icon={Work}
               />
-            </div>
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
