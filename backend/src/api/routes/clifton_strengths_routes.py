@@ -1,5 +1,6 @@
 # API routes for uploading and processing CliftonStrengths assessment documents
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from typing import Dict
 import logging
 from datetime import datetime, timezone
@@ -28,8 +29,8 @@ async def upload_clifton_strengths(
         # Validate and save temporary file
         tmp_file_path = await DocumentService.validate_and_save_temp_file(file)
         
-        # Process with Azure CliftonStrengths Content Understanding model
-        azure_result = azure_clifton_parser(tmp_file_path)
+        # Process with Azure CliftonStrengths Content Understanding model (blocking — offload to threadpool)
+        azure_result = await run_in_threadpool(azure_clifton_parser, tmp_file_path)
         processed_data = parse_clifton_strengths_result(azure_result)
         
         # Prepare additional data with Azure processing results

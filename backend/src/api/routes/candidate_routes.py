@@ -1,5 +1,6 @@
 # API routes for candidate management (list, reject, accept, send assessments)
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.concurrency import run_in_threadpool
 import os
 import tempfile
 import logging
@@ -161,9 +162,9 @@ async def accept_candidate(candidate_id: str):
             tmp.write(file_bytes)
             tmp_file_path = tmp.name
 
-        # Parse resume, upsert data, and generate embeddings
+        # Parse resume, upsert data, and generate embeddings (blocking — offload to threadpool)
         email = candidate.get("email", candidate.get("Email", ""))
-        DocumentService.parse_and_embed_resume(candidate_id, tmp_file_path, email)
+        await run_in_threadpool(DocumentService.parse_and_embed_resume, candidate_id, tmp_file_path, email)
 
         # Set accepted status and timestamp
         mongo_connection.candidates_collection.update_one(

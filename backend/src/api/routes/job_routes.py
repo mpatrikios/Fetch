@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
+from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
@@ -74,13 +75,14 @@ async def upload_job_description(
             token_provider=settings.token_provider,
         )
         
-        response = client.begin_analyze(settings.analyzer_id, settings.file_location)
-        azure_result = client.poll_result(
+        response = await run_in_threadpool(client.begin_analyze, settings.analyzer_id, settings.file_location)
+        azure_result = await run_in_threadpool(
+            client.poll_result,
             response,
             timeout_seconds=60 * 60,
             polling_interval_seconds=1,
         )
-        
+
         # Standardize with the provided company name
         standardized_data = standardize_job_description(azure_result, company_name)
         
@@ -128,8 +130,8 @@ async def upload_job_description(
         else:
         # try block to create job embeddings
             try:
-                embed_job_description_profile(job_doc)
-                embed_job_description_location(job_doc)
+                await run_in_threadpool(embed_job_description_profile, job_doc)
+                await run_in_threadpool(embed_job_description_location, job_doc)
                 job_doc = get_job_description(company_name, job_title)
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
