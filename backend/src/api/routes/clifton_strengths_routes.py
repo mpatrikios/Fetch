@@ -8,6 +8,7 @@ from src.services.document_processing.document_service import DocumentService
 from src.services.document_processing.azure_clifton_parser import azure_clifton_parser, parse_clifton_strengths_result
 from src.api.routes.auth_routes import get_current_user
 from src.database.connection import mongo_connection
+from src.services.storage.blob_storage import get_blob_storage, get_content_type
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,6 +25,10 @@ async def upload_clifton_strengths(
     tmp_file_path = None
     
     try:
+        # Read file bytes for blob storage before consuming the stream
+        file_bytes = await file.read()
+        await file.seek(0)
+
         # Validate and save temporary file
         tmp_file_path = await DocumentService.validate_and_save_temp_file(file)
         
@@ -65,10 +70,33 @@ async def upload_clifton_strengths(
             except Exception as e:
                 logger.error(f"Failed to update candidate document with Clifton Strengths for {current_user['email']}: {e}")
                 raise
-        
+
+        # Upload original document to Azure Blob Storage
+        blob_stored = False
+        try:
+            blob_storage = get_blob_storage()
+            user_id = str(current_user["_id"])
+            blob_path = f"clifton-strengths/{user_id}/{file.filename}"
+            blob_content_type = get_content_type(file.filename)
+            blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
+
+            mongo_connection.candidates_collection.update_one(
+                {"email": current_user["email"]},
+                {"$set": {
+                    "clifton_blob_path": blob_path,
+                    "clifton_blob_url": blob_url,
+                    "clifton_filename": file.filename,
+                }}
+            )
+            blob_stored = True
+        except Exception as e:
+            logger.error(f"Blob storage upload failed for Clifton Strengths for {current_user['email']}: {e}")
+
         # Clean up temporary file
         DocumentService.cleanup_temp_file_safe(tmp_file_path)
-        
+
+        if not blob_stored:
+            result["warning"] = "Original document could not be stored for download"
         return result
         
     except Exception as e:

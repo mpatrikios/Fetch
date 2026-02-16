@@ -22,6 +22,7 @@ from src.services.embeddings.generate_embeddings import (
 from src.api.models import JobResponse, JobListResponse, JobDetailsResponse
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.services.storage.blob_storage import get_blob_storage, get_content_type
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -51,6 +52,9 @@ async def upload_job_description(
     
     # try block to process the document with Azure Content Understanding
     try:
+        # Read file bytes for blob storage before consuming the stream
+        file_bytes = await file.read()
+        await file.seek(0)
         tmp_file_path = await save_upload_file_tmp(file)
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
@@ -97,7 +101,28 @@ async def upload_job_description(
         job_doc = get_job_description(company_name, job_title)
         if not job_doc:
             raise HTTPException(status_code=500, detail="Failed to retrieve job after insertion")
-        
+
+        # Upload original document to Azure Blob Storage
+        blob_stored = False
+        try:
+            blob_storage = get_blob_storage()
+            document_id = str(job_doc.get("_id"))
+            blob_path = f"job-descriptions/{document_id}/{file.filename}"
+            blob_content_type = get_content_type(file.filename)
+            blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
+
+            mongo_connection.job_descriptions_collection.update_one(
+                {"_id": job_doc["_id"]},
+                {"$set": {
+                    "description_blob_path": blob_path,
+                    "description_blob_url": blob_url,
+                    "description_filename": file.filename,
+                }}
+            )
+            blob_stored = True
+        except Exception as e:
+            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}: {e}")
+
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not openai_api_key:
             logger.warning("OpenAI API key not set - skipping embeddings")
@@ -111,9 +136,12 @@ async def upload_job_description(
                 logger.error(f"Embedding generation failed: {e}")
         
         # successful response if all steps complete
+        message = "Job description processed successfully"
+        if not blob_stored:
+            message += " (warning: original document could not be stored for download)"
         return JobResponse(
             success=True,
-            message=f"Job description processed successfully",
+            message=message,
             job={
                 "company": job_doc.get("CompanyName", company_name),
                 "title": job_doc.get("JobTitle"),
@@ -196,7 +224,8 @@ async def get_job_details(company_name: str, job_title: str):
                 "culture_index": job.get("CultureIndex"),
                 "qualifications": job.get("Qualifications", []),
                 "clifton_strengths": [s.get("name") if isinstance(s, dict) else s for s in job.get("clifton_strengths", [])],
-                "has_embeddings": "profile_embedding" in job
+                "has_embeddings": "profile_embedding" in job,
+                "has_description": bool(job.get("description_blob_path")),
             }
         )
 
