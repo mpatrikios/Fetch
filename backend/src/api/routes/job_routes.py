@@ -52,9 +52,6 @@ async def upload_job_description(
     
     # try block to process the document with Azure Content Understanding
     try:
-        # Read file bytes for blob storage before consuming the stream
-        file_bytes = await file.read()
-        await file.seek(0)
         tmp_file_path = await save_upload_file_tmp(file)
         
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
@@ -105,6 +102,8 @@ async def upload_job_description(
         # Upload original document to Azure Blob Storage
         blob_stored = False
         try:
+            with open(tmp_file_path, "rb") as f:
+                file_bytes = f.read()
             blob_storage = get_blob_storage()
             document_id = str(job_doc.get("_id"))
             blob_path = f"job-descriptions/{document_id}/{file.filename}"

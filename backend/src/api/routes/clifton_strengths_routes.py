@@ -25,10 +25,6 @@ async def upload_clifton_strengths(
     tmp_file_path = None
     
     try:
-        # Read file bytes for blob storage before consuming the stream
-        file_bytes = await file.read()
-        await file.seek(0)
-
         # Validate and save temporary file
         tmp_file_path = await DocumentService.validate_and_save_temp_file(file)
         
@@ -74,6 +70,8 @@ async def upload_clifton_strengths(
         # Upload original document to Azure Blob Storage
         blob_stored = False
         try:
+            with open(tmp_file_path, "rb") as f:
+                file_bytes = f.read()
             blob_storage = get_blob_storage()
             user_id = str(current_user["_id"])
             blob_path = f"clifton-strengths/{user_id}/{file.filename}"
