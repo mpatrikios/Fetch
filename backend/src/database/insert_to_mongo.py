@@ -189,7 +189,7 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         return None
     
 
-def upsert_match(match_data: Dict[str, Any]):
+def insert_match(match_data: Dict[str, Any]):
     """
     Insert a new match document in Mongo every time (creates history/duplicates).
     Always creates a new document regardless of whether similar matches exist.
