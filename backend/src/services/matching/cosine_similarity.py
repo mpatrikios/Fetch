@@ -172,10 +172,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, percentile_threshol
             "candidate": cand,
             "explanation": None  # Placeholder, generated later for top_k only
         })
-        
+
     if not scored:
         logger.info("No candidates found with valid embeddings for matching.")
-        return []
+        return scored
 
     # Sort and take top_k candidates
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
