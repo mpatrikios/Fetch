@@ -1,6 +1,5 @@
 # Shared document processing service for common operations across different document types
 import os
-import tempfile
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
