@@ -26,7 +26,7 @@ function JobsMatching({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <Box onClick={() => navigate('/jobs')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/jobs'); }} sx={{ cursor: 'pointer' }}>
+            <Box onClick={() => navigate('/jobs')} sx={{ cursor: 'pointer' }}>
               <DashboardStatCard
                 value={jobStats.totalJobs}
                 label="Total Jobs in Database"
