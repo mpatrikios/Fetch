@@ -41,28 +41,28 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Total Candidates")} style={{ cursor: 'pointer' }}>
-            <DashboardStatCard
-              value={candidateStats.total}
-              label="Total Candidates"
-              icon={People}
-              size="small"
-            />
-            </div>
+            <Box onClick={() => handleStatsClick("Total Candidates")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Total Candidates"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.total}
+                label="Total Candidates"
+                icon={People}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Onboarding")} style={{ cursor: 'pointer' }}>
-            <DashboardStatCard
-              value={candidateStats.onboarding}
-              label="Onboarding"
-              icon={PersonAdd}
-              size="small"
-            />
-            </div>
+            <Box onClick={() => handleStatsClick("Onboarding")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Onboarding"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.onboarding}
+                label="Onboarding"
+                icon={PersonAdd}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
@@ -81,14 +81,14 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Pending Approval")} style={{ cursor: 'pointer' }}>
-            <DashboardStatCard
-              value={candidateStats.pending}
-              label="Pending Approval"
-              icon={CheckCircle}
-              size="small"
-            />
-            </div>
+            <Box onClick={() => handleStatsClick("Pending Approval")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Pending Approval"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.pending}
+                label="Pending Approval"
+                icon={CheckCircle}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
       </Grid>

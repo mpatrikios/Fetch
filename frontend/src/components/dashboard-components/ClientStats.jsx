@@ -33,26 +33,26 @@ function ClientStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Total Clients")} style={{ cursor: 'pointer' }}>
-            <DashboardStatCard
-              value={clientStats.totalClients}
-              label="Total Clients"
-              icon={Business}
-            />
-            </div>
+            <Box onClick={() => handleStatsClick("Total Clients")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Total Clients"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={clientStats.totalClients}
+                label="Total Clients"
+                icon={Business}
+              />
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <div onClick={() => handleStatsClick("Clients in Intake Process")} style={{ cursor: 'pointer' }}>
-            <DashboardStatCard
-              value={clientStats.onboarding}
-              label="Clients in Intake Process"
-              icon={Assessment}
-            />
-            </div>
+            <Box onClick={() => handleStatsClick("Clients in Intake Process")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Clients in Intake Process"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={clientStats.onboarding}
+                label="Clients in Intake Process"
+                icon={Assessment}
+              />
+            </Box>
           )}
         </Grid>
       </Grid>

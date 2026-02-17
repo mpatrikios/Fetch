@@ -53,8 +53,7 @@ async def list_candidates(
         elif status == "onboarding":
             query_filter = {
                 "role": {"$ne": "mlg-recruiter"},
-                "status": {"$nin": ["accepted", "rejected", "interviewing"]},
-                "assessment_sent": {"$ne": True}
+                "assessment_sent": True
             }
         else:
             # Log invalid status and default to pending logic
