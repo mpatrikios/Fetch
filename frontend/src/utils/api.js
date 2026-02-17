@@ -67,6 +67,7 @@ export const clientAPI = {
     return api.get('/clients', { params });
   },
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
+  updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
 };
 
 export const cliftonStrengthsAPI = {
@@ -93,6 +94,7 @@ export const jobAPI = {
   list: () => api.get('/jobs'),
   getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
   getCompanies: () => api.get('/companies'),
+  updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
 };
 
 // Matching endpoints

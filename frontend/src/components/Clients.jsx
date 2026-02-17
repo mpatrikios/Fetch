@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Grid,
@@ -8,14 +8,15 @@ import {
   Button,
   Divider,
   Chip,
-  TextField,
-  InputAdornment,
+  List,
   IconButton,
-  Menu,
-  MenuItem,
-  List
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
-import { ArrowBack, Search, Clear, LocationOn, FilterListOff, Business } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clientAPI } from '../utils/api';
 import {
@@ -24,6 +25,13 @@ import {
   SelectableListItem,
   DetailPanel
 } from './common-components/StyledComponents';
+import {
+  SummaryDisplay,
+  SearchField,
+  FilterMenu,
+  EmptyState,
+  FilterIconButton
+} from './common-components/SharedComponents';
 
 function Clients() {
   const navigate = useNavigate();
@@ -34,7 +42,6 @@ function Clients() {
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [expandedSummary, setExpandedSummary] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
@@ -42,9 +49,23 @@ function Clients() {
   const searchParams = new URLSearchParams(location.search);
   const initialStatus = searchParams.get('status') || '';
   const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    company_name: '',
+    status: '',
+    contact_email: '',
+    contact_number: '',
+    contact_recruiter: '',
+    summary: '',
+    locations: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const timeoutRefs = useRef([]);
 
   useEffect(() => {
     loadClients();
+    return () => timeoutRefs.current.forEach(clearTimeout);
   }, []);
 
   // Get unique locations for filter dropdown
@@ -116,7 +137,6 @@ function Clients() {
     setSelectedClient(client);
     setDetailsLoading(true);
     setClientDetails(null);
-    setExpandedSummary(false);
 
     try {
       const response = await clientAPI.getDetails(client.id);
@@ -129,36 +149,86 @@ function Clients() {
     }
   };
 
-  const SummaryDisplay = ({ summary }) => {
-    if (!summary) return <Typography variant="body1" color="text.secondary">No summary available</Typography>;
+  const handleEditClick = () => {
+    if (!clientDetails) return;
+    setEditFormData({
+      company_name: clientDetails.company_name ?? '',
+      status: clientDetails.status ?? '',
+      contact_email: clientDetails.contact_email ?? '',
+      contact_number: clientDetails.contact_number ?? '',
+      contact_recruiter: clientDetails.contact_recruiter ?? '',
+      summary: clientDetails.summary ?? '',
+      locations: (clientDetails.locations ?? []).join('; '),
+    });
+    setShowEditDialog(true);
+  };
 
-    const words = summary.split(' ');
-    const shouldTruncate = words.length > 40;
-    const truncatedSummary = shouldTruncate ? words.slice(0, 40).join(' ') + ' ...' : summary;
+  const handleEditFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-    return (
-      <Box>
-        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
-          {expandedSummary ? summary : truncatedSummary}
-        </Typography>
-        {shouldTruncate && (
-          <Button
-            size="small"
-            onClick={() => setExpandedSummary(!expandedSummary)}
-            sx={{
-              p: 0,
-              textTransform: 'none',
-              color: 'primary.main',
-              fontSize: '0.875rem',
-              minHeight: 'auto',
-              lineHeight: 1
-            }}
-          >
-            {expandedSummary ? 'Show less' : 'Read more...'}
-          </Button>
-        )}
-      </Box>
-    );
+  const handleSaveClient = async () => {
+    if (!clientDetails) return;
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const locationsArray = editFormData.locations
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      const updatePayload = {
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        contact_email: editFormData.contact_email,
+        contact_number: editFormData.contact_number,
+        contact_recruiter: editFormData.contact_recruiter,
+        summary: editFormData.summary,
+        locations: locationsArray,
+      };
+
+      await clientAPI.updateClient(clientDetails.id, updatePayload);
+
+      setClientDetails(prev => ({
+        ...prev,
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        contact_email: editFormData.contact_email,
+        contact_number: editFormData.contact_number,
+        contact_recruiter: editFormData.contact_recruiter,
+        summary: editFormData.summary,
+        locations: locationsArray,
+      }));
+
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id
+          ? { ...c, company_name: editFormData.company_name, status: editFormData.status, contact_email: editFormData.contact_email, locations: locationsArray }
+          : c
+      ));
+
+      setSelectedClient(prev => ({
+        ...prev,
+        company_name: editFormData.company_name,
+        status: editFormData.status,
+        locations: locationsArray,
+      }));
+
+      setShowEditDialog(false);
+      setSuccessMessage('Client updated successfully!');
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Update client error:', err);
+      setError('Failed to update client. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -199,6 +269,12 @@ function Clients() {
         </Alert>
       )}
 
+      {successMessage && (
+        <Alert severity="success" onClose={() => setSuccessMessage('')} sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
+
       <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
         {/* Sidebar - Clients List */}
         <Grid size={{ xs: 12, md: 4 }}>
@@ -217,18 +293,12 @@ function Clients() {
                   ({filteredClients.length} of {clients.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton
-                    size="small"
+                  <FilterIconButton
+                    active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
+                    icon={LocationOn}
                     title="Filter by location"
-                    sx={{
-                      color: selectedLocation ? 'primary.main' : 'text.secondary',
-                      backgroundColor: selectedLocation ? 'primary.light' : 'transparent',
-                      '&:hover': { backgroundColor: selectedLocation ? 'primary.light' : 'grey.100' }
-                    }}
-                  >
-                    <LocationOn fontSize="small" />
-                  </IconButton>
+                  />
                   {(searchQuery || selectedLocation) && (
                     <IconButton
                       size="small"
@@ -283,30 +353,11 @@ function Clients() {
               )}
 
               {/* Search Field */}
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search by company name..."
+              <SearchField
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        edge="end"
-                      >
-                        <Clear fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by company name..."
               />
             </Box>
 
@@ -321,21 +372,10 @@ function Clients() {
               }
             }}>
               {filteredClients.length === 0 ? (
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '200px',
-                  flexDirection: 'column',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    No clients found
-                  </Typography>
-                  <Typography variant="body2">
-                    {searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No clients available'}
-                  </Typography>
-                </Box>
+                <EmptyState
+                  title="No clients found"
+                  subtitle={searchQuery || selectedLocation ? 'Try adjusting your search or filters' : 'No clients available'}
+                />
               ) : (
                 filteredClients.map((client, index) => (
                   <SelectableListItem
@@ -413,6 +453,15 @@ function Clients() {
                         color={getStatusColor(clientDetails.status)}
                       />
                     )}
+                    <IconButton
+                      size="small"
+                      onClick={handleEditClick}
+                      title="Edit client"
+                      aria-label="Edit client"
+                      sx={{ ml: 'auto' }}
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                   {clientDetails?.locations?.length > 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -507,41 +556,92 @@ function Clients() {
       </Grid>
 
       {/* Location Filter Menu */}
-      <Menu
+      <FilterMenu
         anchorEl={locationMenuAnchor}
-        open={Boolean(locationMenuAnchor)}
         onClose={() => setLocationMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
+        items={uniqueLocations}
+        selectedItem={selectedLocation}
+        onSelect={setSelectedLocation}
+        allLabel="All locations"
+      />
+
+      {/* Edit Client Dialog */}
+      <Dialog
+        open={showEditDialog}
+        onClose={(event, reason) => {
+          if (saving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
+            return;
+          }
+          setShowEditDialog(false);
         }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
+        maxWidth="sm"
+        fullWidth
       >
-        <MenuItem
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem
-            key={location}
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
-            }}
-            selected={selectedLocation === location}
+        <DialogTitle>Edit Client</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Company Name"
+              fullWidth
+              value={editFormData.company_name}
+              onChange={(e) => handleEditFormChange('company_name', e.target.value)}
+            />
+            <TextField
+              label="Status"
+              fullWidth
+              value={editFormData.status}
+              onChange={(e) => handleEditFormChange('status', e.target.value)}
+            />
+            <TextField
+              label="Contact Email"
+              fullWidth
+              value={editFormData.contact_email}
+              onChange={(e) => handleEditFormChange('contact_email', e.target.value)}
+            />
+            <TextField
+              label="Contact Phone"
+              fullWidth
+              value={editFormData.contact_number}
+              onChange={(e) => handleEditFormChange('contact_number', e.target.value)}
+            />
+            <TextField
+              label="Contact Recruiter"
+              fullWidth
+              value={editFormData.contact_recruiter}
+              onChange={(e) => handleEditFormChange('contact_recruiter', e.target.value)}
+            />
+            <TextField
+              label="Summary"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.summary}
+              onChange={(e) => handleEditFormChange('summary', e.target.value)}
+            />
+            <TextField
+              label="Locations"
+              fullWidth
+              multiline
+              minRows={2}
+              value={editFormData.locations}
+              onChange={(e) => handleEditFormChange('locations', e.target.value)}
+              helperText="Separate locations with semicolons"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveClient}
+            variant="contained"
+            disabled={saving}
           >
-            {location}
-          </MenuItem>
-        ))}
-      </Menu>
+            {saving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

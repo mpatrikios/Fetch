@@ -86,6 +86,7 @@ class JobInfo(BaseModel):
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str
+    mongo_id: Optional[str] = None
 
 class JobResponse(BaseModel):
     success: bool
@@ -111,6 +112,7 @@ class JobDetails(BaseModel):
     qualifications: List[str] = []
     clifton_strengths: List[str] = []
     has_embeddings: bool = False
+    mongo_id: Optional[str] = None
 
 
 class JobDetailsResponse(BaseModel):
@@ -210,6 +212,17 @@ class ClientDetails(BaseModel):
     summary: Optional[str] = None
     locations: List[str] = []
     posted_jobs: List[str] = []
+
+
+class ClientUpdateRequest(BaseModel):
+    """Request to update client details"""
+    company_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    status: Optional[str] = Field(None, max_length=50)
+    contact_email: Optional[str] = Field(None, max_length=200)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    contact_recruiter: Optional[str] = Field(None, max_length=200)
+    summary: Optional[str] = None
+    locations: Optional[List[str]] = None
 
 
 class ClientListResponse(BaseModel):
