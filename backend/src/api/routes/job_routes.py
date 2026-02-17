@@ -128,7 +128,6 @@ async def upload_job_description(
         if not openai_api_key:
             logger.warning("OpenAI API key not set - skipping embeddings")
         else:
-        # try block to create job embeddings
             try:
                 await run_in_threadpool(embed_job_description_profile, job_doc)
                 await run_in_threadpool(embed_job_description_location, job_doc)
