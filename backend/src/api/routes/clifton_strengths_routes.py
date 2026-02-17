@@ -75,8 +75,9 @@ async def upload_clifton_strengths(
                 file_bytes = f.read()
             blob_storage = get_blob_storage()
             user_id = str(current_user["_id"])
-            blob_path = f"clifton-strengths/{user_id}/{file.filename}"
-            blob_content_type = get_content_type(file.filename)
+            filename = file.filename or "upload"
+            blob_path = f"clifton-strengths/{user_id}/{filename}"
+            blob_content_type = get_content_type(filename)
             blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
 
             mongo_connection.candidates_collection.update_one(
@@ -103,7 +104,7 @@ async def upload_clifton_strengths(
             error=e,
             user_email=current_user["email"],
             document_type="clifton_strengths",
-            tmp_file_path=tmp_file_path
+            tmp_file_path=tmp_file_path or ""
         )
 
 @router.get("/clifton-strengths")
