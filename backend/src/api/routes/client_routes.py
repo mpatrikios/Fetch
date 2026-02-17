@@ -34,7 +34,7 @@ async def list_clients(
         # Build query filter
         query_filter = {}
         if status:
-            query_filter["status"] = status
+            query_filter["status"] = {"$regex": f"^{status}$", "$options": "i"}
 
         clients = list(mongo_connection.clients_collection.find(
             query_filter,
