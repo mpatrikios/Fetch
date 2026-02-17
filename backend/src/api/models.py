@@ -215,6 +215,17 @@ class ClientDetails(BaseModel):
     posted_jobs: List[str] = []
 
 
+class ClientUpdateRequest(BaseModel):
+    """Request to update client details"""
+    company_name: Optional[str] = Field(None, min_length=1, max_length=200)
+    status: Optional[str] = Field(None, max_length=50)
+    contact_email: Optional[str] = Field(None, max_length=200)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    contact_recruiter: Optional[str] = Field(None, max_length=200)
+    summary: Optional[str] = None
+    locations: Optional[List[str]] = None
+
+
 class ClientListResponse(BaseModel):
     """Response for listing clients"""
     success: bool

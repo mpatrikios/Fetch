@@ -57,7 +57,10 @@ function Candidates() {
   const [accepting, setAccepting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const statusFilter = 'all';
+  // Initialize statusFilter from URL query param
+  const searchParams = new URLSearchParams(location.search);
+  const initialStatus = searchParams.get('status') || 'all';
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
   const [showEditDialog, setShowEditDialog] = useState(false);

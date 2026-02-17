@@ -92,7 +92,7 @@ async def get_dashboard_stats():
         # Client stats from clients collection
         clients_collection = mongo_connection.clients_collection
         total_clients = clients_collection.count_documents({})
-        clients_onboarding = clients_collection.count_documents({"status": "onboarding"})
+        clients_onboarding = clients_collection.count_documents({"status": {"$regex": "^onboarding$", "$options": "i"}})
 
         return DashboardStatsResponse(
             success=True,

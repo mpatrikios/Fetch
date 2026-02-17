@@ -3,7 +3,6 @@ import { People, PersonAdd, Schedule, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
-
 function CandidateStats({ stats, loading }) {
   const navigate = useNavigate();
 
@@ -16,6 +15,16 @@ function CandidateStats({ stats, loading }) {
 
   const handleViewAllCandidates = () => {
     navigate('/candidates');
+  };
+
+  const handleStatsClick = (label) => {
+    if (label === "Total Candidates") {
+      navigate("/candidates?status=all");
+    } else if (label === "Onboarding") {
+      navigate("/candidates?status=onboarding");
+    } else if (label === "Pending Approval") {
+      navigate("/candidates?status=pending");
+    }
   };
 
   return (
@@ -32,24 +41,28 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <DashboardStatCard
-              value={candidateStats.total}
-              label="Total Candidates"
-              icon={People}
-              size="small"
-            />
+            <Box onClick={() => handleStatsClick("Total Candidates")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Total Candidates"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.total}
+                label="Total Candidates"
+                icon={People}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <DashboardStatCard
-              value={candidateStats.onboarding}
-              label="Onboarding"
-              icon={PersonAdd}
-              size="small"
-            />
+            <Box onClick={() => handleStatsClick("Onboarding")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Onboarding"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.onboarding}
+                label="Onboarding"
+                icon={PersonAdd}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
@@ -68,12 +81,14 @@ function CandidateStats({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <DashboardStatCard
-              value={candidateStats.pending}
-              label="Pending Approval"
-              icon={CheckCircle}
-              size="small"
-            />
+            <Box onClick={() => handleStatsClick("Pending Approval")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Pending Approval"); }} sx={{ cursor: 'pointer' }}>
+              <DashboardStatCard
+                value={candidateStats.pending}
+                label="Pending Approval"
+                icon={CheckCircle}
+                size="small"
+              />
+            </Box>
           )}
         </Grid>
       </Grid>

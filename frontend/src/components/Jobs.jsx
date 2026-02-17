@@ -16,7 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  MenuItem
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -165,7 +166,7 @@ function Jobs() {
     if (!jobDetails) return;
     setEditFormData({
       summary: jobDetails.summary ?? '',
-      locations: (jobDetails.locations ?? []).join(', '),
+      locations: (jobDetails.locations ?? []).join('; '),
       skills: (jobDetails.skills ?? []).join(', '),
       responsibilities: (jobDetails.responsibilities ?? []).join('\n'),
       qualifications: (jobDetails.qualifications ?? []).join('\n'),
@@ -195,7 +196,7 @@ function Jobs() {
         .filter(s => s.length > 0);
 
       const locationsArray = editFormData.locations
-        .split(',')
+        .split(';')
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
@@ -643,7 +644,7 @@ function Jobs() {
                       </Typography>
                       {(() => {
                         const traits = jobDetails.culture_index
-                          .split(';')
+                          .split(',')
                           .map(t => t.trim())
                           .filter(t => t.length > 0);
                         const displayTraits = expandedCultureIndex ? traits : traits.slice(0, 3);
@@ -712,7 +713,6 @@ function Jobs() {
         selectedItem={selectedLocation}
         onSelect={setSelectedLocation}
         allLabel="All locations"
-      />
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'right',
@@ -721,29 +721,7 @@ function Jobs() {
           vertical: 'top',
           horizontal: 'right',
         }}
-      >
-        <MenuItem
-          onClick={() => {
-            setSelectedLocation('');
-            setLocationMenuAnchor(null);
-          }}
-          selected={selectedLocation === ''}
-        >
-          <em>All locations</em>
-        </MenuItem>
-        {uniqueLocations.map((location) => (
-          <MenuItem
-            key={location}
-            onClick={() => {
-              setSelectedLocation(location);
-              setLocationMenuAnchor(null);
-            }}
-            selected={selectedLocation === location}
-          >
-            {location}
-          </MenuItem>
-        ))}
-      </Menu>
+      />
 
       {/* Edit Job Dialog */}
       <Dialog
@@ -768,7 +746,7 @@ function Jobs() {
               fullWidth
               value={editFormData.locations}
               onChange={(e) => handleEditFormChange('locations', e.target.value)}
-              helperText="Separate locations with commas"
+              helperText="Separate locations with semicolons"
             />
             <TextField
               label="Skills"
@@ -810,7 +788,7 @@ function Jobs() {
               minRows={2}
               value={editFormData.culture_index}
               onChange={(e) => handleEditFormChange('culture_index', e.target.value)}
-              helperText="Separate traits with semicolons"
+              helperText="Separate traits with commas"
             />
           </Box>
         </DialogContent>
