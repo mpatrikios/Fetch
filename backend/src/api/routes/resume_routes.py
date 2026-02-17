@@ -28,6 +28,8 @@ async def upload_resume(
     """
 
     # Validate file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File must have a filename")
     is_valid, _ = validate_document_file(file.filename)
     if not is_valid:
         raise HTTPException(
