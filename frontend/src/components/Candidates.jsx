@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import { InsertDriveFile as FileIcon, ArrowBack, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { candidateAPI } from '../utils/api';
+import { candidateAPI, documentAPI } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
@@ -193,8 +193,8 @@ function Candidates() {
         skills: candidate.skills || [],
         cliftonStrengths: candidate.clifton_strengths || [],
         documents: [
-          { name: `${candidate.full_name.replace(/\s+/g, '_')} Resume`, type: 'resume' },
-          { name: `${candidate.full_name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }
+          ...(candidate.has_resume ? [{ name: `${candidate.full_name.replace(/\s+/g, '_')} Resume`, type: 'resume' }] : []),
+          ...(candidate.has_clifton_doc ? [{ name: `${candidate.full_name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'cliftonstrengths' }] : []),
         ],
         notes: candidate.notes || 'Enter candidate notes'
       });
@@ -320,6 +320,25 @@ function Candidates() {
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAccepting(false);
+    }
+  };
+
+  // Download document from blob storage
+  const handleDocumentDownload = async (docType, candidateId) => {
+    try {
+      const apiCall = {
+        resume: documentAPI.getResumeDownloadUrl,
+        cliftonstrengths: documentAPI.getCliftonDownloadUrl,
+      }[docType];
+
+      if (!apiCall) return;
+
+      const response = await apiCall(candidateId);
+      window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Download error:', err);
+      setErrorMessage('Failed to download document.');
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     }
   };
 
@@ -621,7 +640,10 @@ function Candidates() {
                         <FileLink
                           key={index}
                           href="#"
-                          onClick={(e) => e.preventDefault()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDocumentDownload(doc.type, selectedCandidate.id);
+                          }}
                         >
                           <FileIcon fontSize="small" />
                           {doc.name}

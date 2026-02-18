@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
+from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
@@ -19,9 +20,10 @@ from src.services.embeddings.generate_embeddings import (
     embed_job_description_profile,
     embed_job_description_location
 )
-from src.api.models import JobResponse, JobListResponse, JobDetailsResponse
+from src.api.models import JobResponse, JobListResponse, JobDetailsResponse, JobInfo, JobDetails
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.services.storage.blob_storage import get_blob_storage, get_content_type
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -37,6 +39,9 @@ async def upload_job_description(
     Company name must be selected from frontend to ensure client exists in DB. 
     """
     # Validate file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File must have a filename")
+    
     is_valid, _ = validate_document_file(file.filename)
     
     if not is_valid:
@@ -50,6 +55,7 @@ async def upload_job_description(
         raise HTTPException(status_code=400, detail="Company name is required")
     
     # try block to process the document with Azure Content Understanding
+    tmp_file_path = None
     try:
         tmp_file_path = await save_upload_file_tmp(file)
         
@@ -73,13 +79,14 @@ async def upload_job_description(
             token_provider=settings.token_provider,
         )
         
-        response = client.begin_analyze(settings.analyzer_id, settings.file_location)
-        azure_result = client.poll_result(
+        response = await run_in_threadpool(client.begin_analyze, settings.analyzer_id, settings.file_location)
+        azure_result = await run_in_threadpool(
+            client.poll_result,
             response,
             timeout_seconds=60 * 60,
             polling_interval_seconds=1,
         )
-        
+
         # Standardize with the provided company name
         standardized_data = standardize_job_description(azure_result, company_name)
         
@@ -94,41 +101,72 @@ async def upload_job_description(
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
         
         # Retrieve the inserted job description
-        job_doc = get_job_description(company_name, job_title)
-        if not job_doc:
+        job_docs = get_job_description(company_name, job_title)
+        if not job_docs:
             raise HTTPException(status_code=500, detail="Failed to retrieve job after insertion")
         
+        job_doc = job_docs[0] if isinstance(job_docs, list) else job_docs
+
+        # Upload original document to Azure Blob Storage
+        blob_stored = False
+        try:
+            with open(tmp_file_path, "rb") as f:
+                file_bytes = f.read()
+            blob_storage = get_blob_storage()
+            document_id = str(job_doc.get("_id"))
+            blob_path = f"job-descriptions/{document_id}/{file.filename}"
+            blob_content_type = get_content_type(file.filename)
+            blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
+
+            mongo_connection.job_descriptions_collection.update_one(
+                {"_id": job_doc["_id"]},
+                {"$set": {
+                    "description_blob_path": blob_path,
+                    "description_blob_url": blob_url,
+                    "description_filename": file.filename,
+                }}
+            )
+            blob_stored = True
+        except Exception as e:
+            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}: {e}")
+
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not openai_api_key:
             logger.warning("OpenAI API key not set - skipping embeddings")
         else:
-        # try block to create job embeddings
             try:
-                embed_job_description_profile(job_doc)
-                embed_job_description_location(job_doc)
+                await run_in_threadpool(embed_job_description_profile, job_doc)
+                await run_in_threadpool(embed_job_description_location, job_doc)
                 job_doc = get_job_description(company_name, job_title)
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
         
         # successful response if all steps complete
+        message = "Job description processed successfully"
+        if not blob_stored:
+            message += " (warning: original document could not be stored for download)"
+        
+        if not isinstance(job_doc, dict):
+            raise HTTPException(status_code=500, detail="Invalid job document format")
+        
         return JobResponse(
             success=True,
-            message=f"Job description processed successfully",
-            job={
-                "company": job_doc.get("CompanyName", company_name),
-                "title": job_doc.get("JobTitle"),
-                "location": job_doc.get("Location"),
-                "skills": job_doc.get("Skills", [])[:10],
-                "has_embeddings": "profile_embedding" in job_doc,
-                "job_id": f"{job_doc.get('CompanyName')}_{job_doc.get('JobTitle')}"
-            }
+            message=message,
+            job=JobInfo(
+                company=job_doc.get("CompanyName", company_name),
+                title=job_doc.get("JobTitle", ""),
+                location=job_doc.get("Location"),
+                skills=job_doc.get("Skills", [])[:10],
+                has_embeddings="profile_embedding" in job_doc,
+                job_id=f"{job_doc.get('CompanyName')}_{job_doc.get('JobTitle')}"
+            )
         )
         
     except Exception as e:
         logger.error(f"Job description processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if 'tmp_file_path' in locals():
+        if tmp_file_path:
             cleanup_temp_file(tmp_file_path)
 
 # Endpoint to list job descriptions
@@ -183,21 +221,22 @@ async def get_job_details(company_name: str, job_title: str):
 
         return JobDetailsResponse(
             success=True,
-            job={
-                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
-                "mongo_id": str(job.get("_id")),
-                "company": job.get("companyName", ""),
-                "title": job.get("JobTitle", ""),
-                "summary": job.get("Summary"),
-                "locations": job.get("Locations", []),
-                "skills": job.get("Skills", []),
-                "responsibilities": job.get("Responsibilities", []),
-                "min_years": job.get("MinYears"),
-                "culture_index": job.get("CultureIndex"),
-                "qualifications": job.get("Qualifications", []),
-                "clifton_strengths": [s.get("name") if isinstance(s, dict) else s for s in job.get("clifton_strengths", [])],
-                "has_embeddings": "profile_embedding" in job
-            }
+            job=JobDetails(
+                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                mongo_id=str(job.get("_id")),
+                company=job.get("companyName", ""),
+                title=job.get("JobTitle", ""),
+                summary=job.get("Summary"),
+                locations= job.get("Locations", []),
+                skills=job.get("Skills", []),
+                responsibilities=job.get("Responsibilities", []),
+                min_years=job.get("MinYears"),
+                culture_index=job.get("CultureIndex"),
+                qualifications=job.get("Qualifications", []),
+                clifton_strengths=[str(s.get("name")) if isinstance(s, dict) and s.get("name") else str(s) for s in job.get("clifton_strengths", []) if s],
+                has_embeddings="profile_embedding" in job,
+                has_description=bool(job.get("description_blob_path")),
+            )
         )
 
     except HTTPException:

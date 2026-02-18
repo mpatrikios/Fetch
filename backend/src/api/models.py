@@ -17,11 +17,19 @@ class CandidateInfo(BaseModel):
     notes: Optional[str] = None
     status: Optional[str] = "pending"
     has_embeddings: bool = False
+    has_resume: bool = False
+    has_clifton_doc: bool = False
 
 class CandidateResponse(BaseModel):
     success: bool
     message: str
     candidate: CandidateInfo
+
+
+class ResumeUploadResponse(BaseModel):
+    success: bool
+    message: str
+    filename: str
 
 class CandidateListResponse(BaseModel):
     success: bool
@@ -112,6 +120,7 @@ class JobDetails(BaseModel):
     qualifications: List[str] = []
     clifton_strengths: List[str] = []
     has_embeddings: bool = False
+    has_description: bool = False
     mongo_id: Optional[str] = None
 
 

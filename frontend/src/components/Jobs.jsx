@@ -19,15 +19,16 @@ import {
   TextField,
   MenuItem
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jobAPI } from '../utils/api';
+import { jobAPI, documentAPI } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
   SelectableListItem,
   DetailPanel,
-  PrimaryButton
+  PrimaryButton,
+  FileLink
 } from './common-components/StyledComponents';
 import {
   SummaryDisplay,
@@ -154,6 +155,17 @@ function Jobs() {
       console.error('Load jobs error:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDescriptionDownload = async () => {
+    if (!jobDetails?.mongo_id) return;
+    try {
+      const response = await documentAPI.getJobDownloadUrl(jobDetails.mongo_id);
+      window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Download error:', err);
+      setError('Failed to download document.');
     }
   };
 
@@ -685,18 +697,33 @@ function Jobs() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Documents
                   </Typography>
-                  <Box sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    py: 3,
-                    color: 'text.secondary'
-                  }}>
-                    <Description sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
-                    <Typography variant="body2">
-                      No documents uploaded yet
-                    </Typography>
-                  </Box>
+                  {jobDetails?.has_description ? (
+                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                      <FileLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDescriptionDownload();
+                        }}
+                      >
+                        <FileIcon fontSize="small" />
+                        Job Description Document
+                      </FileLink>
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      py: 3,
+                      color: 'text.secondary'
+                    }}>
+                      <Description sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
+                      <Typography variant="body2">
+                        No documents uploaded yet
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
 
               </DetailPanel>
