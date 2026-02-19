@@ -133,6 +133,7 @@ class MatchRequest(BaseModel):
     company_name: str
     job_title: str
     top_k: Optional[int] = 10
+    percentile_threshold: Optional[float] = Field(0.75, ge=0.0, le=1.0)
     use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
@@ -154,7 +155,7 @@ class MatchExplanation(BaseModel):
 class MatchResult(BaseModel):
     candidate_id: Optional[str] = None
     rank: Optional[int] = None
-    candidate_name: str
+    full_name: str
     email: Optional[str] = None
     location: Optional[str] = None
     distance_km: Optional[float] = None

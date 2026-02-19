@@ -320,7 +320,7 @@ def main():
                 raise Exception(f"Job description not found for {company_name} - {job_title}")
             
             # Find matching candidates
-            matches = profile_matching_candidate(database, job_doc, top_k=10)
+            matches = profile_matching_candidate(database, job_doc, top_k=10, percentile_threshold=0.75)
             
             # Print header - output made pretty by Claude Code <3
             print("\n" + "="*80)
