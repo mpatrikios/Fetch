@@ -1,7 +1,7 @@
 # API routes for matching candidates to job descriptions.
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Dict, Optional
 import sys
 import os
 import logging
@@ -11,14 +11,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import (
     get_job_description,
-    insert_match
+    insert_match,
+    update_match_review,
 )
 from src.services.matching.cosine_similarity import (
     profile_matching_candidate,
     build_match_doc,
 )
-from src.api.models import MatchRequest, MatchResponse
+from src.api.models import MatchRequest, MatchResponse, ReviewUpdateRequest, ReviewUpdateResponse
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.utils import validate_object_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -101,7 +103,9 @@ async def find_matches(request: MatchRequest):
         mongo_result = insert_match(match)
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
-                
+
+        mongo_match_id = mongo_result.get("document_id")
+
         # Return response with matches
         return MatchResponse(
             success=True,
@@ -110,7 +114,8 @@ async def find_matches(request: MatchRequest):
             job_title=request.job_title,
             total_matches=len(formatted_matches),
             matches=formatted_matches,
-            is_cohort=request.use_cohort or False
+            is_cohort=request.use_cohort or False,
+            mongo_match_id=mongo_match_id,
         )
         
     except HTTPException:
@@ -134,3 +139,36 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, pe
         use_cohort=use_cohort
     )
     return await find_matches(request)
+
+@router.patch("/matches/{match_id}/candidates/{candidate_id}/review", response_model=ReviewUpdateResponse)
+async def update_candidate_review(
+    match_id: str,
+    candidate_id: str,
+    request: ReviewUpdateRequest,
+    current_user: Dict = Depends(get_current_mlg_recruiter),
+):
+    """
+    Update the review status for a specific candidate within a match document.
+    Sets review_status, reviewed_by (current user _id), and reviewed_at (UTC timestamp).
+    """
+    validate_object_id(match_id)
+
+    result = update_match_review(
+        match_id=match_id,
+        candidate_id=candidate_id,
+        review_status=request.review_status,
+        reviewed_by=current_user["_id"],
+    )
+
+    if not result.get("success"):
+        raise HTTPException(status_code=404, detail=result.get("error"))
+
+    return ReviewUpdateResponse(
+        success=True,
+        message="Review status updated",
+        match_id=match_id,
+        candidate_id=candidate_id,
+        review_status=request.review_status,
+        reviewed_by=current_user["_id"],
+        reviewed_at=result["reviewed_at"],
+    )
