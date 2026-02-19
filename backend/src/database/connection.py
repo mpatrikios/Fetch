@@ -45,10 +45,7 @@ class MongoDBConnection:
             if not connection_string:
                 raise ValueError("MONGODB_URL environment variable not set")
             
-            self._client = MongoClient(
-                        connection_string,
-                        tlsAllowInvalidCertificates=True
-            )
+            self._client = MongoClient(connection_string)
             self._database = self._client.get_database("FetchTestingDB")
             
             # Test the connection
@@ -104,6 +101,11 @@ class MongoDBConnection:
     def clients_collection(self) -> Collection:
         """Get Clients collection"""
         return self.get_collection("Clients")
+    
+    @property
+    def matches_collection(self) -> Collection:
+        """Get Matches collection"""
+        return self.get_collection("Matches")
 
 # Create a module-level instance for easy import
 mongo_connection = MongoDBConnection()

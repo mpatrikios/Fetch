@@ -3,8 +3,22 @@ import os
 import tempfile
 import logging
 from typing import Tuple
+from fastapi import HTTPException
+from bson import ObjectId
+from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
+
+
+def validate_object_id(id_str: str) -> None:
+    """Validate that a string is a valid MongoDB ObjectId format."""
+    try:
+        ObjectId(id_str)
+    except InvalidId:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid ID format: {id_str}"
+        )
 
 # function for saving uploaded files to a temporary location
 async def save_upload_file_tmp(upload_file) -> str:
