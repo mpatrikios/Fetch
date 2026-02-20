@@ -7,6 +7,7 @@ from typing import Optional
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.services.email_service import send_email
 from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
@@ -164,8 +165,27 @@ async def accept_candidate(candidate_id: str):
         
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Candidate not found")
-        
+
         logger.info(f"Candidate {candidate_id} has been accepted")
+
+        # Fetch candidate to get email and name for the acceptance email
+        candidate = mongo_connection.candidates_collection.find_one(
+            {"_id": ObjectId(candidate_id)},
+            {"full_name": 1, "email": 1, "Email": 1}
+        )
+        if candidate:
+            candidate_email = candidate.get("email") or candidate.get("Email")
+            candidate_name = candidate.get("full_name", "Candidate")
+            if candidate_email:
+                subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
+                body_html = f"""
+                <p>Hi {candidate_name},</p>
+                <p>[EMAIL BODY PLACEHOLDER — fill in your acceptance message here.]</p>
+                <p>Best,<br>The MLG Team</p>
+                """
+                body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
+                send_email(candidate_email, subject, body_html, body_text)
+
         return {"success": True, "message": "Candidate accepted successfully"}
         
     except Exception as e:
