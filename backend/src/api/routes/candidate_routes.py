@@ -196,7 +196,12 @@ async def accept_candidate(candidate_id: str):
             <p>Best,<br>The MLG Team</p>
             """
             body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
-            send_email(email, subject, body_html, body_text)
+            try:
+                await run_in_threadpool(send_email, email, subject, body_html, body_text)
+                logger.info(f"Acceptance email sent to candidate {candidate_id} at {email}")
+            except Exception as email_err:
+                # Log email sending failure but do not block overall acceptance flow
+                logger.error(f"Failed to send acceptance email to candidate {candidate_id} at {email}: {email_err}")
 
         return {"success": True, "message": "Candidate accepted and resume processed successfully"}
 
