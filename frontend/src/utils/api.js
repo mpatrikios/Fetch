@@ -134,6 +134,13 @@ export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
+// Document download endpoints
+export const documentAPI = {
+  getResumeDownloadUrl: (candidateId) => api.get(`/documents/resume/${candidateId}/download`),
+  getJobDownloadUrl: (jobId) => api.get(`/documents/job/${jobId}/download`),
+  getCliftonDownloadUrl: (candidateId) => api.get(`/documents/clifton/${candidateId}/download`),
+};
+
 // Health check
 export const healthCheck = () => api.get('/health');
 

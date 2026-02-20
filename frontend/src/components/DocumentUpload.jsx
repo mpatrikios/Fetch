@@ -185,7 +185,9 @@ const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = 
           disabled={!file || uploading}
           startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
         >
-          {uploading ? 'Processing...' : `Upload ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths Results' : 'Resume'}`}
+          {uploading
+            ? (uploadType === 'cliftonstrengths' ? 'Processing...' : 'Uploading...')
+            : `Upload ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths Results' : 'Resume'}`}
         </Button>
         
         {uploading && (

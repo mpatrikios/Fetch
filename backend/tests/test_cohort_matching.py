@@ -20,6 +20,7 @@ def test_ranked_matching():
         "company_name": COMPANY_NAME,
         "job_title": JOB_TITLE,
         "top_k": 30,
+        "percentile_threshold": 0.75,
         "use_cohort": False
     }
 
@@ -34,7 +35,7 @@ def test_ranked_matching():
 
         for i, match in enumerate(data['matches'][:30]):
             print(f"\n{i+1}. Rank: {match['rank']}")
-            print(f"   Name: {match['candidate_name']}")
+            print(f"   Name: {match['full_name']}")
             print(f"   Scores: {match['scores']}")
             print(f"   Distance: {match.get('distance_km', 'N/A')} km")
 
@@ -54,6 +55,7 @@ def test_cohort_matching():
         "company_name": COMPANY_NAME,
         "job_title": JOB_TITLE,
         "top_k": 30,
+        "percentile_threshold": 0.75,
         "use_cohort": True
     }
 
@@ -68,7 +70,7 @@ def test_cohort_matching():
 
         for i, match in enumerate(data['matches'][:30]):
             print(f"\n{i+1}. Rank: {match['rank']}")  # Should be None
-            print(f"   Name: {match['candidate_name']}")
+            print(f"   Name: {match['full_name']}")
             print(f"   Scores: {match['scores']}")  # Should be None
             print(f"   Distance: {match.get('distance_km', 'N/A')} km")
 
@@ -104,15 +106,14 @@ def compare_runs():
 
         print("\nFirst run - Top 30 candidate names:")
         for i, match in enumerate(data1['matches'][:30]):
-            print(f"  {i+1}. {match['candidate_name']}")
+            print(f"  {i+1}. {match['full_name']}")
 
         print("\nSecond run - Top 30 candidate names:")
         for i, match in enumerate(data2['matches'][:30]):
-            print(f"  {i+1}. {match['candidate_name']}")
-
+            print(f"  {i+1}. {match['full_name']}")
         # Check if order is different
-        names1 = [m['candidate_name'] for m in data1['matches'][:30]]
-        names2 = [m['candidate_name'] for m in data2['matches'][:30]]
+        names1 = [m['full_name'] for m in data1['matches'][:30]]
+        names2 = [m['full_name'] for m in data2['matches'][:30]]
 
         if names1 != names2:
             print("\n✓ SUCCESS: Orders are different (randomization working!)")

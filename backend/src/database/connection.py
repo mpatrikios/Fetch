@@ -101,6 +101,11 @@ class MongoDBConnection:
     def clients_collection(self) -> Collection:
         """Get Clients collection"""
         return self.get_collection("Clients")
+    
+    @property
+    def matches_collection(self) -> Collection:
+        """Get Matches collection"""
+        return self.get_collection("Matches")
 
 # Create a module-level instance for easy import
 mongo_connection = MongoDBConnection()

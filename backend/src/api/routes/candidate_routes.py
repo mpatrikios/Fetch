@@ -1,28 +1,25 @@
 # API routes for candidate management (list, reject, accept, send assessments)
 from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi.concurrency import run_in_threadpool
+import os
+import tempfile
 import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from bson import ObjectId
+
 from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.utils import cleanup_temp_file, validate_object_id
+from src.services.storage.blob_storage import get_blob_storage
+from src.services.document_processing.document_service import DocumentService
 from src.services.email_service import send_email
-from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
-def validate_object_id(candidate_id: str) -> None:
-    """Validate that candidate_id is a valid ObjectId format."""
-    try:
-        from bson import ObjectId
-        ObjectId(candidate_id)
-    except InvalidId:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid candidate ID format: {candidate_id}"
-        )
 
 # API endpoint to list candidates with basic info
 @router.get("/candidates", response_model=CandidateListResponse)
@@ -75,7 +72,9 @@ async def list_candidates(
                 "clifton_strengths": 1,
                 "recruiter_notes": 1,
                 "status": 1,
-                "profile_embedding": 1
+                "profile_embedding": 1,
+                "resume_blob_path": 1,
+                "clifton_blob_path": 1
             }
         ).sort("full_name", 1).limit(100))
         
@@ -102,7 +101,9 @@ async def list_candidates(
                 "clifton_strengths": clifton_strengths_names,
                 "notes": candidate.get("recruiter_notes", ""),
                 "status": candidate.get("status", "pending"),
-                "has_embeddings": "profile_embedding" in candidate
+                "has_embeddings": "profile_embedding" in candidate,
+                "has_resume": bool(candidate.get("resume_blob_path")),
+                "has_clifton_doc": bool(candidate.get("clifton_blob_path"))
             })
         
         return CandidateListResponse(
@@ -122,8 +123,6 @@ async def reject_candidate(candidate_id: str):
     validate_object_id(candidate_id)
     
     try:
-        from bson import ObjectId
-        
         result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
@@ -144,53 +143,76 @@ async def reject_candidate(candidate_id: str):
         logger.error(f"Failed to reject candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# API endpoint to accept a candidate
+# API endpoint to accept a candidate — triggers resume parsing and embedding generation
 @router.put("/candidates/{candidate_id}/accept")
 async def accept_candidate(candidate_id: str):
-    # Validate ObjectId format
     validate_object_id(candidate_id)
-    
+
+    # Look up candidate and verify resume exists
+    candidate = mongo_connection.candidates_collection.find_one({"_id": ObjectId(candidate_id)})
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    resume_blob_path = candidate.get("resume_blob_path")
+    if not resume_blob_path:
+        raise HTTPException(status_code=400, detail="No resume uploaded for this candidate")
+
+    tmp_file_path = None
     try:
-        from bson import ObjectId
-        
-        result = mongo_connection.candidates_collection.update_one(
+        # Download resume from blob storage and save to temp file
+        blob_storage = get_blob_storage()
+        file_bytes = blob_storage.download_blob(resume_blob_path)
+
+        suffix = os.path.splitext(candidate.get("resume_filename", ".pdf"))[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(file_bytes)
+            tmp_file_path = tmp.name
+
+        # Parse resume, upsert data, and generate embeddings (blocking — offload to threadpool)
+        email = candidate.get("email", candidate.get("Email", ""))
+        await run_in_threadpool(DocumentService.parse_and_embed_resume, candidate_id, tmp_file_path, email)
+
+        # Set accepted status and timestamp
+        mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
                     "status": "accepted",
-                    "accepted_at": datetime.now(timezone.utc)
-                }
+                    "accepted_at": datetime.now(timezone.utc),
+                },
+                "$unset": {"parsing_error": ""},
             }
         )
-        
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Candidate not found")
 
-        logger.info(f"Candidate {candidate_id} has been accepted")
+        logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
 
-        # Fetch candidate to get email and name for the acceptance email
-        candidate = mongo_connection.candidates_collection.find_one(
-            {"_id": ObjectId(candidate_id)},
-            {"full_name": 1, "email": 1, "Email": 1}
-        )
-        if candidate:
-            candidate_email = candidate.get("email") or candidate.get("Email")
-            candidate_name = candidate.get("full_name", "Candidate")
-            if candidate_email:
-                subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
-                body_html = f"""
-                <p>Hi {candidate_name},</p>
-                <p>[EMAIL BODY PLACEHOLDER — fill in your acceptance message here.]</p>
-                <p>Best,<br>The MLG Team</p>
-                """
-                body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
-                send_email(candidate_email, subject, body_html, body_text)
+        # Send acceptance email (non-blocking — failure does not block the accept)
+        candidate_name = candidate.get("full_name", "Candidate")
+        if email:
+            subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
+            body_html = f"""
+            <p>Hi {candidate_name},</p>
+            <p>[EMAIL BODY PLACEHOLDER — fill in your acceptance message here.]</p>
+            <p>Best,<br>The MLG Team</p>
+            """
+            body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
+            send_email(email, subject, body_html, body_text)
 
-        return {"success": True, "message": "Candidate accepted successfully"}
-        
+        return {"success": True, "message": "Candidate accepted and resume processed successfully"}
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to accept candidate {candidate_id}: {e}")
+        # Store parsing error so recruiter can see what went wrong and retry
+        mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id)},
+            {"$set": {"parsing_error": str(e)}}
+        )
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if tmp_file_path:
+            cleanup_temp_file(tmp_file_path)
 
 # API endpoint to send assessment to candidate (placeholder)
 @router.post("/candidates/{candidate_id}/send-assessment")
@@ -199,8 +221,6 @@ async def send_assessment(candidate_id: str):
     validate_object_id(candidate_id)
     
     try:
-        from bson import ObjectId
-        
         # Get candidate info
         candidate = mongo_connection.candidates_collection.find_one(
             {"_id": ObjectId(candidate_id)}
@@ -240,8 +260,6 @@ async def update_candidate_profile(candidate_id: str, profile_data: dict):
     validate_object_id(candidate_id)
 
     try:
-        from bson import ObjectId
-
         # Extract allowed fields from the request
         update_fields = {}
 
@@ -283,8 +301,6 @@ async def update_candidate_notes(candidate_id: str, notes_data: dict):
     validate_object_id(candidate_id)
     
     try:
-        from bson import ObjectId
-        
         notes = notes_data.get("notes", "")
         
         result = mongo_connection.candidates_collection.update_one(
