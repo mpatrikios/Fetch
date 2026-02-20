@@ -11,7 +11,8 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Skeleton
+  Skeleton,
+  Tooltip
 } from '@mui/material';
 import { ArrowBack, Search, Clear, OpenInNew } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -34,6 +35,9 @@ function JobRecommendations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mongoMatchId, setMongoMatchId] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -50,6 +54,7 @@ function JobRecommendations() {
           { signal: controller.signal }
         );
         setRecommendations(response.data.matches || []);
+        setMongoMatchId(response.data.mongo_match_id || null);
       } catch (err) {
         if (err.name === 'CanceledError' || err.name === 'AbortError') {
           return; // Request was cancelled, ignore
@@ -79,6 +84,32 @@ function JobRecommendations() {
 
   const handleCandidateSelect = (candidate) => {
     setSelectedCandidate(candidate);
+    setReviewError('');
+  };
+
+  const handleReviewUpdate = async (candidateId, status) => {
+    console.log('[Review] click', { candidateId, status, mongoMatchId, reviewLoading });
+    if (reviewLoading) return;
+    if (!mongoMatchId) {
+      setReviewError('Match session expired. Please refresh the page and try again.');
+      return;
+    }
+    try {
+      setReviewLoading(true);
+      setReviewError('');
+      await matchingAPI.updateReview(mongoMatchId, candidateId, status);
+      const updateFn = (c) =>
+        c.candidate_id === candidateId
+          ? { ...c, review_status: status, reviewed_at: new Date().toISOString() }
+          : c;
+      setRecommendations(prev => prev.map(updateFn));
+      setSelectedCandidate(prev => (prev ? updateFn(prev) : prev));
+    } catch (err) {
+      console.error('Review update error:', err);
+      setReviewError('Failed to update review status. Please try again.');
+    } finally {
+      setReviewLoading(false);
+    }
   };
 
   if (error && !loading && recommendations.length === 0) {
@@ -235,6 +266,17 @@ function JobRecommendations() {
                           <Typography variant="body2" color="text.secondary">
                             {candidate.location}
                           </Typography>
+                        )}
+                        {candidate.review_status && (
+                          <Chip
+                            label={candidate.review_status.charAt(0).toUpperCase() + candidate.review_status.slice(1)}
+                            size="small"
+                            color={
+                              candidate.review_status === 'approved' ? 'success' :
+                              candidate.review_status === 'rejected' ? 'error' : 'default'
+                            }
+                            sx={{ mt: 0.5 }}
+                          />
                         )}
                       </Box>
                     </Box>
@@ -413,6 +455,69 @@ function JobRecommendations() {
                     </Box>
                   </Box>
                 )}
+
+                <Divider />
+
+                {/* Review Decision Section */}
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Review Decision
+                    </Typography>
+                    {selectedCandidate.review_status && (
+                      <Chip
+                        label={`Status: ${selectedCandidate.review_status.charAt(0).toUpperCase() + selectedCandidate.review_status.slice(1)}`}
+                        size="small"
+                        color={
+                          selectedCandidate.review_status === 'approved' ? 'success' :
+                          selectedCandidate.review_status === 'rejected' ? 'error' : 'default'
+                        }
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Mark as approved">
+                      <span>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          disabled={reviewLoading || selectedCandidate.review_status === 'approved'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'approved')}
+                        >
+                          Approve
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Mark as rejected">
+                      <span>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          disabled={reviewLoading || selectedCandidate.review_status === 'rejected'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'rejected')}
+                        >
+                          Reject
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Reset to pending">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          disabled={reviewLoading || selectedCandidate.review_status === 'pending' || !selectedCandidate.review_status}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'pending')}
+                        >
+                          Pending
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                  {reviewError && (
+                    <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
+                      {reviewError}
+                    </Alert>
+                  )}
+                </Box>
               </DetailPanel>
             )}
           </CardSection>

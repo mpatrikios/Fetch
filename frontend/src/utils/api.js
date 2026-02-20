@@ -106,6 +106,10 @@ export const matchingAPI = {
       top_k: topK,
       use_cohort: useCohort,
     }, config),
+  updateReview: (matchId, candidateId, reviewStatus) =>
+    api.patch(`/matches/${matchId}/candidates/${candidateId}/review`, {
+      review_status: reviewStatus,
+    }),
 };
 
 // Authentication endpoints
