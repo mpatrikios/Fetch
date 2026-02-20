@@ -34,6 +34,9 @@ def send_email(to_email: str, subject: str, body_html: str, body_text: str = "")
             server.sendmail(sender_email, to_email, msg.as_string())
         logger.info(f"Email sent to {to_email}")
         return True
-    except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+    except smtplib.SMTPException:
+        logger.error("Failed to send email to %s due to an SMTP error.", to_email)
+        return False
+    except Exception:
+        logger.error("Failed to send email to %s due to an unexpected error.", to_email)
         return False
