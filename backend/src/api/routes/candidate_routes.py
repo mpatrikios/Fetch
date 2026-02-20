@@ -15,6 +15,7 @@ from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
 from src.services.storage.blob_storage import get_blob_storage
 from src.services.document_processing.document_service import DocumentService
+from src.services.email_service import send_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -184,6 +185,24 @@ async def accept_candidate(candidate_id: str):
         )
 
         logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
+
+        # Send acceptance email (non-blocking — failure does not block the accept)
+        candidate_name = candidate.get("full_name", "Candidate")
+        if email:
+            subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
+            body_html = f"""
+            <p>Hi {candidate_name},</p>
+            <p>[EMAIL BODY PLACEHOLDER — fill in your acceptance message here.]</p>
+            <p>Best,<br>The MLG Team</p>
+            """
+            body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
+            try:
+                await run_in_threadpool(send_email, email, subject, body_html, body_text)
+                logger.info(f"Acceptance email sent to candidate {candidate_id} at {email}")
+            except Exception as email_err:
+                # Log email sending failure but do not block overall acceptance flow
+                logger.error(f"Failed to send acceptance email to candidate {candidate_id} at {email}: {email_err}")
+
         return {"success": True, "message": "Candidate accepted and resume processed successfully"}
 
     except HTTPException:
