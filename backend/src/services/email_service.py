@@ -32,7 +32,7 @@ def send_email(to_email: str, subject: str, body_html: str, body_text: str = "")
             server.starttls()
             server.login(sender_email, app_password)
             server.sendmail(sender_email, to_email, msg.as_string())
-        logger.info(f"Acceptance email sent to {to_email}")
+        logger.info(f"Email sent to {to_email}")
         return True
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
