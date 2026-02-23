@@ -63,14 +63,27 @@ class DocumentService:
             timeout_seconds=60 * 60,
             polling_interval_seconds=1,
         )
-        
-        print(f'azure results raw: {azure_result}') # Debug: log raw Azure response
-        logger.info(f'azure results raw: {azure_result}') # Debug: log raw Azure response to console
-        
+
+        # Log only metadata about the Azure analysis to avoid leaking PII or large payloads
+        logger.info(
+            "Azure resume analysis completed",
+            extra={
+                "candidate_id": candidate_id,
+                "analyzer_id": settings.analyzer_id,
+                "file_name": os.path.basename(file_path),
+            },
+        )
+
         standardized_data = standardize_resume(azure_result)
-        print(f'standardized: {standardized_data}') # Debug: log standardized data before DB upsert
-        logger.info(f'standardized: {standardized_data}') # Debug: log standardized data before DB upsert to console
-        
+        # Log only metadata about the standardization step
+        logger.info(
+            "Resume standardization completed",
+            extra={
+                "candidate_id": candidate_id,
+                "analyzer_id": settings.analyzer_id,
+                "file_name": os.path.basename(file_path),
+            },
+        )
         standardized_data["email"] = email
 
         mongo_result = upsert_candidate(standardized_data, user_id=candidate_id)
