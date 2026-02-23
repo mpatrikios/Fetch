@@ -482,7 +482,7 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="success"
-                          disabled={\!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'approved'}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'approved'}
                           onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'approved')}
                         >
                           Approve
@@ -494,7 +494,7 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="error"
-                          disabled={\!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'rejected'}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'rejected'}
                           onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'rejected')}
                         >
                           Reject
