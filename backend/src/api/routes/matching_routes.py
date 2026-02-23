@@ -267,7 +267,7 @@ async def get_match_by_id(match_id: str):
             job_title=match_doc.get("JobTitle", ""),
             total_matches=len(matches),
             matches=matches,
-            is_cohort=True,
+            is_cohort=match_doc.get("use_cohort", True),
             created_at=match_doc.get("created_at"),
         )
 
