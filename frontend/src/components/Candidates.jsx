@@ -290,7 +290,6 @@ function Candidates() {
   };
 
   // if a candidate is accepted, set status to accepted and send clifton strengths assessment
-  // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
   const handleAcceptAndSendAssessment = async () => {
     if (!selectedCandidate) return;
     

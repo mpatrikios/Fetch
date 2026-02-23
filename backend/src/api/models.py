@@ -95,6 +95,7 @@ class JobInfo(BaseModel):
     has_embeddings: bool = False
     job_id: str
     mongo_id: Optional[str] = None
+    last_match_generated_at: Optional[str] = None
 
 class JobResponse(BaseModel):
     success: bool
@@ -122,6 +123,7 @@ class JobDetails(BaseModel):
     has_embeddings: bool = False
     has_description: bool = False
     mongo_id: Optional[str] = None
+    last_match_generated_at: Optional[str] = None
 
 
 class JobDetailsResponse(BaseModel):
@@ -172,6 +174,20 @@ class MatchResponse(BaseModel):
     total_matches: int
     matches: List[MatchResult]
     is_cohort: bool = True
+    created_at: Optional[str] = None
+
+
+class MatchHistoryEntry(BaseModel):
+    match_id: str
+    created_at: Optional[str] = None
+    total_matches: int
+
+
+class MatchHistoryResponse(BaseModel):
+    success: bool
+    company_name: str
+    job_title: str
+    history: List[MatchHistoryEntry]
 
 
 # Dashboard Stats Models

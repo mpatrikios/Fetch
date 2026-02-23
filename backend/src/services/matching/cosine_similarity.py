@@ -177,13 +177,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, percentile_threshol
         logger.info("No candidates found with valid embeddings for matching.")
         return scored
 
-    # Sort and take top_k candidates
+    # Sort by score descending
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
-    # top_candidates = scored[:top_k]
-    scores = np.array([x["combined_similarity_score"] for x in scored], dtype=float)
-    # Take top 25% candidates based on combined similarity
-    percentile_threshold_value = np.quantile(scores, percentile_threshold)  
-    top_candidates = [c for c in scored if c["combined_similarity_score"] >= percentile_threshold_value]
+    # Apply top_k cap directly
+    top_candidates = scored[:top_k]
 
     # Generate LLM explanations ONLY for top_k candidates (slow, but limited)
     for match in top_candidates:

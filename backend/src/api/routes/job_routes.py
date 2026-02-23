@@ -180,10 +180,11 @@ async def list_jobs():
                 "companyName": 1,
                 "JobTitle": 1,
                 "Location": 1,
-                "Skills": {"$slice": 10}
+                "Skills": {"$slice": 10},
+                "last_match_generated_at": 1
             }
         ).limit(100))
-        
+
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
@@ -193,7 +194,8 @@ async def list_jobs():
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
                 "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
-                "mongo_id": str(job.get("_id"))
+                "mongo_id": str(job.get("_id")),
+                "last_match_generated_at": job.get("last_match_generated_at")
             })
         
         return JobListResponse(
@@ -227,7 +229,7 @@ async def get_job_details(company_name: str, job_title: str):
                 company=job.get("companyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
-                locations= job.get("Locations", []),
+                locations=job.get("Locations", []),
                 skills=job.get("Skills", []),
                 responsibilities=job.get("Responsibilities", []),
                 min_years=job.get("MinYears"),
@@ -236,6 +238,7 @@ async def get_job_details(company_name: str, job_title: str):
                 clifton_strengths=[str(s.get("name")) if isinstance(s, dict) and s.get("name") else str(s) for s in job.get("clifton_strengths", []) if s],
                 has_embeddings="profile_embedding" in job,
                 has_description=bool(job.get("description_blob_path")),
+                last_match_generated_at=job.get("last_match_generated_at"),
             )
         )
 

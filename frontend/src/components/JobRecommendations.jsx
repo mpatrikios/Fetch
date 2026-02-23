@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -11,9 +11,11 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Skeleton
+  Skeleton,
+  Menu,
+  MenuItem
 } from '@mui/material';
-import { ArrowBack, Search, Clear, OpenInNew } from '@mui/icons-material';
+import { ArrowBack, Search, Clear, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { matchingAPI } from '../utils/api';
 import {
@@ -34,22 +36,53 @@ function JobRecommendations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [generatedAt, setGeneratedAt] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [historyAnchorEl, setHistoryAnchorEl] = useState(null);
+  const [activeMatchId, setActiveMatchId] = useState(null);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle);
+      setHistory(res.data.history || []);
+    } catch (err) {
+      // Non-critical — silently ignore
+    }
+  }, [decodedCompany, decodedTitle]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const signal = controller.signal;
 
     const loadRecommendations = async () => {
       try {
         setLoading(true);
         setError('');
+
+        // 1. Try loading from database first
+        try {
+          const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
+          setRecommendations(stored.data.matches || []);
+          setGeneratedAt(stored.data.created_at || null);
+          await loadHistory();
+          return;
+        } catch (err) {
+          if (err.name === 'CanceledError' || err.name === 'AbortError') return;
+          if (err.response?.status !== 404) throw err;
+          // 404 = no stored list yet, fall through to generate
+        }
+
+        // 2. No stored list — generate for the first time
         const response = await matchingAPI.findMatches(
           decodedCompany,
           decodedTitle,
           10,    // top_k
           true,  // use_cohort=true hides scores and rankings
-          { signal: controller.signal }
+          { signal }
         );
         setRecommendations(response.data.matches || []);
+        setGeneratedAt(response.data.created_at || null);
+        await loadHistory();
       } catch (err) {
         if (err.name === 'CanceledError' || err.name === 'AbortError') {
           return; // Request was cancelled, ignore
@@ -57,7 +90,7 @@ function JobRecommendations() {
         setError('Failed to load recommendations');
         console.error('Load recommendations error:', err);
       } finally {
-        if (!controller.signal.aborted) {
+        if (!signal.aborted) {
           setLoading(false);
         }
       }
@@ -66,7 +99,42 @@ function JobRecommendations() {
     loadRecommendations();
 
     return () => controller.abort();
-  }, [decodedCompany, decodedTitle]);
+  }, [decodedCompany, decodedTitle, loadHistory]);
+
+  const handleRegenerate = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, 10, true);
+      setRecommendations(response.data.matches || []);
+      setGeneratedAt(response.data.created_at || null);
+      setSelectedCandidate(null);
+      setActiveMatchId(null);
+      await loadHistory();
+    } catch (err) {
+      setError('Failed to regenerate recommendations');
+      console.error('Regenerate recommendations error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [decodedCompany, decodedTitle, loadHistory]);
+
+  const handleSelectHistoricalMatch = useCallback(async (matchId) => {
+    setHistoryAnchorEl(null);
+    if (matchId === activeMatchId) return;
+    try {
+      setLoading(true);
+      const res = await matchingAPI.getMatchById(matchId);
+      setRecommendations(res.data.matches || []);
+      setGeneratedAt(res.data.created_at || null);
+      setActiveMatchId(matchId);
+      setSelectedCandidate(null);
+    } catch (err) {
+      setError('Failed to load historical match');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeMatchId]);
 
   // Filter candidates based on search query (name only)
   const filteredRecommendations = useMemo(() => {
@@ -99,7 +167,7 @@ function JobRecommendations() {
   return (
     <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/jobs')}
@@ -107,9 +175,66 @@ function JobRecommendations() {
         >
           Back to Jobs
         </Button>
-        <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
+        <SectionHeader variant="h4" component="h1" sx={{ mb: 0, flexGrow: 1 }}>
           Recommendations for {decodedTitle}
         </SectionHeader>
+        {generatedAt && (
+          <Typography variant="body2" color="text.secondary">
+            Generated {new Date(generatedAt).toLocaleString()}
+          </Typography>
+        )}
+        <Button
+          onClick={handleRegenerate}
+          disabled={loading}
+          startIcon={<RefreshIcon />}
+          variant="outlined"
+          size="small"
+        >
+          Regenerate
+        </Button>
+
+        {/* History button */}
+        {history.length > 0 && (
+          <Button
+            onClick={(e) => setHistoryAnchorEl(e.currentTarget)}
+            startIcon={<HistoryIcon />}
+            variant="outlined"
+            size="small"
+            disabled={loading}
+          >
+            History ({history.length})
+          </Button>
+        )}
+
+        {/* History popover */}
+        <Menu
+          anchorEl={historyAnchorEl}
+          open={Boolean(historyAnchorEl)}
+          onClose={() => setHistoryAnchorEl(null)}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          {history.map((entry, index) => {
+            const isActiveEntry = entry.match_id === activeMatchId || (activeMatchId === null && index === 0);
+            return (
+              <MenuItem
+                key={entry.match_id}
+                selected={isActiveEntry}
+                onClick={() => handleSelectHistoricalMatch(entry.match_id)}
+                sx={{ minWidth: 260 }}
+              >
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: isActiveEntry ? 700 : 400 }}>
+                    {index === 0 ? 'Latest — ' : ''}{new Date(entry.created_at).toLocaleString()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {entry.total_matches} candidates
+                  </Typography>
+                </Box>
+              </MenuItem>
+            );
+          })}
+        </Menu>
       </Box>
 
       {error && (

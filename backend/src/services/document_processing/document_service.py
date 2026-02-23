@@ -63,8 +63,14 @@ class DocumentService:
             timeout_seconds=60 * 60,
             polling_interval_seconds=1,
         )
-
+        
+        print(f'azure results raw: {azure_result}') # Debug: log raw Azure response
+        logger.info(f'azure results raw: {azure_result}') # Debug: log raw Azure response to console
+        
         standardized_data = standardize_resume(azure_result)
+        print(f'standardized: {standardized_data}') # Debug: log standardized data before DB upsert
+        logger.info(f'standardized: {standardized_data}') # Debug: log standardized data before DB upsert to console
+        
         standardized_data["email"] = email
 
         mongo_result = upsert_candidate(standardized_data, user_id=candidate_id)
