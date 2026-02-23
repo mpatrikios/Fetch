@@ -152,6 +152,7 @@ async def update_candidate_review(
     Sets review_status, reviewed_by (current user _id), and reviewed_at (UTC timestamp).
     """
     validate_object_id(match_id)
+    validate_object_id(candidate_id)
 
     result = update_match_review(
         match_id=match_id,
@@ -161,7 +162,13 @@ async def update_candidate_review(
     )
 
     if not result.get("success"):
-        raise HTTPException(status_code=404, detail=result.get("error"))
+        error_message = result.get("error", "Unknown error")
+        error_lower = error_message.lower()
+        if "not found" in error_lower:
+            status_code = 404
+        else:
+            status_code = 500
+        raise HTTPException(status_code=status_code, detail=error_message)
 
     return ReviewUpdateResponse(
         success=True,

@@ -175,7 +175,7 @@ class MatchResponse(BaseModel):
     total_matches: int
     matches: List[MatchResult]
     is_cohort: bool = True
-    mongo_match_id: str
+    mongo_match_id: Optional[str] = None
 
 class ReviewUpdateRequest(BaseModel):
     review_status: Literal["approved", "rejected", "pending"]

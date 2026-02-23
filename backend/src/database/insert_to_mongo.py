@@ -221,7 +221,7 @@ def update_match_review(match_id: str, candidate_id: str, review_status: str, re
         if result.matched_count == 0:
             return {"success": False, "error": "Match document not found"}
         if result.modified_count == 0:
-            return {"success": False, "error": "Candidate not found in match"}
+            return {"success": False, "error": "Candidate not found in match or review status unchanged"}
 
         logging.info(f"Review updated for candidate {candidate_id} in match {match_id}")
         return {"success": True, "reviewed_at": reviewed_at}
