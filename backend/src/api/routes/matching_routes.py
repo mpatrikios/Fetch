@@ -152,6 +152,7 @@ async def update_candidate_review(
     Sets review_status, reviewed_by (current user _id), and reviewed_at (UTC timestamp).
     """
     validate_object_id(match_id)
+    validate_object_id(candidate_id)
 
     result = update_match_review(
         match_id=match_id,
