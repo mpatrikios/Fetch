@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -23,6 +23,8 @@ import {
   SelectableListItem,
   DetailPanel
 } from './common-components/StyledComponents';
+
+const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
 function JobRecommendations() {
   const navigate = useNavigate();
@@ -269,7 +271,7 @@ function JobRecommendations() {
                         )}
                         {candidate.review_status && (
                           <Chip
-                            label={candidate.review_status.charAt(0).toUpperCase() + candidate.review_status.slice(1)}
+                            label={capitalizeFirst(candidate.review_status)}
                             size="small"
                             color={
                               candidate.review_status === 'approved' ? 'success' :
@@ -466,7 +468,7 @@ function JobRecommendations() {
                     </Typography>
                     {selectedCandidate.review_status && (
                       <Chip
-                        label={`Status: ${selectedCandidate.review_status.charAt(0).toUpperCase() + selectedCandidate.review_status.slice(1)}`}
+                        label={`Status: ${capitalizeFirst(selectedCandidate.review_status)}`}
                         size="small"
                         color={
                           selectedCandidate.review_status === 'approved' ? 'success' :
@@ -481,7 +483,7 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="success"
-                          disabled={reviewLoading || selectedCandidate.review_status === 'approved'}
+                          disabled={\!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'approved'}
                           onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'approved')}
                         >
                           Approve
@@ -493,7 +495,7 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="error"
-                          disabled={reviewLoading || selectedCandidate.review_status === 'rejected'}
+                          disabled={\!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'rejected'}
                           onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'rejected')}
                         >
                           Reject
@@ -504,7 +506,7 @@ function JobRecommendations() {
                       <span>
                         <Button
                           variant="outlined"
-                          disabled={reviewLoading || selectedCandidate.review_status === 'pending' || !selectedCandidate.review_status}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'pending' || !selectedCandidate.review_status}
                           onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'pending')}
                         >
                           Pending
