@@ -88,7 +88,6 @@ function JobRecommendations() {
   };
 
   const handleReviewUpdate = async (candidateId, status) => {
-    console.log('[Review] click', { candidateId, status, mongoMatchId, reviewLoading });
     if (reviewLoading) return;
     if (!mongoMatchId) {
       setReviewError('Match session expired. Please refresh the page and try again.');
