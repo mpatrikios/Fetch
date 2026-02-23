@@ -108,10 +108,10 @@ export const matchingAPI = {
     }, config),
   getStoredMatches: (companyName, jobTitle, config = {}) =>
     api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
-  getMatchHistory: (companyName, jobTitle) =>
-    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`),
-  getMatchById: (matchId) =>
-    api.get(`/matches/${matchId}`),
+  getMatchHistory: (companyName, jobTitle, config = {}) =>
+    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
+  getMatchById: (matchId, config = {}) =>
+    api.get(`/matches/${matchId}`, config),
 };
 
 // Authentication endpoints
