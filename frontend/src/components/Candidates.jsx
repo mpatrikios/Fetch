@@ -54,7 +54,8 @@ function Candidates() {
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
   const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
-  const [accepting, setAccepting] = useState(false);
+  const [acceptingOnly, setAcceptingOnly] = useState(false);
+  const [acceptingWithAssessment, setAcceptingWithAssessment] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   // Initialize statusFilter from URL query param
@@ -293,7 +294,7 @@ function Candidates() {
   // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
   const handleAccept = async () => {
     if (!selectedCandidate) return;
-    setAccepting(true);
+    setAcceptingOnly(true);
     setErrorMessage('');
     try {
       await candidateAPI.accept(selectedCandidate.id);
@@ -314,7 +315,7 @@ function Candidates() {
       }
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
-      setAccepting(false);
+      setAcceptingOnly(false);
     }
   };
 
@@ -324,7 +325,7 @@ function Candidates() {
   // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
   const handleAcceptAndSendAssessment = async () => {
     if (!selectedCandidate) return;
-    setAccepting(true);
+    setAcceptingWithAssessment(true);
     setErrorMessage('');
     try {
       // Step 1: Send assessment — if this fails, accept is never called
@@ -364,7 +365,7 @@ function Candidates() {
       setErrorMessage(err.message);
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
-      setAccepting(false);
+      setAcceptingWithAssessment(false);
     }
   };
 
@@ -812,15 +813,15 @@ function Candidates() {
                   </SecondaryButton>
                   <PrimaryButton
                     onClick={handleAccept}
-                    disabled={accepting}
+                    disabled={acceptingOnly || acceptingWithAssessment}
                   >
-                    {accepting ? 'Processing...' : 'Accept Candidate'}
+                    {acceptingOnly ? 'Processing...' : 'Accept Candidate'}
                   </PrimaryButton>
                   <PrimaryButton
                     onClick={handleAcceptAndSendAssessment}
-                    disabled={accepting}
+                    disabled={acceptingOnly || acceptingWithAssessment}
                   >
-                    {accepting ? 'Processing...' : 'Accept & Send CliftonStrengths'}
+                    {acceptingWithAssessment ? 'Processing...' : 'Accept & Send CliftonStrengths'}
                   </PrimaryButton>
                 </Box>
               </DetailPanel>
