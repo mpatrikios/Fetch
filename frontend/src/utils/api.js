@@ -106,6 +106,12 @@ export const matchingAPI = {
       top_k: topK,
       use_cohort: useCohort,
     }, config),
+  getStoredMatches: (companyName, jobTitle, config = {}) =>
+    api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
+  getMatchHistory: (companyName, jobTitle, config = {}) =>
+    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
+  getMatchById: (matchId, config = {}) =>
+    api.get(`/matches/${matchId}`, config),
 };
 
 // Authentication endpoints

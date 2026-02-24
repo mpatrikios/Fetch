@@ -498,7 +498,7 @@ function Jobs() {
                     startIcon={<Work />}
                     sx={{ flexShrink: 0 }}
                   >
-                    Find Recommendations
+                    {jobDetails?.last_match_generated_at ? 'View Recommendations' : 'Generate Recommendations'}
                   </PrimaryButton>
                 </Box>
 

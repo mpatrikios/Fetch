@@ -189,6 +189,63 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         return None
     
 
+def get_match(company_name: str, job_title: str) -> Dict[str, Any] | None:
+    """
+    Retrieve the most recent match document for a given company and job title.
+    Returns None if no matches have been saved yet.
+    """
+    try:
+        match = matches_collection.find_one(
+            {"companyName": company_name, "JobTitle": job_title},
+            sort=[("created_at", -1)]
+        )
+        if match:
+            logging.info(f"Retrieved stored match: {company_name} - {job_title}")
+            return match
+        else:
+            logging.info(f"No stored match found: {company_name} - {job_title}")
+            return None
+    except Exception as e:
+        logging.error(f"Error retrieving match for {company_name} - {job_title}: {str(e)}")
+        return None
+
+
+def set_job_match_generated(company_name: str, job_title: str) -> None:
+    from datetime import datetime, timezone
+    job_descriptions_collection.update_one(
+        {"companyName": company_name, "JobTitle": job_title},
+        {"$set": {"last_match_generated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+
+def get_all_matches(company_name: str, job_title: str) -> List[Dict[str, Any]]:
+    """
+    Retrieve all historical matches for a given company and job title.
+    Computes total_matches server-side to avoid projecting the full candidates array.
+    """
+    pipeline = [
+        {"$match": {"companyName": company_name, "JobTitle": job_title}},
+        {"$sort": {"created_at": -1}},
+        {
+            "$project": {
+                "created_at": 1,
+                "total_matches": {
+                    "$size": {"$ifNull": ["$candidates", []]}
+                }
+            }
+        },
+    ]
+    cursor = matches_collection.aggregate(pipeline)
+    return [
+        {
+            "match_id": str(doc["_id"]),
+            "created_at": doc.get("created_at"),
+            "total_matches": doc.get("total_matches", 0),
+        }
+        for doc in cursor
+    ]
+
+
 def insert_match(match_data: Dict[str, Any]):
     """
     Insert a new match document in Mongo every time (creates history/duplicates).
