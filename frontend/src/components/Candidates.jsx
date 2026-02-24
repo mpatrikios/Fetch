@@ -54,7 +54,8 @@ function Candidates() {
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
   const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
-  const [accepting, setAccepting] = useState(false);
+  const [acceptingOnly, setAcceptingOnly] = useState(false);
+  const [acceptingWithAssessment, setAcceptingWithAssessment] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   // Initialize statusFilter from URL query param
@@ -289,36 +290,82 @@ function Candidates() {
     setShowRejectDialog(false);
   };
 
-  // if a candidate is accepted, set status to accepted and send clifton strengths assessment
-  const handleAcceptAndSendAssessment = async () => {
+  // Accept candidate only (for candidates who already have CliftonStrengths results on file)
+  // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
+  const handleAccept = async () => {
     if (!selectedCandidate) return;
-    
+    setAcceptingOnly(true);
+    setErrorMessage('');
     try {
-      setAccepting(true);
-      setErrorMessage('');
-      
       await candidateAPI.accept(selectedCandidate.id);
-      await candidateAPI.sendAssessment(selectedCandidate.id);
-      
-      // Show success message
-      setSuccessMessage(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
-      
-      // Clear candidate details and selection
+      setSuccessMessage(`${selectedCandidate.full_name} has been accepted.`);
       setSelectedCandidate(null);
       setCandidateDetails(null);
-
-      // Refresh candidates list
       loadCandidates();
-
-      // Auto-hide success message after 5 seconds
       timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
-      console.error('Accept and send assessment error:', err);
-      setErrorMessage('Failed to accept candidate or send assessment. Please try again.');
-      // Auto-hide error message after 5 seconds
+      console.error('Accept candidate error:', err);
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 404) {
+        setErrorMessage('Candidate not found. Please refresh the page and try again.');
+      } else if (err.response?.status === 400) {
+        setErrorMessage(detail || 'Cannot accept candidate: a required field is missing.');
+      } else {
+        setErrorMessage(detail ? `Failed to accept candidate: ${detail}` : 'Failed to accept candidate. Please try again.');
+      }
       timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
-      setAccepting(false);
+      setAcceptingOnly(false);
+    }
+  };
+
+  // Accept candidate and send CliftonStrengths assessment.
+  // Assessment is sent FIRST — if it fails, accept is never called so the
+  // candidate is not left marked "accepted" without receiving the assessment.
+  // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
+  const handleAcceptAndSendAssessment = async () => {
+    if (!selectedCandidate) return;
+    setAcceptingWithAssessment(true);
+    setErrorMessage('');
+    try {
+      // Step 1: Send assessment — if this fails, accept is never called
+      try {
+        await candidateAPI.sendAssessment(selectedCandidate.id);
+      } catch (err) {
+        console.error('Send assessment error:', err);
+        const detail = err.response?.data?.detail;
+        throw new Error(detail
+          ? `Failed to send CliftonStrengths assessment: ${detail}`
+          : 'Failed to send CliftonStrengths assessment. Please try again.');
+      }
+
+      // Step 2: Accept only after assessment is confirmed sent
+      try {
+        await candidateAPI.accept(selectedCandidate.id);
+      } catch (err) {
+        console.error('Accept candidate error:', err);
+        const detail = err.response?.data?.detail;
+        if (err.response?.status === 404) {
+          throw new Error('Candidate not found. Please refresh the page and try again.');
+        } else if (err.response?.status === 400) {
+          throw new Error(detail || 'Cannot accept candidate: a required field is missing.');
+        } else {
+          throw new Error(detail
+            ? `Assessment sent, but failed to accept candidate: ${detail}`
+            : 'Assessment sent, but failed to accept candidate. Please try accepting again.');
+        }
+      }
+
+      setSuccessMessage(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      setSelectedCandidate(null);
+      setCandidateDetails(null);
+      loadCandidates();
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      setErrorMessage(err.message);
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
+    } finally {
+      setAcceptingWithAssessment(false);
     }
   };
 
@@ -764,11 +811,17 @@ function Candidates() {
                   <SecondaryButton onClick={handleRejectClick}>
                     Reject Candidate
                   </SecondaryButton>
-                  <PrimaryButton 
-                    onClick={handleAcceptAndSendAssessment}
-                    disabled={accepting}
+                  <PrimaryButton
+                    onClick={handleAccept}
+                    disabled={acceptingOnly}
                   >
-                    {accepting ? 'Processing...' : 'Accept Candidate & Send CliftonStrengths Assessment'}
+                    {acceptingOnly ? 'Processing...' : 'Accept Candidate'}
+                  </PrimaryButton>
+                  <PrimaryButton
+                    onClick={handleAcceptAndSendAssessment}
+                    disabled={acceptingWithAssessment}
+                  >
+                    {acceptingWithAssessment ? 'Processing...' : 'Accept & Send CliftonStrengths'}
                   </PrimaryButton>
                 </Box>
               </DetailPanel>
