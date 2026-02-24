@@ -813,13 +813,13 @@ function Candidates() {
                   </SecondaryButton>
                   <PrimaryButton
                     onClick={handleAccept}
-                    disabled={acceptingOnly || acceptingWithAssessment}
+                    disabled={acceptingOnly}
                   >
                     {acceptingOnly ? 'Processing...' : 'Accept Candidate'}
                   </PrimaryButton>
                   <PrimaryButton
                     onClick={handleAcceptAndSendAssessment}
-                    disabled={acceptingOnly || acceptingWithAssessment}
+                    disabled={acceptingWithAssessment}
                   >
                     {acceptingWithAssessment ? 'Processing...' : 'Accept & Send CliftonStrengths'}
                   </PrimaryButton>
