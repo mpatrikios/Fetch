@@ -95,7 +95,7 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
-def profile_matching_candidate(db, job_doc, top_k: int = 10, percentile_threshold: float = 0.75, use_cohort: bool = True):
+def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
@@ -110,7 +110,6 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, percentile_threshol
         db: The database connection object, expected to have a "Candidates" collection.
         job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
-        percentile_threshold (float, optional): If specified, takes all candidates above this percentile of combined similarity instead of a fixed top_k. Defaults to 0.75.
         use_cohort (bool, optional): If True, randomizes the order of top_k candidates to reduce ranking bias. Defaults to True.
 
     Returns:
@@ -359,7 +358,7 @@ Keep the tone factual and recruiter-friendly. Do NOT invent facts that are not s
     features["summary"] = summary_text
     return features
 
-def build_match_doc(job_doc, formatted_matches) -> dict:
+def build_match_doc(job_doc, formatted_matches, use_cohort: bool = True) -> dict:
     job_id = job_doc.get("_id")
     job_id_str = str(job_id) if job_id is not None else ""
     company_name = job_doc.get("companyName", "Unknown Company")
@@ -369,5 +368,6 @@ def build_match_doc(job_doc, formatted_matches) -> dict:
         "companyName": company_name,
         "JobTitle": job_title,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "use_cohort": use_cohort,
         "candidates": formatted_matches,
     }

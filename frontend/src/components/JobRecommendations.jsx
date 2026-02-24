@@ -41,10 +41,12 @@ function JobRecommendations() {
   const [historyAnchorEl, setHistoryAnchorEl] = useState(null);
   const [activeMatchId, setActiveMatchId] = useState(null);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (signal) => {
     try {
-      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle);
-      setHistory(res.data.history || []);
+      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle, { signal });
+      if (!signal?.aborted) {
+        setHistory(res.data.history || []);
+      }
     } catch (err) {
       // Non-critical — silently ignore
     }
@@ -64,7 +66,7 @@ function JobRecommendations() {
           const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
           setRecommendations(stored.data.matches || []);
           setGeneratedAt(stored.data.created_at || null);
-          await loadHistory();
+          await loadHistory(signal);
           return;
         } catch (err) {
           if (err.name === 'CanceledError' || err.name === 'AbortError') return;
@@ -82,7 +84,7 @@ function JobRecommendations() {
         );
         setRecommendations(response.data.matches || []);
         setGeneratedAt(response.data.created_at || null);
-        await loadHistory();
+        await loadHistory(signal);
       } catch (err) {
         if (err.name === 'CanceledError' || err.name === 'AbortError') {
           return; // Request was cancelled, ignore
@@ -225,7 +227,7 @@ function JobRecommendations() {
               >
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: isActiveEntry ? 700 : 400 }}>
-                    {index === 0 ? 'Latest — ' : ''}{new Date(entry.created_at).toLocaleString()}
+                    {index === 0 ? 'Latest — ' : ''}{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {entry.total_matches} candidates

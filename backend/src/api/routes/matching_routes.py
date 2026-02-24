@@ -54,7 +54,6 @@ async def find_matches(request: MatchRequest):
             mongo_connection.database,
             job_doc,
             top_k=request.top_k or 10,
-            percentile_threshold=request.percentile_threshold or 0.75,
             use_cohort=request.use_cohort or False
         )
 
@@ -100,7 +99,7 @@ async def find_matches(request: MatchRequest):
             }
             formatted_matches.append(formatted_match)
 
-        match = build_match_doc(job_doc, formatted_matches)
+        match = build_match_doc(job_doc, formatted_matches, use_cohort=request.use_cohort or False)
         mongo_result = insert_match(match)
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
@@ -127,7 +126,7 @@ async def find_matches(request: MatchRequest):
 
 # endpoint to get matches via GET request using URL. Might be useful for testing or caching.
 @router.get("/matches/job/{company_name}/{job_title}")
-async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, percentile_threshold: float = 0.75, use_cohort: bool = False):
+async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, use_cohort: bool = False):
     """
     Alternative GET endpoint for finding matches.
     Useful for direct URL access or caching.
@@ -136,7 +135,6 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, pe
         company_name=company_name,
         job_title=job_title,
         top_k=top_k,
-        percentile_threshold=percentile_threshold,
         use_cohort=use_cohort
     )
     return await find_matches(request)
@@ -190,7 +188,7 @@ async def get_stored_matches(company_name: str, job_title: str):
             job_title=job_title,
             total_matches=len(matches),
             matches=matches,
-            is_cohort=True,
+            is_cohort=match_doc.get("use_cohort", True),
             created_at=match_doc.get("created_at"),
         )
 
