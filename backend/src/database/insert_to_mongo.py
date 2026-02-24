@@ -219,13 +219,29 @@ def set_job_match_generated(company_name: str, job_title: str) -> None:
 
 
 def get_all_matches(company_name: str, job_title: str) -> List[Dict[str, Any]]:
-    cursor = matches_collection.find(
-        {"companyName": company_name, "JobTitle": job_title},
-        {"_id": 1, "created_at": 1, "candidates": 1},
-        sort=[("created_at", -1)]
-    )
+    """
+    Retrieve all historical matches for a given company and job title.
+    Computes total_matches server-side to avoid projecting the full candidates array.
+    """
+    pipeline = [
+        {"$match": {"companyName": company_name, "JobTitle": job_title}},
+        {"$sort": {"created_at": -1}},
+        {
+            "$project": {
+                "created_at": 1,
+                "total_matches": {
+                    "$size": {"$ifNull": ["$candidates", []]}
+                }
+            }
+        },
+    ]
+    cursor = matches_collection.aggregate(pipeline)
     return [
-        {"match_id": str(doc["_id"]), "created_at": doc.get("created_at"), "total_matches": len(doc.get("candidates", []))}
+        {
+            "match_id": str(doc["_id"]),
+            "created_at": doc.get("created_at"),
+            "total_matches": doc.get("total_matches", 0),
+        }
         for doc in cursor
     ]
 
