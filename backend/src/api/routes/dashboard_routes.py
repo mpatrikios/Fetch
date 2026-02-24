@@ -14,20 +14,13 @@ router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 async def get_dashboard_stats():
     """Get aggregated statistics for the MLG dashboard."""
     try:
-        # Candidate stats using aggregation (exclude mlg-recruiters)
+        # Candidate stats using aggregation
         candidate_pipeline = [
-            {
-                "$match": {"role": {"$ne": "mlg-recruiter"}}
-            },
             {
                 "$facet": {
                     "total": [{"$count": "count"}],
                     "byStatus": [
                         {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-                    ],
-                    "onboarding": [
-                        {"$match": {"assessment_sent": True}},
-                        {"$count": "count"}
                     ]
                 }
             }
@@ -53,16 +46,14 @@ async def get_dashboard_stats():
             for status_group in facets.get("byStatus", []):
                 status = status_group.get("_id")
                 count = status_group.get("count", 0)
-                if status == "pending" or status is None:
+                if status == "scheduled_intake":
                     pending += count
+                elif status == "onboarding":
+                    onboarding += count
                 elif status == "accepted":
-                    accepted = count
+                    accepted += count
                 elif status == "rejected":
-                    rejected = count
-
-            # Onboarding (assessment sent)
-            if facets.get("onboarding") and len(facets["onboarding"]) > 0:
-                onboarding = facets["onboarding"][0].get("count", 0)
+                    rejected += count
 
         # Job stats using aggregation
         job_pipeline = [

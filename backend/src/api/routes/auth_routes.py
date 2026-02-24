@@ -153,6 +153,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     db = mongo_connection.database
     user = db.Candidates.find_one({"email": email})
     if user is None:
+        user = db.MLGRecruiters.find_one({"email": email})
+    if user is None:
         raise HTTPException(status_code=401, detail="User not found")
 
     user["_id"] = str(user["_id"])
@@ -206,6 +208,8 @@ async def login(user_credentials: UserLogin):
     db = mongo_connection.database
     
     user = db.Candidates.find_one({"email": user_credentials.email})
+    if user is None:
+        user = db.MLGRecruiters.find_one({"email": user_credentials.email})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
@@ -251,11 +255,8 @@ async def update_status(
     """Update user's onboarding status"""
     valid_statuses = [
         "registered",
-        "uploaded_resume", 
+        "onboarding",
         "scheduled_intake",
-        "completed_assessment",
-        "uploaded_results",
-        "completed_onboarding"
     ]
     
     if status not in valid_statuses:

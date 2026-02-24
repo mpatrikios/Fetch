@@ -18,3 +18,4 @@ dist/
 
 # PDF documents
 *.pdf
+backend/seed_candidates.py

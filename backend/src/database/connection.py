@@ -91,6 +91,11 @@ class MongoDBConnection:
     def candidates_collection(self) -> Collection:
         """Get Candidates collection"""
         return self.get_collection("Candidates")
+
+    @property
+    def mlg_recruiters_collection(self) -> Collection:
+        """Get MLGRecruiters collection"""
+        return self.get_collection("MLGRecruiters")
     
     @property
     def job_descriptions_collection(self) -> Collection:
