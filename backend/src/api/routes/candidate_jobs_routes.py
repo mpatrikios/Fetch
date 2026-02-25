@@ -7,7 +7,10 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict
 from datetime import datetime, timezone
 from bson import ObjectId
+from bson.errors import InvalidId
 import logging
+
+from src.api.utils import validate_object_id
 
 from src.database.connection import mongo_connection
 from src.api.routes.auth_routes import get_current_user
@@ -60,6 +63,7 @@ async def recommend_job(
     Recruiter pushes a job recommendation to a specific candidate.
     Returns 409 if the same candidate+job pair already exists.
     """
+    validate_object_id(candidate_id)
     collection = mongo_connection.candidate_jobs_collection
 
     # Duplicate check
@@ -104,11 +108,12 @@ async def remove_recommendation(
     current_user: Dict = Depends(get_current_mlg_recruiter),
 ):
     """Remove a job recommendation for a candidate."""
+    validate_object_id(candidate_id)
     collection = mongo_connection.candidate_jobs_collection
 
     try:
         object_id = ObjectId(rec_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid recommendation ID")
 
     result = collection.delete_one({
@@ -151,6 +156,7 @@ async def update_recommendation_status(
     current_user: Dict = Depends(get_current_mlg_recruiter),
 ):
     """Update the pipeline status of a recommendation (recruiter only)."""
+    validate_object_id(candidate_id)
     if body.status not in RECRUITER_UPDATABLE_STATUSES:
         raise HTTPException(
             status_code=400,
@@ -161,7 +167,7 @@ async def update_recommendation_status(
 
     try:
         object_id = ObjectId(rec_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid recommendation ID")
 
     result = collection.update_one(
@@ -217,7 +223,7 @@ async def express_interest(
 
     try:
         object_id = ObjectId(rec_id)
-    except Exception:
+    except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid recommendation ID")
 
     result = collection.update_one(

@@ -45,7 +45,7 @@ function RecommendedJobs({ recommendedJobs, onRefresh }) {
 
       {recommendedJobs.length === 0 ? (
         <Typography>
-          No recommendations yet. You will receive an email when we found the right fit for you.
+          No recommendations yet. You will receive an email when we find the right fit for you.
         </Typography>
       ) : (
         <Grid container spacing={2}>
