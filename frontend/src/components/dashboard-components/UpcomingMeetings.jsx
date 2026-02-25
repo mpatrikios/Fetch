@@ -1,4 +1,4 @@
-import { Box, Typography, Card, List, ListItem, ListItemText, Chip } from '@mui/material';
+import { Box, Typography, List, ListItem, ListItemText, Chip } from '@mui/material';
 import { CalendarToday, VideoCall } from '@mui/icons-material';
 import { CardSection, DarkButton } from '../common-components/StyledComponents';
 

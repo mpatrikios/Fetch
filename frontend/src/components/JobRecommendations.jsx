@@ -8,9 +8,6 @@ import {
   Button,
   Divider,
   Chip,
-  TextField,
-  InputAdornment,
-  IconButton,
   Skeleton,
   Menu,
   MenuItem,
@@ -21,7 +18,7 @@ import {
   DialogContentText,
   DialogActions,
 } from '@mui/material';
-import { ArrowBack, Search, Clear, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
+import { ArrowBack, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { matchingAPI, candidateJobsAPI, jobAPI } from '../utils/api';
 import {
@@ -31,6 +28,7 @@ import {
   DetailPanel,
   DarkButton
 } from './common-components/StyledComponents';
+import { SearchField, EmptyState } from './common-components/SharedComponents';
 
 function JobRecommendations() {
   const navigate = useNavigate();
@@ -362,44 +360,13 @@ function JobRecommendations() {
                     ({filteredRecommendations.length} of {recommendations.length})
                   </Typography>
                 )}
-                {searchQuery && !loading && (
-                  <Box sx={{ ml: 'auto' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => setSearchQuery('')}
-                      title="Clear search"
-                    >
-                      <Clear fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
               </Box>
 
-              {/* Search Field */}
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search by name..."
+              <SearchField
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        edge="end"
-                      >
-                        <Clear fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by name..."
               />
             </Box>
 
@@ -422,21 +389,10 @@ function JobRecommendations() {
                   </Box>
                 ))
               ) : filteredRecommendations.length === 0 ? (
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '200px',
-                  flexDirection: 'column',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    No candidates found
-                  </Typography>
-                  <Typography variant="body2">
-                    {searchQuery ? 'Try adjusting your search' : 'No matching candidates available'}
-                  </Typography>
-                </Box>
+                <EmptyState
+                  title="No candidates found"
+                  subtitle={searchQuery ? 'Try adjusting your search' : 'No matching candidates available'}
+                />
               ) : (
                 filteredRecommendations.map((candidate, index) => (
                   <SelectableListItem

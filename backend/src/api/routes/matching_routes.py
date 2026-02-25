@@ -2,11 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
-import sys
-import os
 import logging
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import (
@@ -22,6 +18,7 @@ from src.services.matching.cosine_similarity import (
 )
 from src.api.models import MatchRequest, MatchResponse, MatchResult, MatchHistoryResponse
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.routes.helpers import extract_clifton_names
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -63,13 +60,7 @@ async def find_matches(request: MatchRequest):
             candidate = match["candidate"]
             
             # Extract Clifton Strengths
-            clifton_strengths = []
-            if candidate.get("clifton_strengths"):
-                for strength in candidate.get("clifton_strengths", [])[:5]:
-                    if isinstance(strength, dict) and "name" in strength:
-                        clifton_strengths.append(strength["name"])
-                    elif isinstance(strength, str):
-                        clifton_strengths.append(strength)
+            clifton_strengths = extract_clifton_names(candidate.get("clifton_strengths", [])[:5])
             
             # Build formatted match entry
             formatted_match = {
