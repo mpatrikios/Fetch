@@ -2,7 +2,6 @@
 Self-service profile management routes for candidates.
 All endpoints require authentication and operate on the authenticated user's own data.
 """
-from backend.src.api.routes.helpers import get_candidate_or_404
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict
 from datetime import datetime, timezone
