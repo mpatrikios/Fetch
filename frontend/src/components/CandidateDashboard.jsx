@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Box, Typography, Grid, CircularProgress, Alert } from '@mui/material';
-import { authAPI, jobAPI } from '../utils/api';
+import { authAPI, profileAPI } from '../utils/api';
 import ProfileCard from './dashboard-components/ProfileCard';
 import AppliedJobsList from './dashboard-components/AppliedJobsList';
 import RecommendedJobs from './dashboard-components/RecommendedJobs';
@@ -24,28 +24,13 @@ function CandidateDashboard() {
       const userResponse = await authAPI.getCurrentUser();
       setUser(userResponse.data);
       
-      // Get recommended jobs
-      const jobsResponse = await jobAPI.list();
-      const jobs = jobsResponse.data.jobs || [];
-      setRecommendedJobs(jobs.slice(0, 5));
-      
-      // Mock applied jobs data - replace with actual API call
-      setAppliedJobs([
-        {
-          id: 1,
-          title: 'Software Engineer',
-          company: 'Tech Corp',
-          status: 'pending',
-          appliedDate: '2024-01-15'
-        },
-        {
-          id: 2,
-          title: 'Product Manager',
-          company: 'StartUp Inc',
-          status: 'interview',
-          appliedDate: '2024-01-10'
-        }
-      ]);
+      // Get jobs recommended specifically for this candidate
+      const recsResponse = await profileAPI.getRecommendations();
+      setRecommendedJobs(recsResponse.data.recommendations || []);
+
+      // Get jobs the candidate has expressed interest in
+      const appsResponse = await profileAPI.getApplications();
+      setAppliedJobs(appsResponse.data.applications || []);
       
     } catch (err) {
       setError('Failed to load dashboard data');
@@ -92,7 +77,7 @@ function CandidateDashboard() {
           {/* Main Content */}
           <Grid size={{ xs: 12, md: 8 }}>
             <AppliedJobsList appliedJobs={appliedJobs} />
-            <RecommendedJobs recommendedJobs={recommendedJobs} />
+            <RecommendedJobs recommendedJobs={recommendedJobs} onRefresh={loadDashboardData} />
           </Grid>
         </Grid>
       </Container>

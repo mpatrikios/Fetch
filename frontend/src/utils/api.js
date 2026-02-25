@@ -114,6 +114,25 @@ export const matchingAPI = {
     api.get(`/matches/${matchId}`, config),
 };
 
+// Candidate Jobs endpoints (recruiter-facing)
+export const candidateJobsAPI = {
+  recommendJob: (candidateId, jobData) =>
+    api.post(`/candidates/${candidateId}/recommend-job`, jobData),
+  removeRecommendation: (candidateId, recId) =>
+    api.delete(`/candidates/${candidateId}/recommendations/${recId}`),
+  updateStatus: (candidateId, recId, status) =>
+    api.put(`/candidates/${candidateId}/recommendations/${recId}/status`, { status }),
+  getJobRecommendations: (companyName, jobTitle) =>
+    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/recommendations`),
+};
+
+// Profile endpoints (candidate self-service)
+export const profileAPI = {
+  getRecommendations: () => api.get('/profile/recommendations'),
+  expressInterest: (recId) => api.post(`/profile/recommendations/${recId}/apply`),
+  getApplications: () => api.get('/profile/applications'),
+};
+
 // Authentication endpoints
 export const authAPI = {
   login: (email, password) =>
