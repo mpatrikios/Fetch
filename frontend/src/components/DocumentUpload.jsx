@@ -14,9 +14,9 @@ import {
   Delete,
   Description,
 } from '@mui/icons-material';
-import { resumeAPI, cliftonStrengthsAPI } from '../utils/api';
+import { resumeAPI, cliftonStrengthsAPI, jobAPI } from '../utils/api';
 
-const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = '.pdf,.doc,.docx' }) => {
+const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = '.pdf,.doc,.docx', companyName }) => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -84,8 +84,15 @@ const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = 
       let response;
       if (uploadType === 'cliftonstrengths') {
         response = await cliftonStrengthsAPI.upload(file);
-      } else {
+      } else if (uploadType === 'resume') {
         response = await resumeAPI.upload(file);
+      } else if (uploadType === 'job_description') {
+        if (!companyName || companyName.trim() === '') {
+          throw new Error('Company name is required for job description upload');
+        }
+        response = await jobAPI.upload(file, companyName);
+      } else {
+        throw new Error('Invalid upload type');
       }
       
       setFile(null);
@@ -103,7 +110,7 @@ const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = 
   return (
     <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h4" gutterBottom align="center" color="primary">
-        {uploadType === 'cliftonstrengths' ? 'Upload CliftonStrengths Results' : 'Upload Your Resume'}
+        {uploadType === 'cliftonstrengths' ? 'Upload CliftonStrengths Results' : uploadType === 'job_description' ? 'Upload Job Description' : 'Upload Your Resume'}
       </Typography>
     
       <Box
@@ -130,7 +137,7 @@ const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = 
         <CloudUpload sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
         
         <Typography variant="h6" gutterBottom>
-          {file ? file.name : `Drag & drop your ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths results' : 'resume'} here`}
+          {file ? file.name : `Drag & drop ${uploadType === 'cliftonstrengths' ? 'your CliftonStrengths result' : uploadType === 'job_description' ? 'the job description' : 'your resume'} here`}
         </Typography>
         
         <input
@@ -186,8 +193,8 @@ const DocumentUpload = ({ onSuccess, uploadType = 'resume', acceptedFileTypes = 
           startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
         >
           {uploading
-            ? (uploadType === 'cliftonstrengths' ? 'Processing...' : 'Uploading...')
-            : `Upload ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths Results' : 'Resume'}`}
+            ? (uploadType === 'cliftonstrengths' || uploadType === 'job_description' ? 'Processing...' : 'Uploading...')
+            : `Upload ${uploadType === 'cliftonstrengths' ? 'CliftonStrengths Results' : uploadType === 'job_description' ? 'Job Description' : 'Resume'}`}
         </Button>
         
         {uploading && (

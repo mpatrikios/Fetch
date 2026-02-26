@@ -177,7 +177,11 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
                 logging.warning(f"Job description not found: {company_name} - {job_title}")
                 return None
         else:
-            job_descriptions = list(job_descriptions_collection.find(query))
+            job_descriptions = list(
+                job_descriptions_collection
+                .find(query)
+                .sort("extracted_at", -1)
+            )
             if job_descriptions:
                 logging.info(f"Retrieved {len(job_descriptions)} job descriptions for company: {company_name}")
                 return job_descriptions
