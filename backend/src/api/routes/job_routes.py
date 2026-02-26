@@ -155,7 +155,7 @@ async def upload_job_description(
             job=JobInfo(
                 company=job_doc.get("CompanyName", company_name),
                 title=job_doc.get("JobTitle", ""),
-                location=job_doc.get("Location"),
+                locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
                 has_embeddings="profile_embedding" in job_doc,
                 job_id=f"{job_doc.get('CompanyName')}_{job_doc.get('JobTitle')}"
@@ -179,7 +179,7 @@ async def list_jobs():
                 "_id": 1,
                 "companyName": 1,
                 "JobTitle": 1,
-                "Location": 1,
+                "Locations": 1,
                 "Skills": {"$slice": 10},
                 "last_match_generated_at": 1
             }
@@ -190,7 +190,7 @@ async def list_jobs():
             formatted_jobs.append({
                 "company": job.get("companyName", "Unknown"),
                 "title": job.get("JobTitle"),
-                "location": job.get("Location"),
+                "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
                 "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
@@ -282,11 +282,6 @@ async def update_job(job_id: str, job_data: dict):
             raise HTTPException(status_code=400, detail="No valid fields to update")
 
         update_fields["profile_updated_at"] = datetime.now(timezone.utc)
-
-        # Keep singular Location field in sync for the list endpoint
-        if "Locations" in update_fields:
-            locations = update_fields["Locations"]
-            update_fields["Location"] = locations[0] if locations else ""
 
         result = mongo_connection.job_descriptions_collection.update_one(
             {"_id": ObjectId(job_id)},

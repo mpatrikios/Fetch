@@ -129,7 +129,7 @@ function Jobs() {
   // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
     const locations = jobs
-      .map(job => job.location)
+      .flatMap(job => job.locations || [])
       .filter(location => location && location.trim() !== '');
     return [...new Set(locations)].sort();
   }, [jobs]);
@@ -142,7 +142,7 @@ function Jobs() {
         job.company.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesLocation = selectedLocation === '' ||
-        job.location === selectedLocation;
+        (job.locations || []).includes(selectedLocation);
 
       return matchesSearch && matchesLocation;
     });
@@ -256,7 +256,7 @@ function Jobs() {
 
       setJobs(prev => prev.map(j =>
         j.job_id === jobDetails.job_id
-          ? { ...j, location: locationsArray.join(', '), skills: skillsArray.slice(0, 10) }
+          ? { ...j, locations: locationsArray, skills: skillsArray.slice(0, 10) }
           : j
       ));
 
@@ -274,6 +274,7 @@ function Jobs() {
   const handleJobUploadSuccess = async (newJob) => {
     try {
           setShowAddJob(false);
+          await loadJobs();
         } catch (err) {
           console.error('Failed to update status:', err);
         }
@@ -436,10 +437,18 @@ function Jobs() {
                         <Typography variant="body2" color="text.secondary">
                           {job.company}
                         </Typography>
-                        {job.location && (
-                          <Typography variant="caption" color="text.secondary">
-                            {job.location}
-                          </Typography>
+                        {job.locations?.length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {job.locations.map((loc) => (
+                              <Chip
+                                key={loc}
+                                label={loc}
+                                size="small"
+                                icon={<LocationOn sx={{ fontSize: 8 }} />}
+                                sx={{ fontSize: 12, height: 20 }}
+                              />
+                            ))}
+                          </Box>
                         )}
                       </Box>
                       {job.has_embeddings && (
@@ -508,7 +517,7 @@ function Jobs() {
                     </Typography>
                     {jobDetails?.locations?.length > 0 && (
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {jobDetails.locations.join(', ')}
+                        {jobDetails.locations.join('; ')}
                       </Typography>
                     )}
                     {jobDetails?.min_years && (
@@ -788,7 +797,7 @@ function Jobs() {
                 label="Company Name"
                 value={companyName}
                 onChange={(val) => setCompanyName(val)}
-                options={jobs.map((job) => job.company)}
+                options={[...new Set(jobs.map((job) => job.company))]}
                 required
                 error={companyName.trim() === ""}
             />
