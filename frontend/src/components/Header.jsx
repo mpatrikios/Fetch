@@ -1,7 +1,7 @@
-import { AppBar, Toolbar, Typography, Button, Box, Avatar } from '@mui/material';
-import PetsIcon from '@mui/icons-material/Pets';
+import { AppBar, Toolbar, Button, Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 // Shared navigation button styles
 const navButtonSx = {
@@ -15,7 +15,7 @@ const navButtonSx = {
 
 function Header() {
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -25,24 +25,16 @@ function Header() {
   return (
     <AppBar position="static">
       <Toolbar sx={{ px: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <Avatar sx={{
-            backgroundColor: '#FF5A5A',
-            mr: 2,
-            width: 40,
-            height: 40
-          }}>
-            <PetsIcon sx={{ color: 'white' }} />
-          </Avatar>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 500,
-              color: '#343434'
-            }}
-          >
+        <Box
+          onClick={() => {
+            if (!isAuthenticated) navigate('/login');
+            else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
+            else navigate('/dashboard');
+          }}
+          sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, cursor: 'pointer' }}
+        >
+          <Box component="img" src={logo} alt="The Marcus-Levi Group" sx={{ height: 40, mr: 2 }} />
+          <Typography variant="h6" sx={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 500, color: '#343434' }}>
             The Marcus-Levi Group
           </Typography>
         </Box>
