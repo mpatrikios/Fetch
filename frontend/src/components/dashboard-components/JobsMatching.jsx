@@ -1,7 +1,7 @@
-import { Box, Grid, Skeleton } from '@mui/material';
+import { Box, Grid, Skeleton, Tooltip } from '@mui/material';
 import { Work, Assignment } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { CardSection, DarkButton, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
+import { CardSection, DashboardStatCard, SectionHeader } from '../common-components/StyledComponents';
 
 
 function JobsMatching({ stats, loading }) {
@@ -20,19 +20,22 @@ function JobsMatching({ stats, loading }) {
           Jobs & Matching
         </SectionHeader>
       </Box>
-      
+
       <Grid container spacing={2} sx={{ flexGrow: 1 }}>
         <Grid size={{ xs: 6 }}>
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <Box onClick={() => navigate('/jobs')} sx={{ cursor: 'pointer' }}>
-              <DashboardStatCard
-                value={jobStats.totalJobs}
-                label="Total Jobs in Database"
-                icon={Work}
-              />
-            </Box>
+            <Tooltip title="View all jobs">
+              <Box onClick={() => navigate('/jobs')} sx={{ cursor: 'pointer', height: '100%' }}>
+                <DashboardStatCard
+                  value={jobStats.totalJobs}
+                  label="Total Jobs in Database"
+                  icon={Work}
+                  size="small"
+                />
+              </Box>
+            </Tooltip>
           )}
         </Grid>
         <Grid size={{ xs: 6 }}>
@@ -43,16 +46,11 @@ function JobsMatching({ stats, loading }) {
               value={jobStats.jobsWithMatches}
               label="Jobs with Generated Matches"
               icon={Assignment}
+              size="small"
             />
           )}
         </Grid>
       </Grid>
-      
-      <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <DarkButton size="small" onClick={() => navigate('/jobs')}>
-          View All Jobs
-        </DarkButton>
-      </Box>
     </CardSection>
   );
 }
