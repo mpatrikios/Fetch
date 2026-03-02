@@ -112,5 +112,10 @@ class MongoDBConnection:
         """Get Matches collection"""
         return self.get_collection("Matches")
 
+    @property
+    def candidate_jobs_collection(self) -> Collection:
+        """Get CandidateJobs collection"""
+        return self.get_collection("CandidateJobs")
+
 # Create a module-level instance for easy import
 mongo_connection = MongoDBConnection()

@@ -43,7 +43,7 @@ function AppliedJobsList({ appliedJobs }) {
         ) : (
           <List>
             {appliedJobs.map((job, index) => (
-              <div key={job.id}>
+              <div key={job._id || job.id}>
                 <ListItem sx={{ px: 0 }}>
                   <ListItemIcon>
                     {getStatusIcon(job.status)}
@@ -52,7 +52,7 @@ function AppliedJobsList({ appliedJobs }) {
                     primary={
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="subtitle1">
-                          {job.title} at {job.company}
+                          {job.job_title || job.title} at {job.company_name || job.company}
                         </Typography>
                         <JobStatusChip status={job.status} />
                       </Box>

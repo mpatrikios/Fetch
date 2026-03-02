@@ -8,22 +8,27 @@ import {
   Button,
   Divider,
   Chip,
-  TextField,
-  InputAdornment,
-  IconButton,
   Skeleton,
   Menu,
-  MenuItem
+  MenuItem,
+  Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
-import { ArrowBack, Search, Clear, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
+import { ArrowBack, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { matchingAPI } from '../utils/api';
+import { matchingAPI, candidateJobsAPI, jobAPI } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
   SelectableListItem,
-  DetailPanel
+  DetailPanel,
+  DarkButton
 } from './common-components/StyledComponents';
+import { SearchField, EmptyState } from './common-components/SharedComponents';
 
 function JobRecommendations() {
   const navigate = useNavigate();
@@ -40,6 +45,39 @@ function JobRecommendations() {
   const [history, setHistory] = useState([]);
   const [historyAnchorEl, setHistoryAnchorEl] = useState(null);
   const [activeMatchId, setActiveMatchId] = useState(null);
+  const [jobMongoId, setJobMongoId] = useState(null);
+  const [jobLocation, setJobLocation] = useState('');
+  const [jobSkills, setJobSkills] = useState([]);
+  const [recommendSnackbar, setRecommendSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [recommendingId, setRecommendingId] = useState(null);
+  // Map of candidate_id -> rec_id for candidates already recommended for this job
+  const [recommendedCandidates, setRecommendedCandidates] = useState(new Map());
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+  const loadRecommendedCandidates = useCallback(async () => {
+    try {
+      const res = await candidateJobsAPI.getJobRecommendations(decodedCompany, decodedTitle);
+      const map = new Map(
+        (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
+      );
+      setRecommendedCandidates(map);
+    } catch (err) {
+      // Non-critical — silently ignore, button defaults to "Recommend this Job"
+    }
+  }, [decodedCompany, decodedTitle]);
+
+  const loadJobDetails = useCallback(async () => {
+    try {
+      const res = await jobAPI.getDetails(decodedCompany, decodedTitle);
+      const job = res.data.job;
+      setJobMongoId(job.mongo_id || job.job_id || `${decodedCompany}_${decodedTitle}`);
+      setJobLocation(job.locations?.[0] || '');
+      setJobSkills(job.skills || []);
+    } catch (err) {
+      // Non-critical — use fallback values
+      setJobMongoId(`${decodedCompany}_${decodedTitle}`);
+    }
+  }, [decodedCompany, decodedTitle]);
 
   const loadHistory = useCallback(async (signal) => {
     try {
@@ -99,9 +137,11 @@ function JobRecommendations() {
     };
 
     loadRecommendations();
+    loadJobDetails();
+    loadRecommendedCandidates();
 
     return () => controller.abort();
-  }, [decodedCompany, decodedTitle, loadHistory]);
+  }, [decodedCompany, decodedTitle, loadHistory, loadJobDetails, loadRecommendedCandidates]);
 
   const handleRegenerate = useCallback(async () => {
     try {
@@ -149,6 +189,55 @@ function JobRecommendations() {
 
   const handleCandidateSelect = (candidate) => {
     setSelectedCandidate(candidate);
+  };
+
+  const handleRecommendJob = async () => {
+    if (!selectedCandidate) return;
+    const candidateId = selectedCandidate.candidate_id;
+    setRecommendingId(candidateId);
+    try {
+      const res = await candidateJobsAPI.recommendJob(candidateId, {
+        job_mongo_id: jobMongoId || `${decodedCompany}_${decodedTitle}`,
+        company_name: decodedCompany,
+        job_title: decodedTitle,
+        job_location: jobLocation,
+        skills: jobSkills,
+      });
+      const recId = res.data.recommendation?._id;
+      setRecommendedCandidates(prev => new Map([...prev, [candidateId, recId]]));
+      setRecommendSnackbar({ open: true, message: 'Job recommended successfully.', severity: 'success' });
+    } catch (err) {
+      if (err.response?.status === 409) {
+        // Already recommended — re-fetch to get rec_id
+        loadRecommendedCandidates();
+      }
+      const detail = err.response?.data?.detail || 'Failed to recommend job.';
+      setRecommendSnackbar({ open: true, message: detail, severity: 'error' });
+    } finally {
+      setRecommendingId(null);
+    }
+  };
+
+  const handleUnrecommendJob = async () => {
+    setConfirmDialogOpen(false);
+    if (!selectedCandidate) return;
+    const candidateId = selectedCandidate.candidate_id;
+    const recId = recommendedCandidates.get(candidateId);
+    if (!recId) return;
+    setRecommendingId(candidateId);
+    try {
+      await candidateJobsAPI.removeRecommendation(candidateId, recId);
+      setRecommendedCandidates(prev => {
+        const next = new Map(prev);
+        next.delete(candidateId);
+        return next;
+      });
+      setRecommendSnackbar({ open: true, message: 'Recommendation removed.', severity: 'info' });
+    } catch (err) {
+      setRecommendSnackbar({ open: true, message: 'Failed to remove recommendation.', severity: 'error' });
+    } finally {
+      setRecommendingId(null);
+    }
   };
 
   if (error && !loading && recommendations.length === 0) {
@@ -271,44 +360,13 @@ function JobRecommendations() {
                     ({filteredRecommendations.length} of {recommendations.length})
                   </Typography>
                 )}
-                {searchQuery && !loading && (
-                  <Box sx={{ ml: 'auto' }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => setSearchQuery('')}
-                      title="Clear search"
-                    >
-                      <Clear fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
               </Box>
 
-              {/* Search Field */}
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Search by name..."
+              <SearchField
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search fontSize="small" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: searchQuery && (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setSearchQuery('')}
-                        edge="end"
-                      >
-                        <Clear fontSize="small" />
-                      </IconButton>
-                    </InputAdornment>
-                  )
-                }}
+                onClear={() => setSearchQuery('')}
+                placeholder="Search by name..."
               />
             </Box>
 
@@ -331,21 +389,10 @@ function JobRecommendations() {
                   </Box>
                 ))
               ) : filteredRecommendations.length === 0 ? (
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '200px',
-                  flexDirection: 'column',
-                  color: 'text.secondary'
-                }}>
-                  <Typography variant="body1" sx={{ mb: 1 }}>
-                    No candidates found
-                  </Typography>
-                  <Typography variant="body2">
-                    {searchQuery ? 'Try adjusting your search' : 'No matching candidates available'}
-                  </Typography>
-                </Box>
+                <EmptyState
+                  title="No candidates found"
+                  subtitle={searchQuery ? 'Try adjusting your search' : 'No matching candidates available'}
+                />
               ) : (
                 filteredRecommendations.map((candidate, index) => (
                   <SelectableListItem
@@ -404,17 +451,37 @@ function JobRecommendations() {
                       </Typography>
                     )}
                   </Box>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    endIcon={<OpenInNew fontSize="small" />}
-                    onClick={() => navigate('/candidates', {
-                      state: { selectedCandidateId: selectedCandidate.candidate_id }
-                    })}
-                    sx={{ flexShrink: 0 }}
-                  >
-                    View Profile
-                  </Button>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      endIcon={<OpenInNew fontSize="small" />}
+                      onClick={() => navigate('/candidates', {
+                        state: { selectedCandidateId: selectedCandidate.candidate_id }
+                      })}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      View Profile
+                    </Button>
+                    {(() => {
+                      const isAlreadyRecommended = recommendedCandidates.has(selectedCandidate.candidate_id);
+                      const isProcessing = recommendingId === selectedCandidate.candidate_id;
+                      return (
+                        <DarkButton
+                          size="small"
+                          disabled={isProcessing}
+                          onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : handleRecommendJob}
+                          sx={{ opacity: isAlreadyRecommended ? 0.65 : 1 }}
+                        >
+                          {isProcessing
+                            ? (isAlreadyRecommended ? 'Removing...' : 'Recommending...')
+                            : isAlreadyRecommended
+                              ? 'Already Recommended'
+                              : 'Recommend this Job'}
+                        </DarkButton>
+                      );
+                    })()}
+                  </Box>
                 </Box>
 
                 <Divider />
@@ -545,6 +612,36 @@ function JobRecommendations() {
           </CardSection>
         </Grid>
       </Grid>
+
+      <Snackbar
+        open={recommendSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={recommendSnackbar.severity}
+          onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        >
+          {recommendSnackbar.message}
+        </Alert>
+      </Snackbar>
+
+      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
+        <DialogTitle>Remove Recommendation</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Remove the job recommendation for{' '}
+            {selectedCandidate?.full_name || 'this candidate'}? This cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleUnrecommendJob} color="error" variant="contained">
+            Remove
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

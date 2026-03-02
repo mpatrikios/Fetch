@@ -23,6 +23,17 @@ def get_candidate_or_404(
     return candidate
 
 
+def extract_clifton_names(strengths: list) -> list:
+    """Extract strength name strings from a mixed list of dicts or strings."""
+    names = []
+    for s in strengths:
+        if isinstance(s, dict) and "name" in s:
+            names.append(s["name"])
+        elif isinstance(s, str):
+            names.append(s)
+    return names
+
+
 def get_job_or_404(
     job_id: str,
     required_field: Optional[str] = None,
