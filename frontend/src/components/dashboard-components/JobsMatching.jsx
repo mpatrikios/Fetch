@@ -27,7 +27,13 @@ function JobsMatching({ stats, loading }) {
             <Skeleton variant="rounded" height={80} />
           ) : (
             <Tooltip title="View all jobs">
-              <Box onClick={() => navigate('/jobs')} sx={{ cursor: 'pointer', height: '100%' }}>
+              <Box
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate('/jobs')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/jobs'); } }}
+                sx={{ cursor: 'pointer', height: '100%' }}
+              >
                 <DashboardStatCard
                   value={jobStats.totalJobs}
                   label="Total Jobs in Database"

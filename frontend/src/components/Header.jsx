@@ -26,11 +26,21 @@ function Header() {
     <AppBar position="static">
       <Toolbar sx={{ px: 4 }}>
         <Box
+          role="button"
+          tabIndex={0}
           onClick={() => {
             if (!isAuthenticated) navigate('/login');
             else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
             else if (user?.status === 'completed_onboarding') navigate('/dashboard');
             else navigate('/onboarding');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              if (!isAuthenticated) navigate('/login');
+              else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
+              else navigate('/dashboard');
+            }
           }}
           sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, cursor: 'pointer' }}
         >
