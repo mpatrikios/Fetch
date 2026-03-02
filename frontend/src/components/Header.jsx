@@ -29,7 +29,8 @@ function Header() {
           onClick={() => {
             if (!isAuthenticated) navigate('/login');
             else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
-            else navigate('/dashboard');
+            else if (user?.status === 'completed_onboarding') navigate('/dashboard');
+            else navigate('/onboarding');
           }}
           sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, cursor: 'pointer' }}
         >
