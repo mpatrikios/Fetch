@@ -189,7 +189,7 @@ class ReviewUpdateResponse(BaseModel):
     message: str
     match_id: str
     candidate_id: str
-    review_status: str
+    review_status: Literal["Approved", "Rejected", "Pending"]
     reviewed_by: str
     reviewed_at: str
 

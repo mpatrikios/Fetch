@@ -204,7 +204,7 @@ function JobRecommendations() {
   const handleReviewUpdate = async (candidateId, status) => {
     if (reviewLoading) return;
     if (!mongoMatchId) {
-      setReviewError('Match session expired. Please refresh the page and try again.');
+      setReviewError('Unable to submit review — match data not yet loaded. Please wait a moment and try again.');
       return;
     }
     try {
