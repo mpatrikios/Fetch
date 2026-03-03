@@ -484,44 +484,48 @@ function Candidates() {
   }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
-      {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/mlg-dashboard')}
-          sx={{ color: 'text.secondary' }}
-        >
-          Back
-        </Button>
-        <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
-          MLG Manage Candidates
-        </SectionHeader>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
+      {/* Header + Alerts */}
+      <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
+        <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/mlg-dashboard')}
+            sx={{ color: 'text.secondary' }}
+          >
+            Back
+          </Button>
+          <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
+            MLG Manage Candidates
+          </SectionHeader>
+        </Box>
+
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <Alert
+            severity="success"
+            onClose={() => setSuccessMessage('')}
+            sx={{ mb: 2 }}
+          >
+            {successMessage}
+          </Alert>
+        )}
+        {errorMessage && (
+          <Alert
+            severity="error"
+            onClose={() => setErrorMessage('')}
+            sx={{ mb: 2 }}
+          >
+            {errorMessage}
+          </Alert>
+        )}
       </Box>
 
-      {/* Success/Error Messages */}
-      {successMessage && (
-        <Alert 
-          severity="success" 
-          onClose={() => setSuccessMessage('')}
-          sx={{ mb: 2 }}
-        >
-          {successMessage}
-        </Alert>
-      )}
-      {errorMessage && (
-        <Alert 
-          severity="error" 
-          onClose={() => setErrorMessage('')}
-          sx={{ mb: 2 }}
-        >
-          {errorMessage}
-        </Alert>
-      )}
-
-      <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
+      {/* Grid wrapper */}
+      <Box sx={{ flex: 1, px: 4, pb: 4, minHeight: 0, overflow: 'hidden' }}>
+      <Grid container spacing={0} sx={{ height: '100%' }}>
         {/* Sidebar - Candidates List */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%' }}>
           <CardSection sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{ 
               px: 1,
@@ -624,7 +628,7 @@ function Candidates() {
         </Grid>
 
         {/* Main Content - Candidate Details */}
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
           <CardSection sx={{ height: '100%', ml: 2 }}>
             {!selectedCandidate ? (
               <Box sx={{ 
@@ -829,6 +833,7 @@ function Candidates() {
           </CardSection>
         </Grid>
       </Grid>
+      </Box>
 
       {/* Location Filter Menu */}
       <FilterMenu
