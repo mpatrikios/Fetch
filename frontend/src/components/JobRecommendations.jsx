@@ -210,10 +210,16 @@ function JobRecommendations() {
     try {
       setReviewLoading(true);
       setReviewError('');
-      await matchingAPI.updateReview(mongoMatchId, candidateId, status);
+      const response = await matchingAPI.updateReview(mongoMatchId, candidateId, status);
+      const { reviewed_at, reviewed_by, review_status } = (response && response.data) || {};
       const updateFn = (c) =>
         c.candidate_id === candidateId
-          ? { ...c, review_status: status, reviewed_at: new Date().toISOString() }
+          ? {
+              ...c,
+              review_status: review_status ?? status,
+              reviewed_at: reviewed_at ?? c.reviewed_at ?? null,
+              reviewed_by: reviewed_by ?? c.reviewed_by ?? null,
+            }
           : c;
       setRecommendations(prev => prev.map(updateFn));
       setSelectedCandidate(prev => (prev ? updateFn(prev) : prev));
