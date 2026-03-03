@@ -196,7 +196,7 @@ def update_match_review(match_id: str, candidate_id: str, review_status: str, re
     Args:
         match_id: The MongoDB ObjectId string of the match document
         candidate_id: The candidate_id string to target within the candidates array
-        review_status: One of "approved", "rejected", "pending"
+        review_status: One of "Approved", "Rejected", "Pending"
         reviewed_by: The user _id string of the recruiter performing the review
 
     Returns:
