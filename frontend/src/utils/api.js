@@ -106,10 +106,10 @@ export const matchingAPI = {
       top_k: topK,
       use_cohort: useCohort,
     }, config),
-  updateReview: (matchId, candidateId, reviewStatus) =>
+  updateReview: (matchId, candidateId, reviewStatus, config = {}) =>
     api.patch(`/matches/${matchId}/candidates/${candidateId}/review`, {
       review_status: reviewStatus,
-    }),
+    }, config),
   getStoredMatches: (companyName, jobTitle, config = {}) =>
     api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
   getMatchHistory: (companyName, jobTitle, config = {}) =>
