@@ -31,7 +31,6 @@ import {
 } from './common-components/StyledComponents';
 import { SearchField, EmptyState } from './common-components/SharedComponents';
 
-const capitalizeFirst = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
 function JobRecommendations() {
   const navigate = useNavigate();
@@ -444,11 +443,11 @@ function JobRecommendations() {
                         )}
                         {candidate.review_status && (
                           <Chip
-                            label={capitalizeFirst(candidate.review_status)}
+                            label={candidate.review_status}
                             size="small"
                             color={
-                              candidate.review_status === 'approved' ? 'success' :
-                              candidate.review_status === 'rejected' ? 'error' : 'default'
+                              candidate.review_status === 'Approved' ? 'success' :
+                              candidate.review_status === 'Rejected' ? 'error' : 'default'
                             }
                             sx={{ mt: 0.5 }}
                           />
@@ -661,11 +660,11 @@ function JobRecommendations() {
                     </Typography>
                     {selectedCandidate.review_status && (
                       <Chip
-                        label={`Status: ${capitalizeFirst(selectedCandidate.review_status)}`}
+                        label={`Status: ${selectedCandidate.review_status}`}
                         size="small"
                         color={
-                          selectedCandidate.review_status === 'approved' ? 'success' :
-                          selectedCandidate.review_status === 'rejected' ? 'error' : 'default'
+                          selectedCandidate.review_status === 'Approved' ? 'success' :
+                          selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
                         }
                       />
                     )}
@@ -676,8 +675,8 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="success"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'approved'}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'approved')}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Approved')}
                         >
                           Approve
                         </Button>
@@ -688,8 +687,8 @@ function JobRecommendations() {
                         <Button
                           variant="contained"
                           color="error"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'rejected'}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'rejected')}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
                         >
                           Reject
                         </Button>
@@ -699,8 +698,8 @@ function JobRecommendations() {
                       <span>
                         <Button
                           variant="outlined"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'pending' || !selectedCandidate.review_status}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'pending')}
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
                         >
                           Pending
                         </Button>

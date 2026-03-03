@@ -181,7 +181,7 @@ class MatchResponse(BaseModel):
 
 
 class ReviewUpdateRequest(BaseModel):
-    review_status: Literal["approved", "rejected", "pending"]
+    review_status: Literal["Approved", "Rejected", "Pending"]
 
 
 class ReviewUpdateResponse(BaseModel):
