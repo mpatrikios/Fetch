@@ -1,6 +1,5 @@
 # API routes for matching candidates to job descriptions.
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
 from typing import Dict, Optional
 import logging
 
