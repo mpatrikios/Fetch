@@ -95,6 +95,7 @@ class JobInfo(BaseModel):
     has_embeddings: bool = False
     job_id: str
     mongo_id: Optional[str] = None
+    last_match_generated_at: Optional[str] = None
 
 class JobResponse(BaseModel):
     success: bool
@@ -122,6 +123,7 @@ class JobDetails(BaseModel):
     has_embeddings: bool = False
     has_description: bool = False
     mongo_id: Optional[str] = None
+    last_match_generated_at: Optional[str] = None
 
 
 class JobDetailsResponse(BaseModel):
@@ -133,7 +135,6 @@ class MatchRequest(BaseModel):
     company_name: str
     job_title: str
     top_k: Optional[int] = 10
-    percentile_threshold: Optional[float] = Field(0.75, ge=0.0, le=1.0)
     use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
@@ -176,9 +177,12 @@ class MatchResponse(BaseModel):
     matches: List[MatchResult]
     is_cohort: bool = True
     mongo_match_id: Optional[str] = None
+    created_at: Optional[str] = None
+
 
 class ReviewUpdateRequest(BaseModel):
     review_status: Literal["approved", "rejected", "pending"]
+
 
 class ReviewUpdateResponse(BaseModel):
     success: bool
@@ -188,6 +192,19 @@ class ReviewUpdateResponse(BaseModel):
     review_status: str
     reviewed_by: str
     reviewed_at: str
+
+
+class MatchHistoryEntry(BaseModel):
+    match_id: str
+    created_at: Optional[str] = None
+    total_matches: int
+
+
+class MatchHistoryResponse(BaseModel):
+    success: bool
+    company_name: str
+    job_title: str
+    history: List[MatchHistoryEntry]
 
 
 # Dashboard Stats Models

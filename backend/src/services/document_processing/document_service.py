@@ -64,7 +64,26 @@ class DocumentService:
             polling_interval_seconds=1,
         )
 
+        # Log only metadata about the Azure analysis to avoid leaking PII or large payloads
+        logger.info(
+            "Azure resume analysis completed",
+            extra={
+                "candidate_id": candidate_id,
+                "analyzer_id": settings.analyzer_id,
+                "file_name": os.path.basename(file_path),
+            },
+        )
+
         standardized_data = standardize_resume(azure_result)
+        # Log only metadata about the standardization step
+        logger.info(
+            "Resume standardization completed",
+            extra={
+                "candidate_id": candidate_id,
+                "analyzer_id": settings.analyzer_id,
+                "file_name": os.path.basename(file_path),
+            },
+        )
         standardized_data["email"] = email
 
         mongo_result = upsert_candidate(standardized_data, user_id=candidate_id)

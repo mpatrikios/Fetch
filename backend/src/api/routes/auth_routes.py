@@ -111,6 +111,16 @@ class Token(BaseModel):
     token_type: str = "bearer"
     user: dict
 
+
+def _build_user_response(user: dict) -> dict:
+    return {
+        "id": str(user["_id"]),
+        "full_name": user["full_name"],
+        "email": user["email"],
+        "role": user.get("role", "user"),
+        "status": user.get("status", "registered"),
+    }
+
 # hash password with SHA256 and salt
 def hash_password_sha256(password: str) -> str:
     """Hash password using SHA256 with salt"""
@@ -150,8 +160,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-    db = mongo_connection.database
-    user = db.Candidates.find_one({"email": email})
+    user = mongo_connection.candidates_collection.find_one({"email": email})
+    if user is None:
+        user = mongo_connection.mlg_recruiters_collection.find_one({"email": email})
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
 
@@ -161,14 +172,12 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 # register user in database
 @router.post("/auth/register", response_model=Token)
 async def register(user_data: UserRegister):
-    db = mongo_connection.database
-    
-    existing_user = db.Candidates.find_one({"email": user_data.email})
+    existing_user = mongo_connection.candidates_collection.find_one({"email": user_data.email})
     if existing_user:
         raise HTTPException(status_code=409, detail="Email already registered")
-    
+
     hashed_password = hash_password_sha256(user_data.password)
-    
+
     user_dict = {
         "full_name": user_data.full_name,
         "email": user_data.email,
@@ -177,70 +186,48 @@ async def register(user_data: UserRegister):
         "role": "user",
         "status": "registered"  # Initial status for new candidates
     }
-    
-    result = db.Candidates.insert_one(user_dict)
-    user_dict["_id"] = str(result.inserted_id)
-    
+
+    result = mongo_connection.candidates_collection.insert_one(user_dict)
+    user_dict["_id"] = result.inserted_id
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_data.email}, expires_delta=access_token_expires
     )
-    
-    user_response = {
-        "id": user_dict["_id"],
-        "full_name": user_dict["full_name"],
-        "email": user_dict["email"],
-        "role": user_dict["role"],
-        "status": user_dict["status"]
-    }
-    
+
     return {
         "token": access_token,
         "token_type": "bearer",
-        "user": user_response
+        "user": _build_user_response(user_dict)
     }
 
 # login user and return JWT token
 @router.post("/auth/login", response_model=Token)
 async def login(user_credentials: UserLogin):
-    db = mongo_connection.database
-    
-    user = db.Candidates.find_one({"email": user_credentials.email})
+    user = mongo_connection.candidates_collection.find_one({"email": user_credentials.email})
+    if user is None:
+        user = mongo_connection.mlg_recruiters_collection.find_one({"email": user_credentials.email})
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     if not verify_password(user_credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["email"]}, expires_delta=access_token_expires
     )
-    
-    user_response = {
-        "id": str(user["_id"]),
-        "full_name": user["full_name"],
-        "email": user["email"],
-        "role": user.get("role", "user"),
-        "status": user.get("status", "registered")
-    }
-    
+
     return {
         "token": access_token,
         "token_type": "bearer",
-        "user": user_response
+        "user": _build_user_response(user)
     }
 
 # get current user info / session management
 @router.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    return {
-        "id": current_user["_id"],
-        "full_name": current_user["full_name"],
-        "email": current_user["email"],
-        "role": current_user.get("role", "user"),
-        "status": current_user.get("status", "registered")
-    }
+    return _build_user_response(current_user)
 
 # update user's onboarding status
 @router.put("/auth/update-status")
@@ -251,18 +238,14 @@ async def update_status(
     """Update user's onboarding status"""
     valid_statuses = [
         "registered",
-        "uploaded_resume", 
+        "onboarding",
         "scheduled_intake",
-        "completed_assessment",
-        "uploaded_results",
-        "completed_onboarding"
     ]
     
     if status not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
     
-    db = mongo_connection.database
-    db.Candidates.update_one(
+    mongo_connection.candidates_collection.update_one(
         {"_id": ObjectId(current_user["_id"])},
         {"$set": {"status": status}}
     )

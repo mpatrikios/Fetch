@@ -13,6 +13,7 @@ from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
+from src.api.routes.helpers import extract_clifton_names
 from src.services.storage.blob_storage import get_blob_storage
 from src.services.document_processing.document_service import DocumentService
 from src.services.email_service import send_email
@@ -50,7 +51,6 @@ async def list_candidates(
             query_filter = pending_query
         elif status == "onboarding":
             query_filter = {
-                "role": {"$ne": "mlg-recruiter"},
                 "assessment_sent": True
             }
         else:
@@ -80,16 +80,7 @@ async def list_candidates(
         
         formatted_candidates = []
         for candidate in candidates:
-            # Extract only strength names from clifton_strengths objects
-            clifton_strengths_raw = candidate.get("clifton_strengths", [])
-            clifton_strengths_names = []
-            
-            for strength in clifton_strengths_raw:
-                if isinstance(strength, dict) and "name" in strength:
-                    clifton_strengths_names.append(strength["name"])
-                elif isinstance(strength, str):
-                    # Handle case where it's already a string
-                    clifton_strengths_names.append(strength)
+            clifton_strengths_names = extract_clifton_names(candidate.get("clifton_strengths", []))
             
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),

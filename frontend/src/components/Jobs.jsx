@@ -50,7 +50,6 @@ function Jobs() {
   const [expandedResponsibilities, setExpandedResponsibilities] = useState(false);
   const [expandedQualifications, setExpandedQualifications] = useState(false);
   const [expandedCultureIndex, setExpandedCultureIndex] = useState(false);
-  const [expandedSummary, setExpandedSummary] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
@@ -262,38 +261,6 @@ function Jobs() {
     }
   };
 
-  const SummaryDisplay = ({ summary }) => {
-    if (!summary) return <Typography variant="body1" color="text.primary">No summary available</Typography>;
-
-    const words = summary.split(' ');
-    const shouldTruncate = words.length > 40;
-    const truncatedSummary = shouldTruncate ? words.slice(0, 40).join(' ') + ' ...': summary;
-
-    return (
-      <Box>
-        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
-          {expandedSummary ? summary : truncatedSummary}
-        </Typography>
-        {shouldTruncate && (
-          <Button
-            size="small"
-            onClick={() => setExpandedSummary(!expandedSummary)}
-            sx={{
-              p: 0,
-              textTransform: 'none',
-              color: 'primary.main',
-              fontSize: '0.875rem',
-              minHeight: 'auto',
-              lineHeight: 1
-            }}
-          >
-            {expandedSummary ? 'Show less' : 'Read more...'}
-          </Button>
-        )}
-      </Box>
-    );
-  };
-
   if (loading) {
     return (
       <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
@@ -498,7 +465,7 @@ function Jobs() {
                     startIcon={<Work />}
                     sx={{ flexShrink: 0 }}
                   >
-                    Find Recommendations
+                    {jobDetails?.last_match_generated_at ? 'View Recommendations' : 'Generate Recommendations'}
                   </PrimaryButton>
                 </Box>
 

@@ -1,23 +1,32 @@
+import { useState } from 'react';
 import {
   Typography,
   Grid,
   Paper,
   Box,
-  Chip
+  Chip,
+  Alert
 } from '@mui/material';
 import { Star } from '@mui/icons-material';
 import { CardSection, SectionHeader, DarkButton } from '../common-components/StyledComponents';
+import { profileAPI } from '../../utils/api';
 
-function RecommendedJobs({ recommendedJobs }) {
-  // TODO: Replace with API call to get jobs recommended specifically for this user
-  // Backend needs: GET /api/recommendations/{user_id} endpoint
-  // This should return jobs that MLG recruiters have manually recommended for this specific candidate
-  
-  // TODO: Add onClick handler for "Next Steps" button
-  // Should either:
-  // 1. Navigate to job details page with application instructions
-  // 2. Open modal with next steps (schedule call, prepare documents, etc.)
-  // 3. Send notification to MLG recruiter about candidate interest
+function RecommendedJobs({ recommendedJobs, onRefresh }) {
+  const [interestSent, setInterestSent] = useState({});
+  const [error, setError] = useState('');
+
+  const handleExpressInterest = async (job) => {
+    const recId = job._id;
+    try {
+      setInterestSent(prev => ({ ...prev, [recId]: 'loading' }));
+      await profileAPI.expressInterest(recId);
+      setInterestSent(prev => ({ ...prev, [recId]: 'done' }));
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      setError('Failed to express interest. Please try again.');
+      setInterestSent(prev => ({ ...prev, [recId]: null }));
+    }
+  };
 
   return (
     <CardSection>
@@ -27,56 +36,60 @@ function RecommendedJobs({ recommendedJobs }) {
           Recommended Jobs & Next Steps
         </SectionHeader>
       </Box>
-        
-        {recommendedJobs.length === 0 ? (
-          <Typography>
-            No recommendations yet. You will recieve an email when we found the right fit for you.
-          </Typography>
-        ) : (
-          <Grid container spacing={2}>
 
-            {/* TODO: Remove .slice(0, 3) limit once pagination or "View More" is implemented */}
+      {error && (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
-            {recommendedJobs.slice(0, 3).map((job, index) => (
-              <Grid size={{ xs: 12 }} key={index}>
+      {recommendedJobs.length === 0 ? (
+        <Typography>
+          No recommendations yet. You will receive an email when we find the right fit for you.
+        </Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {recommendedJobs.slice(0, 3).map((job) => {
+            const recId = job._id;
+            const isDone = interestSent[recId] === 'done';
+            const isLoading = interestSent[recId] === 'loading';
+
+            return (
+              <Grid size={{ xs: 12 }} key={recId}>
                 <Paper elevation={1} sx={{ p: 2, '&:hover': { elevation: 3 } }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ flex: 1 }}>
-
-                      {/* TODO: Update these field mappings to match actual recommendation data structure */}
-
                       <Typography variant="h6" gutterBottom>
-                        {job.title || 'Job Title'}
+                        {job.job_title || 'Job Title'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" gutterBottom>
-                        {job.company || 'Company Name'}
+                        {job.company_name || 'Company Name'}
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 2 }}>
-                        {job.location || 'Remote'}
+                        {job.job_location || 'Location not specified'}
                       </Typography>
-            
+
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {job.isRemote && <Chip label="Remote" size="small" />}
-                        <Chip label={job.employmentType || 'Full-time'} size="small" />
-
-                        {/* TODO: Add recruiter notes/reasons as chips or separate section */}
-
-                        {job.tags?.map(tag => <Chip key={tag} label={tag} size="small" />)}
+                        {job.skills?.map(skill => (
+                          <Chip key={skill} label={skill} size="small" />
+                        ))}
                       </Box>
-                      
                     </Box>
 
-                    {/* TODO: Implement Next Steps functionality */}
-                    
-                    <DarkButton>
-                      Next Steps
+                    <DarkButton
+                      disabled={isDone || isLoading}
+                      onClick={() => handleExpressInterest(job)}
+                      sx={{ ml: 2, flexShrink: 0 }}
+                    >
+                      {isDone ? 'Interest Sent' : isLoading ? 'Sending...' : 'Express Interest'}
                     </DarkButton>
                   </Box>
                 </Paper>
               </Grid>
-            ))}
-          </Grid>
-        )}
+            );
+          })}
+        </Grid>
+      )}
     </CardSection>
   );
 }

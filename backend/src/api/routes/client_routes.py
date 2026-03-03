@@ -7,22 +7,11 @@ from datetime import datetime, timezone
 from src.database.connection import mongo_connection
 from src.api.models import ClientListResponse, ClientDetailsResponse, ClientUpdateRequest
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.utils import validate_object_id
 from bson import ObjectId
-from bson.errors import InvalidId
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
-
-
-def validate_object_id(client_id: str) -> None:
-    """Validate that client_id is a valid ObjectId format."""
-    try:
-        ObjectId(client_id)
-    except InvalidId:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid client ID format: {client_id}"
-        )
 
 
 @router.get("/clients", response_model=ClientListResponse)
