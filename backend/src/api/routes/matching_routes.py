@@ -192,10 +192,13 @@ async def get_stored_matches(company_name: str, job_title: str):
         candidates = match_doc.get("candidates", [])
         matches = []
         for c in candidates:
-            explanation_data = c.get("explanation", {})
+            if c is None:
+                continue
+            explanation_data = c.get("explanation") or {}
             relevant_experience = [
                 {"role": e.get("role", ""), "company": e.get("company")}
-                for e in explanation_data.get("relevant_experience", [])
+                for e in (explanation_data.get("relevant_experience") or [])
+                if e is not None
             ]
             matches.append(MatchResult(
                 candidate_id=c.get("candidate_id"),
@@ -206,14 +209,17 @@ async def get_stored_matches(company_name: str, job_title: str):
                 distance_km=c.get("distance_km"),
                 scores=c.get("scores"),
                 explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap", []),
-                    "relevant_roles": explanation_data.get("relevant_roles", []),
+                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+                    "relevant_roles": explanation_data.get("relevant_roles") or [],
                     "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies", []),
-                    "summary": explanation_data.get("summary", "No summary available"),
+                    "candidate_companies": explanation_data.get("candidate_companies") or [],
+                    "summary": explanation_data.get("summary") or "No summary available",
                 },
-                clifton_strengths=c.get("clifton_strengths", []),
-                skills=c.get("skills", []),
+                clifton_strengths=c.get("clifton_strengths") or [],
+                skills=c.get("skills") or [],
+                review_status=c.get("review_status"),
+                reviewed_at=c.get("reviewed_at"),
+                reviewed_by=c.get("reviewed_by"),
             ))
 
         return MatchResponse(
@@ -224,6 +230,7 @@ async def get_stored_matches(company_name: str, job_title: str):
             total_matches=len(matches),
             matches=matches,
             is_cohort=match_doc.get("use_cohort", True),
+            mongo_match_id=str(match_doc["_id"]),
             created_at=match_doc.get("created_at"),
         )
 
@@ -269,10 +276,13 @@ async def get_match_by_id(match_id: str):
         candidates = match_doc.get("candidates", [])
         matches = []
         for c in candidates:
-            explanation_data = c.get("explanation", {})
+            if c is None:
+                continue
+            explanation_data = c.get("explanation") or {}
             relevant_experience = [
                 {"role": e.get("role", ""), "company": e.get("company")}
-                for e in explanation_data.get("relevant_experience", [])
+                for e in (explanation_data.get("relevant_experience") or [])
+                if e is not None
             ]
             matches.append(MatchResult(
                 candidate_id=c.get("candidate_id"),
@@ -283,14 +293,17 @@ async def get_match_by_id(match_id: str):
                 distance_km=c.get("distance_km"),
                 scores=c.get("scores"),
                 explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap", []),
-                    "relevant_roles": explanation_data.get("relevant_roles", []),
+                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+                    "relevant_roles": explanation_data.get("relevant_roles") or [],
                     "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies", []),
-                    "summary": explanation_data.get("summary", "No summary available"),
+                    "candidate_companies": explanation_data.get("candidate_companies") or [],
+                    "summary": explanation_data.get("summary") or "No summary available",
                 },
-                clifton_strengths=c.get("clifton_strengths", []),
-                skills=c.get("skills", []),
+                clifton_strengths=c.get("clifton_strengths") or [],
+                skills=c.get("skills") or [],
+                review_status=c.get("review_status"),
+                reviewed_at=c.get("reviewed_at"),
+                reviewed_by=c.get("reviewed_by"),
             ))
 
         return MatchResponse(
@@ -301,6 +314,7 @@ async def get_match_by_id(match_id: str):
             total_matches=len(matches),
             matches=matches,
             is_cohort=match_doc.get("use_cohort", True),
+            mongo_match_id=str(match_doc["_id"]),
             created_at=match_doc.get("created_at"),
         )
 

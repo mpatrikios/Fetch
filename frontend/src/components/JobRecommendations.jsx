@@ -108,6 +108,7 @@ function JobRecommendations() {
         try {
           const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
           setRecommendations(stored.data.matches || []);
+          setMongoMatchId(stored.data.mongo_match_id || null);
           setGeneratedAt(stored.data.created_at || null);
           await loadHistory(signal);
           return;
@@ -155,6 +156,7 @@ function JobRecommendations() {
       setError('');
       const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, 10, true);
       setRecommendations(response.data.matches || []);
+      setMongoMatchId(response.data.mongo_match_id || null);
       setGeneratedAt(response.data.created_at || null);
       setSelectedCandidate(null);
       setActiveMatchId(null);
@@ -174,6 +176,7 @@ function JobRecommendations() {
       setLoading(true);
       const res = await matchingAPI.getMatchById(matchId);
       setRecommendations(res.data.matches || []);
+      setMongoMatchId(res.data.mongo_match_id || null);
       setGeneratedAt(res.data.created_at || null);
       setActiveMatchId(matchId);
       setSelectedCandidate(null);
@@ -441,17 +444,15 @@ function JobRecommendations() {
                             {candidate.location}
                           </Typography>
                         )}
-                        {candidate.review_status && (
-                          <Chip
-                            label={candidate.review_status}
-                            size="small"
-                            color={
-                              candidate.review_status === 'Approved' ? 'success' :
-                              candidate.review_status === 'Rejected' ? 'error' : 'default'
-                            }
-                            sx={{ mt: 0.5 }}
-                          />
-                        )}
+                        <Chip
+                          label={candidate.review_status || 'Pending'}
+                          size="small"
+                          color={
+                            candidate.review_status === 'Approved' ? 'success' :
+                            candidate.review_status === 'Rejected' ? 'error' : 'default'
+                          }
+                          sx={{ mt: 0.5 }}
+                        />
                       </Box>
                     </Box>
                   </SelectableListItem>
@@ -658,16 +659,14 @@ function JobRecommendations() {
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Review Decision
                     </Typography>
-                    {selectedCandidate.review_status && (
-                      <Chip
-                        label={`Status: ${selectedCandidate.review_status}`}
-                        size="small"
-                        color={
-                          selectedCandidate.review_status === 'Approved' ? 'success' :
-                          selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
-                        }
-                      />
-                    )}
+                    <Chip
+                      label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
+                      size="small"
+                      color={
+                        selectedCandidate.review_status === 'Approved' ? 'success' :
+                        selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
+                      }
+                    />
                   </Box>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Tooltip title="Mark as approved">
