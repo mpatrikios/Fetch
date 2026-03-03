@@ -1,13 +1,13 @@
 # API routes for matching candidates to job descriptions.
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional
+from typing import Dict, Optional
 import logging
 
 from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import (
     get_job_description,
     insert_match,
+    update_match_review,
     get_match,
     set_job_match_generated,
     get_all_matches,
@@ -16,8 +16,9 @@ from src.services.matching.cosine_similarity import (
     profile_matching_candidate,
     build_match_doc,
 )
-from src.api.models import MatchRequest, MatchResponse, MatchResult, MatchHistoryResponse
+from src.api.models import MatchRequest, MatchResponse, MatchResult, MatchHistoryResponse, ReviewUpdateRequest, ReviewUpdateResponse
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.utils import validate_object_id
 from src.api.routes.helpers import extract_clifton_names
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ async def find_matches(request: MatchRequest):
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
 
+        mongo_match_id = mongo_result.get("document_id")
         set_job_match_generated(request.company_name, request.job_title)
 
         # Return response with matches
@@ -106,6 +108,7 @@ async def find_matches(request: MatchRequest):
             total_matches=len(formatted_matches),
             matches=formatted_matches,
             is_cohort=request.use_cohort or False,
+            mongo_match_id=mongo_match_id,
             created_at=match.get("created_at"),
         )
         
@@ -130,6 +133,45 @@ async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, us
     )
     return await find_matches(request)
 
+@router.patch("/matches/{match_id}/candidates/{candidate_id}/review", response_model=ReviewUpdateResponse)
+async def update_candidate_review(
+    match_id: str,
+    candidate_id: str,
+    request: ReviewUpdateRequest,
+    current_user: Dict = Depends(get_current_mlg_recruiter),
+):
+    """
+    Update the review status for a specific candidate within a match document.
+    Sets review_status, reviewed_by (current user _id), and reviewed_at (UTC timestamp).
+    """
+    validate_object_id(match_id)
+
+    result = update_match_review(
+        match_id=match_id,
+        candidate_id=candidate_id,
+        review_status=request.review_status,
+        reviewed_by=current_user["_id"],
+    )
+
+    if not result.get("success"):
+        error_message = result.get("error", "Unknown error")
+        error_lower = error_message.lower()
+        if "not found" in error_lower:
+            status_code = 404
+        else:
+            status_code = 500
+        raise HTTPException(status_code=status_code, detail=error_message)
+
+    return ReviewUpdateResponse(
+        success=True,
+        message="Review status updated",
+        match_id=match_id,
+        candidate_id=candidate_id,
+        review_status=request.review_status,
+        reviewed_by=current_user["_id"],
+        reviewed_at=result["reviewed_at"],
+    )
+
 
 @router.get("/matches/stored/{company_name}/{job_title}", response_model=MatchResponse)
 async def get_stored_matches(company_name: str, job_title: str):
@@ -148,10 +190,13 @@ async def get_stored_matches(company_name: str, job_title: str):
         candidates = match_doc.get("candidates", [])
         matches = []
         for c in candidates:
-            explanation_data = c.get("explanation", {})
+            if c is None:
+                continue
+            explanation_data = c.get("explanation") or {}
             relevant_experience = [
                 {"role": e.get("role", ""), "company": e.get("company")}
-                for e in explanation_data.get("relevant_experience", [])
+                for e in (explanation_data.get("relevant_experience") or [])
+                if e is not None
             ]
             matches.append(MatchResult(
                 candidate_id=c.get("candidate_id"),
@@ -162,14 +207,17 @@ async def get_stored_matches(company_name: str, job_title: str):
                 distance_km=c.get("distance_km"),
                 scores=c.get("scores"),
                 explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap", []),
-                    "relevant_roles": explanation_data.get("relevant_roles", []),
+                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+                    "relevant_roles": explanation_data.get("relevant_roles") or [],
                     "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies", []),
-                    "summary": explanation_data.get("summary", "No summary available"),
+                    "candidate_companies": explanation_data.get("candidate_companies") or [],
+                    "summary": explanation_data.get("summary") or "No summary available",
                 },
-                clifton_strengths=c.get("clifton_strengths", []),
-                skills=c.get("skills", []),
+                clifton_strengths=c.get("clifton_strengths") or [],
+                skills=c.get("skills") or [],
+                review_status=c.get("review_status"),
+                reviewed_at=c.get("reviewed_at"),
+                reviewed_by=c.get("reviewed_by"),
             ))
 
         return MatchResponse(
@@ -180,6 +228,7 @@ async def get_stored_matches(company_name: str, job_title: str):
             total_matches=len(matches),
             matches=matches,
             is_cohort=match_doc.get("use_cohort", True),
+            mongo_match_id=str(match_doc["_id"]),
             created_at=match_doc.get("created_at"),
         )
 
@@ -225,10 +274,13 @@ async def get_match_by_id(match_id: str):
         candidates = match_doc.get("candidates", [])
         matches = []
         for c in candidates:
-            explanation_data = c.get("explanation", {})
+            if c is None:
+                continue
+            explanation_data = c.get("explanation") or {}
             relevant_experience = [
                 {"role": e.get("role", ""), "company": e.get("company")}
-                for e in explanation_data.get("relevant_experience", [])
+                for e in (explanation_data.get("relevant_experience") or [])
+                if e is not None
             ]
             matches.append(MatchResult(
                 candidate_id=c.get("candidate_id"),
@@ -239,14 +291,17 @@ async def get_match_by_id(match_id: str):
                 distance_km=c.get("distance_km"),
                 scores=c.get("scores"),
                 explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap", []),
-                    "relevant_roles": explanation_data.get("relevant_roles", []),
+                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+                    "relevant_roles": explanation_data.get("relevant_roles") or [],
                     "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies", []),
-                    "summary": explanation_data.get("summary", "No summary available"),
+                    "candidate_companies": explanation_data.get("candidate_companies") or [],
+                    "summary": explanation_data.get("summary") or "No summary available",
                 },
-                clifton_strengths=c.get("clifton_strengths", []),
-                skills=c.get("skills", []),
+                clifton_strengths=c.get("clifton_strengths") or [],
+                skills=c.get("skills") or [],
+                review_status=c.get("review_status"),
+                reviewed_at=c.get("reviewed_at"),
+                reviewed_by=c.get("reviewed_by"),
             ))
 
         return MatchResponse(
@@ -257,6 +312,7 @@ async def get_match_by_id(match_id: str):
             total_matches=len(matches),
             matches=matches,
             is_cohort=match_doc.get("use_cohort", True),
+            mongo_match_id=str(match_doc["_id"]),
             created_at=match_doc.get("created_at"),
         )
 

@@ -9,6 +9,7 @@ import {
   Divider,
   Chip,
   Skeleton,
+  Tooltip,
   Menu,
   MenuItem,
   Snackbar,
@@ -30,6 +31,7 @@ import {
 } from './common-components/StyledComponents';
 import { SearchField, EmptyState } from './common-components/SharedComponents';
 
+
 function JobRecommendations() {
   const navigate = useNavigate();
   const { company, title } = useParams();
@@ -41,6 +43,9 @@ function JobRecommendations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mongoMatchId, setMongoMatchId] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState('');
   const [generatedAt, setGeneratedAt] = useState(null);
   const [history, setHistory] = useState([]);
   const [historyAnchorEl, setHistoryAnchorEl] = useState(null);
@@ -103,6 +108,7 @@ function JobRecommendations() {
         try {
           const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
           setRecommendations(stored.data.matches || []);
+          setMongoMatchId(stored.data.mongo_match_id || null);
           setGeneratedAt(stored.data.created_at || null);
           await loadHistory(signal);
           return;
@@ -121,6 +127,7 @@ function JobRecommendations() {
           { signal }
         );
         setRecommendations(response.data.matches || []);
+        setMongoMatchId(response.data.mongo_match_id || null);
         setGeneratedAt(response.data.created_at || null);
         await loadHistory(signal);
       } catch (err) {
@@ -149,6 +156,7 @@ function JobRecommendations() {
       setError('');
       const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, 10, true);
       setRecommendations(response.data.matches || []);
+      setMongoMatchId(response.data.mongo_match_id || null);
       setGeneratedAt(response.data.created_at || null);
       setSelectedCandidate(null);
       setActiveMatchId(null);
@@ -168,6 +176,7 @@ function JobRecommendations() {
       setLoading(true);
       const res = await matchingAPI.getMatchById(matchId);
       setRecommendations(res.data.matches || []);
+      setMongoMatchId(res.data.mongo_match_id || null);
       setGeneratedAt(res.data.created_at || null);
       setActiveMatchId(matchId);
       setSelectedCandidate(null);
@@ -189,6 +198,37 @@ function JobRecommendations() {
 
   const handleCandidateSelect = (candidate) => {
     setSelectedCandidate(candidate);
+    setReviewError('');
+  };
+
+  const handleReviewUpdate = async (candidateId, status) => {
+    if (reviewLoading) return;
+    if (!mongoMatchId) {
+      setReviewError('Unable to submit review — match data not yet loaded. Please wait a moment and try again.');
+      return;
+    }
+    try {
+      setReviewLoading(true);
+      setReviewError('');
+      const response = await matchingAPI.updateReview(mongoMatchId, candidateId, status);
+      const { reviewed_at, reviewed_by, review_status } = (response && response.data) || {};
+      const updateFn = (c) =>
+        c.candidate_id === candidateId
+          ? {
+              ...c,
+              review_status: review_status ?? status,
+              reviewed_at: reviewed_at ?? c.reviewed_at ?? null,
+              reviewed_by: reviewed_by ?? c.reviewed_by ?? null,
+            }
+          : c;
+      setRecommendations(prev => prev.map(updateFn));
+      setSelectedCandidate(prev => (prev ? updateFn(prev) : prev));
+    } catch (err) {
+      console.error('Review update error:', err);
+      setReviewError('Failed to update review status. Please try again.');
+    } finally {
+      setReviewLoading(false);
+    }
   };
 
   const handleRecommendJob = async () => {
@@ -410,6 +450,15 @@ function JobRecommendations() {
                             {candidate.location}
                           </Typography>
                         )}
+                        <Chip
+                          label={candidate.review_status || 'Pending'}
+                          size="small"
+                          color={
+                            candidate.review_status === 'Approved' ? 'success' :
+                            candidate.review_status === 'Rejected' ? 'error' : 'default'
+                          }
+                          sx={{ mt: 0.5 }}
+                        />
                       </Box>
                     </Box>
                   </SelectableListItem>
@@ -607,6 +656,67 @@ function JobRecommendations() {
                     </Box>
                   </Box>
                 )}
+
+                <Divider />
+
+                {/* Review Decision Section */}
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Review Decision
+                    </Typography>
+                    <Chip
+                      label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
+                      size="small"
+                      color={
+                        selectedCandidate.review_status === 'Approved' ? 'success' :
+                        selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
+                      }
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Mark as approved">
+                      <span>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Approved')}
+                        >
+                          Approve
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Mark as rejected">
+                      <span>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
+                        >
+                          Reject
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Reset to pending">
+                      <span>
+                        <Button
+                          variant="outlined"
+                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
+                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
+                        >
+                          Pending
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                  {reviewError && (
+                    <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
+                      {reviewError}
+                    </Alert>
+                  )}
+                </Box>
               </DetailPanel>
             )}
           </CardSection>

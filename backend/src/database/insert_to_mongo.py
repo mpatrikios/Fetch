@@ -189,6 +189,48 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         return None
     
 
+def update_match_review(match_id: str, candidate_id: str, review_status: str, reviewed_by: str) -> Dict[str, Any]:
+    """
+    Update the review fields for a specific candidate within a match document.
+
+    Args:
+        match_id: The MongoDB ObjectId string of the match document
+        candidate_id: The candidate_id string to target within the candidates array
+        review_status: One of "Approved", "Rejected", "Pending"
+        reviewed_by: The user _id string of the recruiter performing the review
+
+    Returns:
+        Dictionary with operation result
+    """
+    try:
+        from bson import ObjectId
+        from datetime import datetime, timezone
+
+        reviewed_at = datetime.now(timezone.utc).isoformat()
+
+        result = matches_collection.update_one(
+            {"_id": ObjectId(match_id)},
+            {"$set": {
+                "candidates.$[elem].review_status": review_status,
+                "candidates.$[elem].reviewed_by": reviewed_by,
+                "candidates.$[elem].reviewed_at": reviewed_at,
+            }},
+            array_filters=[{"elem.candidate_id": candidate_id}]
+        )
+
+        if result.matched_count == 0:
+            return {"success": False, "error": "Match document not found"}
+        if result.modified_count == 0:
+            return {"success": False, "error": "Candidate not found in match or review status unchanged"}
+
+        logging.info(f"Review updated for candidate {candidate_id} in match {match_id}")
+        return {"success": True, "reviewed_at": reviewed_at}
+
+    except Exception as e:
+        logging.error(f"Error updating review for candidate {candidate_id} in match {match_id}: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
 def get_match(company_name: str, job_title: str) -> Dict[str, Any] | None:
     """
     Retrieve the most recent match document for a given company and job title.

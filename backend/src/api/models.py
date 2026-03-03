@@ -1,6 +1,6 @@
 # Pydantic models for API responses related to candidates, jobs, and matching results.
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Literal, Optional, Dict, Any
 from datetime import datetime
 
 # Candidate Models
@@ -164,6 +164,9 @@ class MatchResult(BaseModel):
     explanation: MatchExplanation
     clifton_strengths: List[str] = []
     skills: List[str] = []
+    review_status: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    reviewed_by: Optional[str] = None
 
 class MatchResponse(BaseModel):
     success: bool
@@ -173,7 +176,22 @@ class MatchResponse(BaseModel):
     total_matches: int
     matches: List[MatchResult]
     is_cohort: bool = True
+    mongo_match_id: Optional[str] = None
     created_at: Optional[str] = None
+
+
+class ReviewUpdateRequest(BaseModel):
+    review_status: Literal["Approved", "Rejected", "Pending"]
+
+
+class ReviewUpdateResponse(BaseModel):
+    success: bool
+    message: str
+    match_id: str
+    candidate_id: str
+    review_status: Literal["Approved", "Rejected", "Pending"]
+    reviewed_by: str
+    reviewed_at: str
 
 
 class MatchHistoryEntry(BaseModel):
