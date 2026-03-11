@@ -46,3 +46,22 @@ This starts both servers concurrently:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
+
+## Testing
+
+### Backend unit + API tests (no running server required)
+```bash
+cd backend
+./venv/bin/python -m pytest tests/unit/ tests/api/ -v
+```
+
+### E2E tests (requires both servers running)
+```bash
+# In one terminal
+cd frontend && npm run start
+
+# In another terminal
+cd frontend && npm run test:e2e
+```
+
+Set `E2E_EMAIL` and `E2E_PASSWORD` environment variables to enable auth and matching tests.

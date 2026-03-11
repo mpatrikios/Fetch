@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "backend": "cd ../backend && source venv/bin/activate && python3 -m uvicorn src.api.main:app --reload --port 8000",
-    "start": "concurrently \"npm run backend\" \"npm run dev\""
+    "start": "concurrently \"npm run backend\" \"npm run dev\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
