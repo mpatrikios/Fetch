@@ -68,6 +68,7 @@ export const clientAPI = {
   },
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
   updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
+  activate: (clientId) => api.post(`/clients/${clientId}/activate`),
 };
 
 export const cliftonStrengthsAPI = {

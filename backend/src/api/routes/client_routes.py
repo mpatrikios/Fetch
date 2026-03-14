@@ -73,6 +73,7 @@ async def get_client_details(client_id: str):
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
 
+        activated_at = client.get("activatedAt")
         return ClientDetailsResponse(
             success=True,
             client={
@@ -84,7 +85,9 @@ async def get_client_details(client_id: str):
                 "contact_recruiter": client.get("contactRecruiter"),
                 "summary": client.get("summary"),
                 "locations": client.get("locations", []),
-                "posted_jobs": client.get("postedJobs", [])
+                "posted_jobs": client.get("postedJobs", []),
+                "intake_call_notes": client.get("intakeCallNotes"),
+                "activated_at": activated_at.isoformat() if activated_at else None,
             }
         )
 
@@ -110,6 +113,7 @@ async def update_client(client_id: str, client_data: ClientUpdateRequest):
             "contact_recruiter": "contactRecruiter",
             "summary": "summary",
             "locations": "locations",
+            "intake_call_notes": "intakeCallNotes",
         }
 
         # Only include fields that were explicitly provided (not None)
@@ -139,4 +143,29 @@ async def update_client(client_id: str, client_data: ClientUpdateRequest):
         raise
     except Exception as e:
         logger.error(f"Failed to update client {client_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/clients/{client_id}/activate")
+async def activate_client(client_id: str):
+    """Activate a client by setting status to 'active' and recording the activation timestamp"""
+    validate_object_id(client_id)
+
+    try:
+        activated_at = datetime.now(timezone.utc)
+        result = mongo_connection.clients_collection.update_one(
+            {"_id": ObjectId(client_id)},
+            {"$set": {"status": "active", "activatedAt": activated_at}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        logger.info(f"Client {client_id} activated successfully")
+        return {"success": True, "activated_at": activated_at.isoformat()}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to activate client {client_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

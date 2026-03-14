@@ -255,6 +255,8 @@ class ClientDetails(BaseModel):
     summary: Optional[str] = None
     locations: List[str] = []
     posted_jobs: List[str] = []
+    intake_call_notes: Optional[str] = None
+    activated_at: Optional[str] = None
 
 
 class ClientUpdateRequest(BaseModel):
@@ -266,6 +268,7 @@ class ClientUpdateRequest(BaseModel):
     contact_recruiter: Optional[str] = Field(None, max_length=200)
     summary: Optional[str] = None
     locations: Optional[List[str]] = None
+    intake_call_notes: Optional[str] = None
 
 
 class ClientListResponse(BaseModel):
