@@ -95,7 +95,7 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
-def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True):
+def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True, excluded_ids: set = None):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
@@ -135,6 +135,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
 
     scored = []
     for cand in candidates_cursor:
+        # Skip previously rejected candidates
+        if excluded_ids and str(cand.get("_id")) in excluded_ids:
+            continue
+
         # Check if candidate is within commutable distance
         is_commutable = is_candidate_commutable(job_doc, cand)
         

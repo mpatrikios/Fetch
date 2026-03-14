@@ -47,12 +47,24 @@ async def find_matches(request: MatchRequest):
                 detail="Job description does not have embeddings. Please reprocess the job."
             )
         
+        # Collect rejected candidate IDs from all prior match runs for this job
+        rejected_ids = set()
+        prior_matches = mongo_connection.matches_collection.find(
+            {"companyName": request.company_name, "JobTitle": request.job_title},
+            {"candidates.candidate_id": 1, "candidates.review_status": 1}
+        )
+        for doc in prior_matches:
+            for c in doc.get("candidates", []) or []:
+                if c and c.get("review_status") == "Rejected":
+                    rejected_ids.add(c["candidate_id"])
+
         # Find matching candidates
         matches = profile_matching_candidate(
             mongo_connection.database,
             job_doc,
             top_k=request.top_k or 10,
-            use_cohort=request.use_cohort or False
+            use_cohort=request.use_cohort or False,
+            excluded_ids=rejected_ids or None
         )
 
         # Format results
