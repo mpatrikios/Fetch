@@ -184,7 +184,7 @@ function JobRecommendations() {
   // Filter candidates based on search query (name only)
   const filteredRecommendations = useMemo(() => {
     return recommendations.filter(candidate => {
-      const name = candidate.full_name || candidate.name || candidate.candidate_name || '';
+      const name = candidate.full_name || '';
       return searchQuery === '' ||
         name.toLowerCase().includes(searchQuery.toLowerCase());
     });
@@ -437,7 +437,7 @@ function JobRecommendations() {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                          {candidate.full_name || candidate.name || candidate.candidate_name || 'Unknown'}
+                          {candidate.full_name || 'Unknown'}
                         </Typography>
                         {candidate.location && (
                           <Typography variant="body2" color="text.secondary">
@@ -469,7 +469,7 @@ function JobRecommendations() {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
                     <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-                      {selectedCandidate.full_name || selectedCandidate.name || selectedCandidate.candidate_name || 'Unknown'}
+                      {selectedCandidate.full_name || 'Unknown'}
                     </Typography>
                     {selectedCandidate.email && (
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>

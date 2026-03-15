@@ -64,9 +64,7 @@ async def list_candidates(
                 "_id": 1,
                 "full_name": 1,
                 "email": 1,
-                "Email": 1,  # Legacy field support
                 "location": 1,
-                "Location": 1,  # Legacy field support
                 "Summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
@@ -85,8 +83,8 @@ async def list_candidates(
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
                 "full_name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("email", candidate.get("Email", "")),
-                "location": candidate.get("location", candidate.get("Location", "")),
+                "email": candidate.get("email", ""),
+                "location": candidate.get("location", ""),
                 "Summary": candidate.get("Summary"),
                 "skills": candidate.get("Skills", []),
                 "clifton_strengths": clifton_strengths_names,
@@ -158,11 +156,11 @@ async def accept_candidate(candidate_id: str):
             tmp_file_path = tmp.name
 
         # Parse resume, upsert data, and generate embeddings (blocking — offload to threadpool)
-        email = candidate.get("email", candidate.get("Email", ""))
+        email = candidate.get("email", "")
         await run_in_threadpool(DocumentService.parse_and_embed_resume, candidate_id, tmp_file_path, email)
 
         # Set accepted status and timestamp
-        mongo_connection.candidates_collection.update_one(
+        result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
@@ -172,6 +170,7 @@ async def accept_candidate(candidate_id: str):
                 "$unset": {"parsing_error": ""},
             }
         )
+        ensure_updated(result, "Candidate")
 
         logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
 
@@ -230,7 +229,7 @@ async def send_assessment(candidate_id: str):
         # - Integrating with external assessment platform
         
         # For now, just update the candidate with assessment sent flag
-        mongo_connection.candidates_collection.update_one(
+        result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
@@ -239,7 +238,8 @@ async def send_assessment(candidate_id: str):
                 }
             }
         )
-        
+        ensure_updated(result, "Candidate")
+
         logger.info(f"Assessment sent to candidate {candidate_id}")
         return {"success": True, "message": "Assessment sent successfully"}
         

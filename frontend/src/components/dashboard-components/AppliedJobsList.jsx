@@ -52,7 +52,7 @@ function AppliedJobsList({ appliedJobs }) {
                     primary={
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Typography variant="subtitle1">
-                          {job.job_title || job.title} at {job.company_name || job.company}
+                          {job.job_title} at {job.company_name}
                         </Typography>
                         <JobStatusChip status={job.status} />
                       </Box>

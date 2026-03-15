@@ -76,7 +76,7 @@ function CandidateDashboard() {
 
           {/* Main Content */}
           <Grid size={{ xs: 12, md: 8 }}>
-            <AppliedJobsList appliedJobs={appliedJobs} onRefresh={loadDashboardData} />
+            <AppliedJobsList appliedJobs={appliedJobs} />
             <RecommendedJobs recommendedJobs={recommendedJobs} onRefresh={loadDashboardData} />
           </Grid>
         </Grid>

@@ -17,7 +17,7 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
-  MenuItem,
+  Chip,
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';

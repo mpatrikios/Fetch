@@ -180,7 +180,7 @@ async def list_jobs():
             {"profile_embedding": {"$exists": True}},
             {
                 "_id": 1,
-                "companyName": 1,
+                "CompanyName": 1,
                 "JobTitle": 1,
                 "Locations": 1,
                 "Skills": {"$slice": 10},
@@ -191,12 +191,12 @@ async def list_jobs():
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
-                "company": job.get("companyName", "Unknown"),
+                "company": job.get("CompanyName", "Unknown"),
                 "title": job.get("JobTitle"),
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
+                "job_id": f"{job.get('CompanyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
             })
@@ -217,7 +217,7 @@ async def get_job_details(company_name: str, job_title: str):
     """Get full job details including all fields"""
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
-            "companyName": company_name,
+            "CompanyName": company_name,
             "JobTitle": job_title
         })
 
@@ -227,9 +227,9 @@ async def get_job_details(company_name: str, job_title: str):
         return JobDetailsResponse(
             success=True,
             job=JobDetails(
-                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                job_id=f"{job.get('CompanyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
-                company=job.get("companyName", ""),
+                company=job.get("CompanyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
                 locations=job.get("Locations", []),

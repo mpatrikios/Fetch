@@ -82,8 +82,8 @@ async def find_matches(request: MatchRequest):
                 "candidate_id": str(candidate.get("_id")) if candidate.get("_id") else None,
                 "rank": rank if not request.use_cohort else None,
                 "full_name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("email", candidate.get("Email", "")),
-                "location": candidate.get("location", candidate.get("Location", "")),
+                "email": candidate.get("email", ""),
+                "location": candidate.get("location", ""),
                 "distance_km": match.get("distance_km"),
                 "scores": {
                     "combined": round(match["combined_similarity_score"], 3),
@@ -131,21 +131,6 @@ async def find_matches(request: MatchRequest):
     except Exception as e:
         logger.error(f"Matching failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# endpoint to get matches via GET request using URL. Might be useful for testing or caching.
-@router.get("/matches/job/{company_name}/{job_title}")
-async def get_job_matches(company_name: str, job_title: str, top_k: int = 10, use_cohort: bool = False):
-    """
-    Alternative GET endpoint for finding matches.
-    Useful for direct URL access or caching.
-    """
-    request = MatchRequest(
-        company_name=company_name,
-        job_title=job_title,
-        top_k=top_k,
-        use_cohort=use_cohort
-    )
-    return await find_matches(request)
 
 @router.patch("/matches/{match_id}/candidates/{candidate_id}/review", response_model=ReviewUpdateResponse)
 async def update_candidate_review(
