@@ -273,12 +273,13 @@ function Jobs() {
 
   const handleJobUploadSuccess = async (newJob) => {
     try {
-          setShowAddJob(false);
-          await loadJobs();
-        } catch (err) {
-          console.error('Failed to update status:', err);
-        }
-    timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      setShowAddJob(false);
+      await loadJobs();
+      setSuccessMessage('Job uploaded successfully!');
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Failed to reload jobs after upload:', err);
+    }
   }
         
   const SummaryDisplay = ({ summary }) => {
