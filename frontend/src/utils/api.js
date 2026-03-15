@@ -68,6 +68,7 @@ export const clientAPI = {
   },
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
   updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
+  activate: (clientId) => api.post(`/clients/${clientId}/activate`),
 };
 
 export const cliftonStrengthsAPI = {
@@ -106,12 +107,35 @@ export const matchingAPI = {
       top_k: topK,
       use_cohort: useCohort,
     }, config),
+  updateReview: (matchId, candidateId, reviewStatus, config = {}) =>
+    api.patch(`/matches/${matchId}/candidates/${candidateId}/review`, {
+      review_status: reviewStatus,
+    }, config),
   getStoredMatches: (companyName, jobTitle, config = {}) =>
     api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
   getMatchHistory: (companyName, jobTitle, config = {}) =>
     api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
   getMatchById: (matchId, config = {}) =>
     api.get(`/matches/${matchId}`, config),
+};
+
+// Candidate Jobs endpoints (recruiter-facing)
+export const candidateJobsAPI = {
+  recommendJob: (candidateId, jobData) =>
+    api.post(`/candidates/${candidateId}/recommend-job`, jobData),
+  removeRecommendation: (candidateId, recId) =>
+    api.delete(`/candidates/${candidateId}/recommendations/${recId}`),
+  updateStatus: (candidateId, recId, status) =>
+    api.put(`/candidates/${candidateId}/recommendations/${recId}/status`, { status }),
+  getJobRecommendations: (companyName, jobTitle) =>
+    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/recommendations`),
+};
+
+// Profile endpoints (candidate self-service)
+export const profileAPI = {
+  getRecommendations: () => api.get('/profile/recommendations'),
+  expressInterest: (recId) => api.post(`/profile/recommendations/${recId}/apply`),
+  getApplications: () => api.get('/profile/applications'),
 };
 
 // Authentication endpoints
@@ -145,6 +169,12 @@ export const documentAPI = {
   getResumeDownloadUrl: (candidateId) => api.get(`/documents/resume/${candidateId}/download`),
   getJobDownloadUrl: (jobId) => api.get(`/documents/job/${jobId}/download`),
   getCliftonDownloadUrl: (candidateId) => api.get(`/documents/clifton/${candidateId}/download`),
+};
+
+// Document download endpoints for authenticated candidate
+export const myDocumentAPI = {
+  getMyResumeDownloadUrl: () => api.get('/profile/documents/resume/download'),
+  getMyCliftonDownloadUrl: () => api.get('/profile/documents/clifton/download'),
 };
 
 // Health check

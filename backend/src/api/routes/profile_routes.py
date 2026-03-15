@@ -9,6 +9,7 @@ from bson import ObjectId
 import logging
 
 from src.database.connection import mongo_connection
+from src.services.storage.blob_storage import get_blob_storage
 from src.api.routes.auth_routes import get_current_user, hash_password_sha256, verify_password
 from src.api.models import (
     CandidateProfileResponse,
@@ -54,6 +55,8 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
             full_name=candidate.get("full_name", candidate.get("name", "")),
             email=candidate.get("email", candidate.get("Email", "")),
             location=candidate.get("Location"),
+            has_resume=bool(candidate.get("resume_blob_path")),
+            has_clifton_doc=bool(candidate.get("clifton_blob_path")),
             clifton_strengths=clifton_names,
             status=candidate.get("status"),
             created_at=candidate.get("created_at"),
@@ -64,6 +67,51 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error fetching profile for {current_user.get('email', 'unknown')}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve profile")
+
+
+@router.get("/profile/documents/resume/download")
+async def download_my_resume(current_user: Dict = Depends(get_current_user)):
+    """Generate a SAS download URL for the authenticated user's own resume."""
+    try:
+        candidate = mongo_connection.candidates_collection.find_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"resume_blob_path": 1, "resume_filename": 1}
+        )
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        blob_storage = get_blob_storage()
+        sas_url = blob_storage.generate_sas_url(candidate["resume_blob_path"])
+        return {"download_url": sas_url, "filename": candidate.get("resume_filename", "resume")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching resume download URL for {current_user.get('email', 'unknown')}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve resume download URL")
+
+
+@router.get("/profile/documents/clifton/download")
+async def download_my_clifton_strengths(current_user: Dict = Depends(get_current_user)):
+    """Generate a SAS download URL for the authenticated user's own clifton strengths report."""
+    try:
+        candidate = mongo_connection.candidates_collection.find_one(
+            {"_id": ObjectId(current_user["_id"])},
+            {"clifton_blob_path": 1, "clifton_filename": 1}
+        )
+        if not candidate:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        clifton_blob_path = candidate.get("clifton_blob_path")
+        if not clifton_blob_path:
+            raise HTTPException(status_code=404, detail="No Clifton Strengths document uploaded")
+
+        blob_storage = get_blob_storage()
+        sas_url = blob_storage.generate_sas_url(clifton_blob_path)
+        return {"download_url": sas_url, "filename": candidate.get("clifton_filename", "clifton_strengths")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching clifton download URL for {current_user.get('email', 'unknown')}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve clifton download URL")
 
 
 @router.put("/profile", response_model=ProfileUpdateResponse)

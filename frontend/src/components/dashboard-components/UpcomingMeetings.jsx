@@ -1,6 +1,6 @@
-import { Box, Typography, Card, List, ListItem, ListItemText, Chip } from '@mui/material';
-import { CalendarToday, VideoCall } from '@mui/icons-material';
-import { CardSection, DarkButton } from '../common-components/StyledComponents';
+import { Box, Typography, Button, List, ListItem, ListItemText, Chip } from '@mui/material';
+import { CalendarToday, VideoCall, CalendarMonth } from '@mui/icons-material';
+import { CardSection, SectionHeader } from '../common-components/StyledComponents';
 
 function UpcomingMeetings() {
   // MOCK DATA TODO: Replace with real data fetching logic
@@ -16,7 +16,7 @@ function UpcomingMeetings() {
     {
       id: 2,
       title: "Candidate Screening",
-      time: "2:00 PM", 
+      time: "2:00 PM",
       date: "Today",
       type: "google",
       participant: "Sarah Johnson"
@@ -33,23 +33,26 @@ function UpcomingMeetings() {
 
   return (
     <CardSection sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <CalendarToday sx={{ mr: 2, color: 'text.secondary' }} />
-        <Typography variant="h6" sx={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600 }}>
+        <SectionHeader variant="h6" sx={{ mb: 0, flexGrow: 1 }}>
           Upcoming Meetings
-        </Typography>
+        </SectionHeader>
+        <Button size="small" variant="outlined" startIcon={<CalendarMonth />}>
+          View Calendar
+        </Button>
       </Box>
-      
+
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {meetings.length > 0 ? (
           <List sx={{ p: 0 }}>
             {meetings.map((meeting) => (
-              <ListItem 
-                key={meeting.id} 
-                sx={{ 
+              <ListItem
+                key={meeting.id}
+                sx={{
                   border: '1px solid',
                   borderColor: 'divider',
-                  borderRadius: 2, 
+                  borderRadius: 2,
                   mb: 1,
                   backgroundColor: 'grey.50'
                 }}
@@ -76,10 +79,10 @@ function UpcomingMeetings() {
                   }
                   secondaryTypographyProps={{ component: 'div' }}
                 />
-                <Chip 
-                  label={meeting.type === 'calendly' ? 'Calendly' : 'Google Calendar'} 
+                <Chip
+                  label={meeting.type === 'calendly' ? 'Calendly' : 'Google Calendar'}
                   size="small"
-                  sx={{ 
+                  sx={{
                     backgroundColor: 'action.hover',
                     color: 'text.primary',
                     fontSize: '0.7rem'
@@ -96,12 +99,6 @@ function UpcomingMeetings() {
             </Typography>
           </Box>
         )}
-      </Box>
-      
-      <Box sx={{ mt: 'auto', pt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-        <DarkButton size="small">
-          View Calendar
-        </DarkButton>
       </Box>
     </CardSection>
   );

@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from src.api.routes import resume_routes, job_routes, matching_routes, auth_routes, clifton_strengths_routes, candidate_routes, dashboard_routes, profile_routes, client_routes, document_routes
+from src.api.routes import resume_routes, job_routes, matching_routes, auth_routes, clifton_strengths_routes, candidate_routes, dashboard_routes, profile_routes, client_routes, document_routes, candidate_jobs_routes
 from src.database.connection import mongo_connection
 
 logging.basicConfig(level=logging.INFO)
@@ -79,3 +79,4 @@ app.include_router(dashboard_routes.router, prefix="/api", tags=["dashboard"])
 app.include_router(profile_routes.router, prefix="/api", tags=["profile"])
 app.include_router(client_routes.router, prefix="/api", tags=["clients"])
 app.include_router(document_routes.router, prefix="/api", tags=["documents"])
+app.include_router(candidate_jobs_routes.router, prefix="/api", tags=["candidate-jobs"])

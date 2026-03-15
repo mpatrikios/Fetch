@@ -9,11 +9,38 @@ import {
 } from '@mui/material';
 import { Email, Phone, LocationOn } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { CardSection, SecondaryButton } from '../common-components/StyledComponents';
-
+import { CardSection, SecondaryButton, FileLink } from '../common-components/StyledComponents';
+import { myDocumentAPI } from '../../utils/api.js';
+import { InsertDriveFile as FileIcon } from '@mui/icons-material';
 function ProfileCard({ user }) {
   const navigate = useNavigate();
+  const documents = [
+    ...(user?.has_resume
+      ? [{ name: `${user.full_name.replace(/\s+/g, '_')} Resume`, type: 'resume' }]
+      : []),
+    ...(user?.has_clifton_doc
+      ? [{ name: `${user.full_name.replace(/\s+/g, '_')} CliftonStrengths`, type: 'clifton' }]
+      : []),
+  ];
+  // Download document from blob storage
+  const handleDocumentDownload = async (docType, myId) => {
+    try {
+      const apiCall = {
+        resume: myDocumentAPI.getMyResumeDownloadUrl,
+        clifton: myDocumentAPI.getMyCliftonDownloadUrl,
+      }[docType];
 
+      if (!apiCall) return;
+
+      const response = await apiCall(myId);
+      window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Download error:', err);
+      setErrorMessage('Failed to download document.');
+      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
+    }
+  };
+  
   return (
     <CardSection>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -51,6 +78,35 @@ function ProfileCard({ user }) {
             <LocationOn fontSize="small" />
           </ListItemIcon>
           <ListItemText primary={user?.location || 'Location not provided'} />
+        </ListItem>
+        <ListItem>
+          <ListItemIcon>
+            <FileIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary={"Documents"}/>
+        </ListItem>
+        <ListItem>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column'}}>
+            {documents?.length > 0 ? (
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {documents.map((doc, index) => (
+                  <FileLink
+                    key={index}
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleDocumentDownload(doc.type);
+                    }}
+                    style={{ marginRight: 8, fontSize: '0.85rem' }}
+                  >
+                    {doc.name}
+                  </FileLink>
+                ))}
+              </Box>
+            ) : (
+              <Typography color="text.secondary" fontSize="0.85rem">No documents uploaded</Typography>
+            )}
+          </Box>
         </ListItem>
       </List>
       

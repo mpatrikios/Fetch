@@ -58,8 +58,12 @@ function Clients() {
     contact_recruiter: '',
     summary: '',
     locations: '',
+    intake_call_notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [activateWarnings, setActivateWarnings] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
   const timeoutRefs = useRef([]);
 
@@ -159,6 +163,7 @@ function Clients() {
       contact_recruiter: clientDetails.contact_recruiter ?? '',
       summary: clientDetails.summary ?? '',
       locations: (clientDetails.locations ?? []).join('; '),
+      intake_call_notes: clientDetails.intake_call_notes ?? '',
     });
     setShowEditDialog(true);
   };
@@ -190,6 +195,7 @@ function Clients() {
         contact_recruiter: editFormData.contact_recruiter,
         summary: editFormData.summary,
         locations: locationsArray,
+        intake_call_notes: editFormData.intake_call_notes,
       };
 
       await clientAPI.updateClient(clientDetails.id, updatePayload);
@@ -203,6 +209,7 @@ function Clients() {
         contact_recruiter: editFormData.contact_recruiter,
         summary: editFormData.summary,
         locations: locationsArray,
+        intake_call_notes: editFormData.intake_call_notes,
       }));
 
       setClients(prev => prev.map(c =>
@@ -228,6 +235,37 @@ function Clients() {
       setError('Failed to update client. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleActivateClick = () => {
+    const warnings = [];
+    if (!clientDetails.contact_recruiter) warnings.push('Recruiter not assigned');
+    if (!clientDetails.intake_call_notes) warnings.push('Intake call notes not added');
+    setActivateWarnings(warnings);
+    setShowActivateDialog(true);
+  };
+
+  const handleConfirmActivate = async () => {
+    try {
+      setActivating(true);
+      const response = await clientAPI.activate(clientDetails.id);
+      const activatedAt = response.data.activated_at;
+
+      setClientDetails(prev => ({ ...prev, status: 'active', activated_at: activatedAt }));
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id ? { ...c, status: 'active' } : c
+      ));
+      setSelectedClient(prev => ({ ...prev, status: 'active' }));
+      setShowActivateDialog(false);
+      setSuccessMessage(`${clientDetails.company_name} has been activated!`);
+      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+    } catch (err) {
+      console.error('Activate client error:', err);
+      setError('Failed to activate client. Please try again.');
+      setShowActivateDialog(false);
+    } finally {
+      setActivating(false);
     }
   };
 
@@ -470,6 +508,35 @@ function Clients() {
                   )}
                 </Box>
 
+                {/* Onboarding activation banner */}
+                {clientDetails?.status?.toLowerCase() === 'onboarding' && (() => {
+                  const missing = [
+                    !clientDetails.contact_recruiter && 'recruiter not assigned',
+                    !clientDetails.intake_call_notes && 'intake notes missing',
+                  ].filter(Boolean);
+                  return (
+                    <Alert
+                      severity={missing.length > 0 ? 'warning' : 'success'}
+                      sx={{ borderRadius: 0, mx: -3, px: 3 }}
+                      action={
+                        <Button
+                          color="inherit"
+                          size="small"
+                          onClick={handleActivateClick}
+                          disabled={activating}
+                          sx={{ whiteSpace: 'nowrap' }}
+                        >
+                          {activating ? 'Activating...' : 'Activate Client'}
+                        </Button>
+                      }
+                    >
+                      {missing.length > 0
+                        ? `Onboarding incomplete: ${missing.join(', ')}.`
+                        : 'Onboarding complete — ready to activate.'}
+                    </Alert>
+                  );
+                })()}
+
                 <Divider />
 
                 {/* Summary Section */}
@@ -514,8 +581,6 @@ function Clients() {
                     </Box>
                   </Box>
                 </Box>
-
-                <Divider />
 
                 {/* Posted Jobs Section */}
                 <Box>
@@ -564,6 +629,34 @@ function Clients() {
         onSelect={setSelectedLocation}
         allLabel="All locations"
       />
+
+      {/* Activate Client Confirmation Dialog */}
+      <Dialog open={showActivateDialog} onClose={() => !activating && setShowActivateDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Activate Client</DialogTitle>
+        <DialogContent>
+          {activateWarnings.length > 0 ? (
+            <Box>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Some onboarding steps are incomplete:
+                <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                  {activateWarnings.map(w => <li key={w}>{w}</li>)}
+                </ul>
+              </Alert>
+              <Typography variant="body2">Activate {clientDetails?.company_name} anyway?</Typography>
+            </Box>
+          ) : (
+            <Typography variant="body2">
+              Activate <strong>{clientDetails?.company_name}</strong> as an active client?
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowActivateDialog(false)} disabled={activating}>Cancel</Button>
+          <Button onClick={handleConfirmActivate} variant="contained" color="success" disabled={activating}>
+            {activating ? 'Activating...' : 'Activate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Client Dialog */}
       <Dialog
@@ -626,6 +719,14 @@ function Clients() {
               value={editFormData.locations}
               onChange={(e) => handleEditFormChange('locations', e.target.value)}
               helperText="Separate locations with semicolons"
+            />
+            <TextField
+              label="Intake Call Notes"
+              fullWidth
+              multiline
+              minRows={3}
+              value={editFormData.intake_call_notes}
+              onChange={(e) => handleEditFormChange('intake_call_notes', e.target.value)}
             />
           </Box>
         </DialogContent>
