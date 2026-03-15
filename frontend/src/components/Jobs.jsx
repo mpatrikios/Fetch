@@ -394,6 +394,7 @@ function Jobs() {
                     size="small"
                     onClick={() => setShowAddJob(true)}
                     title="Add new job"
+                    aria-label="Add new job"
                   >
                     <AddIcon fontSize="small" />
                   </IconButton>
