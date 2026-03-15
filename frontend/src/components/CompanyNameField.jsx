@@ -60,7 +60,7 @@ const CompanyNameField = ({
                   }}
                   onClick={() => setOpen((prev) => !prev)}
                 >
-                  {open ? <KeyboardArrowDownIcon size={18} /> : <KeyboardArrowLeftIcon size={18} />}
+                  {open ? <KeyboardArrowDownIcon sx={{ fontSize: 18 }} /> : <KeyboardArrowLeftIcon sx={{ fontSize: 18 }} />}
                 </IconButton>
               </InputAdornment>
             ),
