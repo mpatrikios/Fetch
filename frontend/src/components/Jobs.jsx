@@ -17,7 +17,7 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
-  MenuItem
+  MenuItem,
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -44,6 +44,7 @@ import {
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 import DocumentUpload from './DocumentUpload';
 import CompanyNameField from './CompanyNameField';
+
 
 function Jobs() {
   const navigate = useNavigate();
@@ -235,7 +236,7 @@ function Jobs() {
 
       setJobs(prev => prev.map(j =>
         j.job_id === jobDetails.job_id
-          ? { ...j, location: locationsArray.join(', '), skills: skillsArray.slice(0, 10) }
+          ? { ...j, locations: locationsArray, skills: skillsArray.slice(0, 10) }
           : j
       ));
 
@@ -405,10 +406,18 @@ function Jobs() {
                         <Typography variant="body2" color="text.secondary">
                           {job.company}
                         </Typography>
-                        {job.location && (
-                          <Typography variant="caption" color="text.secondary">
-                            {job.location}
-                          </Typography>
+                        {job.locations?.length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {job.locations.map((loc) => (
+                              <Chip
+                                key={loc}
+                                label={loc}
+                                size="small"
+                                icon={<LocationOn sx={{ fontSize: 8 }} />}
+                                sx={{ fontSize: 12, height: 20 }}
+                              />
+                            ))}
+                          </Box>
                         )}
                       </Box>
                       {job.has_embeddings && (
@@ -465,7 +474,7 @@ function Jobs() {
                     </Typography>
                     {jobDetails?.locations?.length > 0 && (
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {jobDetails.locations.join(', ')}
+                        {jobDetails.locations.join('; ')}
                       </Typography>
                     )}
                     {jobDetails?.min_years && (

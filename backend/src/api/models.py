@@ -45,6 +45,8 @@ class CandidateProfileResponse(BaseModel):
     full_name: str
     email: str
     location: Optional[str] = None
+    has_resume: bool = False
+    has_clifton_doc: bool = False
     clifton_strengths: List[str] = []
     status: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -92,7 +94,7 @@ class AccountDeleteResponse(BaseModel):
 class JobInfo(BaseModel):
     company: str
     title: str
-    location: Optional[str] = None
+    locations: Optional[List[str]] = None
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str

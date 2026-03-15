@@ -175,6 +175,12 @@ export const documentAPI = {
   getCliftonDownloadUrl: (candidateId) => api.get(`/documents/clifton/${candidateId}/download`),
 };
 
+// Document download endpoints for authenticated candidate
+export const myDocumentAPI = {
+  getMyResumeDownloadUrl: () => api.get('/profile/documents/resume/download'),
+  getMyCliftonDownloadUrl: () => api.get('/profile/documents/clifton/download'),
+};
+
 // Health check
 export const healthCheck = () => api.get('/health');
 
