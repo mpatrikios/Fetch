@@ -20,7 +20,6 @@ from src.api.models import (
     AccountDeleteRequest,
     AccountDeleteResponse,
 )
-from src.api.utils import validate_object_id
 from src.services.embeddings.generate_embeddings import embed_candidate_location
 
 logger = logging.getLogger(__name__)
