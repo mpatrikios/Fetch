@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Typography,
   List,
@@ -5,13 +6,35 @@ import {
   ListItemText,
   ListItemIcon,
   Box,
-  Divider
+  Divider,
+  IconButton,
+  Tooltip,
+  DialogContentText,
 } from '@mui/material';
-import { Work, Schedule, TrendingUp, CheckCircle, Cancel } from '@mui/icons-material';
+import { Work, Schedule, TrendingUp, CheckCircle, Cancel, UndoOutlined } from '@mui/icons-material';
 import JobStatusChip from './JobStatusChip';
 import { CardSection, SectionHeader } from '../common-components/StyledComponents';
+import { ConfirmationDialog } from '../common-components/SharedComponents';
+import { profileAPI } from '../../utils/api';
 
-function AppliedJobsList({ appliedJobs }) {
+function AppliedJobsList({ appliedJobs, onRefresh }) {
+  const [confirmWithdraw, setConfirmWithdraw] = useState(null); // rec doc being confirmed
+  const [withdrawing, setWithdrawing] = useState(false);
+
+  const handleWithdrawConfirm = async () => {
+    if (!confirmWithdraw) return;
+    try {
+      setWithdrawing(true);
+      await profileAPI.withdrawApplication(confirmWithdraw._id);
+      setConfirmWithdraw(null);
+      if (onRefresh) onRefresh();
+    } catch {
+      // silently close; dashboard will still show the item
+      setConfirmWithdraw(null);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
   const getStatusIcon = (status) => {
     switch (status) {
       case 'pending':
@@ -54,10 +77,16 @@ function AppliedJobsList({ appliedJobs }) {
                         <Typography variant="subtitle1">
                           {job.job_title || job.title} at {job.company_name || job.company}
                         </Typography>
-                        <JobStatusChip status={job.status} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <JobStatusChip status={job.status} />
+                          <Tooltip title="Withdraw application">
+                            <IconButton size="small" onClick={() => setConfirmWithdraw(job)}>
+                              <UndoOutlined fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
                       </Box>
                     }
-
                   />
                 </ListItem>
                 {index < appliedJobs.length - 1 && <Divider />}
@@ -65,6 +94,15 @@ function AppliedJobsList({ appliedJobs }) {
             ))}
           </List>
         )}
+      <ConfirmationDialog
+        open={!!confirmWithdraw}
+        title="Withdraw Application"
+        content={<DialogContentText>Withdraw your application for <strong>{confirmWithdraw?.job_title}</strong> at <strong>{confirmWithdraw?.company_name}</strong>? This cannot be undone.</DialogContentText>}
+        onConfirm={handleWithdrawConfirm}
+        onCancel={() => setConfirmWithdraw(null)}
+        loading={withdrawing}
+        confirmText="Withdraw"
+      />
     </CardSection>
   );
 }

@@ -8,6 +8,7 @@ from src.database.connection import mongo_connection
 from src.api.models import ClientListResponse, ClientDetailsResponse, ClientUpdateRequest
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import validate_object_id
+from src.api.routes.helpers import ensure_updated
 from bson import ObjectId
 
 logger = logging.getLogger(__name__)
@@ -133,8 +134,7 @@ async def update_client(client_id: str, client_data: ClientUpdateRequest):
             {"$set": update_fields}
         )
 
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Client not found")
+        ensure_updated(result, "Client")
 
         logger.info(f"Client {client_id} updated successfully")
         return {"success": True, "message": "Client updated successfully"}
@@ -158,8 +158,7 @@ async def activate_client(client_id: str):
             {"$set": {"status": "active", "activatedAt": activated_at}}
         )
 
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Client not found")
+        ensure_updated(result, "Client")
 
         logger.info(f"Client {client_id} activated successfully")
         return {"success": True, "activated_at": activated_at.isoformat()}

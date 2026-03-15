@@ -13,11 +13,6 @@ import {
   Menu,
   MenuItem,
   Snackbar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from '@mui/material';
 import { ArrowBack, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -26,10 +21,9 @@ import {
   SectionHeader,
   CardSection,
   SelectableListItem,
-  DetailPanel,
   DarkButton
 } from './common-components/StyledComponents';
-import { SearchField, EmptyState } from './common-components/SharedComponents';
+import { SearchField, EmptyState, ConfirmationDialog, SkillChips, DetailPanelContainer } from './common-components/SharedComponents';
 
 
 function JobRecommendations() {
@@ -470,19 +464,7 @@ function JobRecommendations() {
 
         {/* Main Content - Candidate Details */}
         <Grid size={{ xs: 12, md: 8 }}>
-          <CardSection sx={{ height: '100%', ml: 2, overflow: 'auto' }}>
-            {!selectedCandidate ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'text.secondary'
-              }}>
-                <Typography>Select a candidate to view details</Typography>
-              </Box>
-            ) : (
-              <DetailPanel>
+          <DetailPanelContainer selected={selectedCandidate} emptyText="Select a candidate to view details">
                 {/* Candidate Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
@@ -583,24 +565,7 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Skills
                   </Typography>
-                  {selectedCandidate.skills?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {selectedCandidate.skills.map((skill, index) => (
-                        <Chip
-                          key={index}
-                          label={skill}
-                          size="small"
-                          variant="outlined"
-                          sx={{
-                            borderColor: 'text.primary',
-                            color: 'text.primary'
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No skills listed</Typography>
-                  )}
+                  <SkillChips items={selectedCandidate.skills} variant="skill" emptyText="No skills listed" />
                 </Box>
 
                 <Divider />
@@ -610,26 +575,7 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     CliftonStrengths
                   </Typography>
-                  {selectedCandidate.clifton_strengths?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {selectedCandidate.clifton_strengths.map((strength, index) => (
-                        <Chip
-                          key={index}
-                          label={strength}
-                          size="small"
-                          sx={{
-                            backgroundColor: 'success.main',
-                            color: 'white',
-                            '&:hover': {
-                              backgroundColor: 'success.dark',
-                            }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No CliftonStrengths assessment completed</Typography>
-                  )}
+                  <SkillChips items={selectedCandidate.clifton_strengths} variant="strength" emptyText="No CliftonStrengths assessment completed" />
                 </Box>
 
                 <Divider />
@@ -717,9 +663,7 @@ function JobRecommendations() {
                     </Alert>
                   )}
                 </Box>
-              </DetailPanel>
-            )}
-          </CardSection>
+          </DetailPanelContainer>
         </Grid>
       </Grid>
 
@@ -737,21 +681,14 @@ function JobRecommendations() {
         </Alert>
       </Snackbar>
 
-      <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
-        <DialogTitle>Remove Recommendation</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Remove the job recommendation for{' '}
-            {selectedCandidate?.full_name || 'this candidate'}? This cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUnrecommendJob} color="error" variant="contained">
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmationDialog
+        open={confirmDialogOpen}
+        title="Remove Recommendation"
+        content={`Remove the job recommendation for ${selectedCandidate?.full_name || 'this candidate'}? This cannot be undone.`}
+        onConfirm={handleUnrecommendJob}
+        onCancel={() => setConfirmDialogOpen(false)}
+        confirmText="Remove"
+      />
     </Box>
   );
 }

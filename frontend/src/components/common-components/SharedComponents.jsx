@@ -7,8 +7,16 @@ import {
   InputAdornment,
   IconButton,
   Menu,
-  MenuItem
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Chip,
+  CircularProgress
 } from '@mui/material';
+import { CardSection, DetailPanel } from './StyledComponents';
 import { Search, Clear } from '@mui/icons-material';
 
 /**
@@ -232,6 +240,72 @@ export const EmptyState = ({
           {subtitle}
         </Typography>
       )}
+    </Box>
+  );
+};
+
+/**
+ * Right-side detail panel: handles empty, loading, and content states with overflow scrolling
+ */
+export const DetailPanelContainer = ({ selected, loading = false, emptyText, children }) => (
+  <CardSection sx={{ height: '100%', ml: 2, overflow: 'auto' }}>
+    {!selected ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
+        <Typography>{emptyText}</Typography>
+      </Box>
+    ) : loading ? (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    ) : (
+      <DetailPanel>
+        {children}
+      </DetailPanel>
+    )}
+  </CardSection>
+);
+
+/**
+ * Reusable confirmation dialog (title + message + Cancel + Confirm)
+ */
+export const ConfirmationDialog = ({
+  open, title, content, onConfirm, onCancel,
+  loading = false, confirmText = 'Confirm', confirmColor = 'error',
+  maxWidth, fullWidth
+}) => (
+  <Dialog open={open} onClose={onCancel} maxWidth={maxWidth} fullWidth={fullWidth}>
+    <DialogTitle>{title}</DialogTitle>
+    <DialogContent>
+      {typeof content === 'string'
+        ? <DialogContentText>{content}</DialogContentText>
+        : content}
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={onCancel} disabled={loading}>Cancel</Button>
+      <Button onClick={onConfirm} color={confirmColor} variant="contained" disabled={loading}>
+        {confirmText}
+      </Button>
+    </DialogActions>
+  </Dialog>
+);
+
+/**
+ * Renders a list of skill or strength chips
+ */
+export const SkillChips = ({ items = [], variant = 'skill', emptyText }) => {
+  if (!items.length) {
+    return emptyText ? <Typography color="text.secondary">{emptyText}</Typography> : null;
+  }
+  const chipSx = variant === 'strength'
+    ? { backgroundColor: 'success.main', color: 'white' }
+    : { borderColor: 'text.primary', color: 'text.primary' };
+  return (
+    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+      {items.map((item, i) => (
+        <Chip key={i} label={item} size="small"
+          variant={variant === 'strength' ? 'filled' : 'outlined'}
+          sx={chipSx} />
+      ))}
     </Box>
   );
 };

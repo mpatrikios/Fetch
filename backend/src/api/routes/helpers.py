@@ -1,9 +1,14 @@
 # Shared helper functions for route handlers
-from typing import Optional
+from typing import List, Optional
+import logging
 from fastapi import HTTPException
 from bson import ObjectId
 
 from src.database.connection import mongo_connection
+from src.api.models import MatchResult
+from src.services.storage.blob_storage import get_blob_storage
+
+logger = logging.getLogger(__name__)
 
 
 def get_candidate_or_404(
@@ -49,3 +54,52 @@ def get_job_or_404(
     if required_field and not job.get(required_field):
         raise HTTPException(status_code=404, detail=missing_msg or f"{required_field} not found")
     return job
+
+
+def ensure_updated(result, entity_name: str = "Document") -> None:
+    """Raise 404 if a MongoDB update matched no documents."""
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"{entity_name} not found")
+
+
+def delete_document_blobs(doc: dict, blob_fields: List[str], entity_id: str) -> None:
+    """Delete Azure blobs referenced by the given fields on a MongoDB document. Logs warnings on failure."""
+    blob_storage = get_blob_storage()
+    for field in blob_fields:
+        blob_path = doc.get(field)
+        if blob_path:
+            try:
+                blob_storage.delete_blob(blob_path)
+            except Exception as e:
+                logger.warning(f"Blob delete failed for {entity_id} ({field}): {e}")
+
+
+def build_match_result_from_candidate(c: dict) -> MatchResult:
+    """Build a MatchResult Pydantic model from a stored match candidate dict."""
+    explanation_data = c.get("explanation") or {}
+    relevant_experience = [
+        {"role": e.get("role", ""), "company": e.get("company")}
+        for e in (explanation_data.get("relevant_experience") or [])
+        if e is not None
+    ]
+    return MatchResult(
+        candidate_id=c.get("candidate_id"),
+        rank=c.get("rank"),
+        full_name=c.get("full_name", "Unknown"),
+        email=c.get("email"),
+        location=c.get("location"),
+        distance_km=c.get("distance_km"),
+        scores=c.get("scores"),
+        explanation={
+            "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+            "relevant_roles": explanation_data.get("relevant_roles") or [],
+            "relevant_experience": relevant_experience,
+            "candidate_companies": explanation_data.get("candidate_companies") or [],
+            "summary": explanation_data.get("summary") or "No summary available",
+        },
+        clifton_strengths=c.get("clifton_strengths") or [],
+        skills=c.get("skills") or [],
+        review_status=c.get("review_status"),
+        reviewed_at=c.get("reviewed_at"),
+        reviewed_by=c.get("reviewed_by"),
+    )

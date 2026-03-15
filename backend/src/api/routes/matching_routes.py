@@ -2,6 +2,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Optional
 import logging
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from src.database.connection import mongo_connection
 from src.database.insert_to_mongo import (
@@ -19,7 +21,7 @@ from src.services.matching.cosine_similarity import (
 from src.api.models import MatchRequest, MatchResponse, MatchResult, MatchHistoryResponse, ReviewUpdateRequest, ReviewUpdateResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import validate_object_id
-from src.api.routes.helpers import extract_clifton_names
+from src.api.routes.helpers import extract_clifton_names, build_match_result_from_candidate
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -199,38 +201,7 @@ async def get_stored_matches(company_name: str, job_title: str):
                 detail=f"No stored matches found for: {company_name} - {job_title}"
             )
 
-        candidates = match_doc.get("candidates", [])
-        matches = []
-        for c in candidates:
-            if c is None:
-                continue
-            explanation_data = c.get("explanation") or {}
-            relevant_experience = [
-                {"role": e.get("role", ""), "company": e.get("company")}
-                for e in (explanation_data.get("relevant_experience") or [])
-                if e is not None
-            ]
-            matches.append(MatchResult(
-                candidate_id=c.get("candidate_id"),
-                rank=c.get("rank"),
-                full_name=c.get("full_name", "Unknown"),
-                email=c.get("email"),
-                location=c.get("location"),
-                distance_km=c.get("distance_km"),
-                scores=c.get("scores"),
-                explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
-                    "relevant_roles": explanation_data.get("relevant_roles") or [],
-                    "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies") or [],
-                    "summary": explanation_data.get("summary") or "No summary available",
-                },
-                clifton_strengths=c.get("clifton_strengths") or [],
-                skills=c.get("skills") or [],
-                review_status=c.get("review_status"),
-                reviewed_at=c.get("reviewed_at"),
-                reviewed_by=c.get("reviewed_by"),
-            ))
+        matches = [build_match_result_from_candidate(c) for c in match_doc.get("candidates", []) if c is not None]
 
         return MatchResponse(
             success=True,
@@ -271,9 +242,6 @@ async def get_match_history(company_name: str, job_title: str):
 async def get_match_by_id(match_id: str):
     """Retrieve a specific historical match document by its MongoDB _id."""
     try:
-        from bson import ObjectId
-        from bson.errors import InvalidId
-
         try:
             oid = ObjectId(match_id)
         except InvalidId:
@@ -283,38 +251,7 @@ async def get_match_by_id(match_id: str):
         if not match_doc:
             raise HTTPException(status_code=404, detail=f"Match not found: {match_id}")
 
-        candidates = match_doc.get("candidates", [])
-        matches = []
-        for c in candidates:
-            if c is None:
-                continue
-            explanation_data = c.get("explanation") or {}
-            relevant_experience = [
-                {"role": e.get("role", ""), "company": e.get("company")}
-                for e in (explanation_data.get("relevant_experience") or [])
-                if e is not None
-            ]
-            matches.append(MatchResult(
-                candidate_id=c.get("candidate_id"),
-                rank=c.get("rank"),
-                full_name=c.get("full_name", "Unknown"),
-                email=c.get("email"),
-                location=c.get("location"),
-                distance_km=c.get("distance_km"),
-                scores=c.get("scores"),
-                explanation={
-                    "keyword_overlap": explanation_data.get("keyword_overlap") or [],
-                    "relevant_roles": explanation_data.get("relevant_roles") or [],
-                    "relevant_experience": relevant_experience,
-                    "candidate_companies": explanation_data.get("candidate_companies") or [],
-                    "summary": explanation_data.get("summary") or "No summary available",
-                },
-                clifton_strengths=c.get("clifton_strengths") or [],
-                skills=c.get("skills") or [],
-                review_status=c.get("review_status"),
-                reviewed_at=c.get("reviewed_at"),
-                reviewed_by=c.get("reviewed_by"),
-            ))
+        matches = [build_match_result_from_candidate(c) for c in match_doc.get("candidates", []) if c is not None]
 
         return MatchResponse(
             success=True,

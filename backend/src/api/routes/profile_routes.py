@@ -57,6 +57,8 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
             clifton_strengths=clifton_names,
             status=candidate.get("status"),
             created_at=candidate.get("created_at"),
+            resume_filename=candidate.get("resume_filename"),
+            clifton_filename=candidate.get("clifton_filename"),
         )
 
     except HTTPException:
