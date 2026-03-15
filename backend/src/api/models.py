@@ -92,7 +92,7 @@ class AccountDeleteResponse(BaseModel):
 class JobInfo(BaseModel):
     company: str
     title: str
-    location: Optional[str] = None
+    locations: Optional[List[str]] = None
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str

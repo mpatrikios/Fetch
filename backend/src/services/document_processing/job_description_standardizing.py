@@ -2,7 +2,7 @@
 This file is responsible for standardizing the JSON output from Azure Content Understanding
 """
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import sys
 import mimetypes
@@ -71,7 +71,7 @@ def extract_data(fields: dict) -> dict:
         if field_value is not None:
             extracted_data[flat_field_key] = field_value
 
-    extracted_data["extracted_at"] = datetime.now().isoformat()
+    extracted_data["extracted_at"] = datetime.now(timezone.utc).isoformat()
 
     return extracted_data
 
