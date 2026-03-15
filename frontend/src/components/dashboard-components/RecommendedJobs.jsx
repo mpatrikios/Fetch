@@ -48,8 +48,9 @@ function RecommendedJobs({ recommendedJobs, onRefresh }) {
           No recommendations yet. You will receive an email when we find the right fit for you.
         </Typography>
       ) : (
+        <Box sx={{ maxHeight: 480, overflowY: 'auto', pr: 0.5 }}>
         <Grid container spacing={2}>
-          {recommendedJobs.slice(0, 3).map((job) => {
+          {recommendedJobs.map((job) => {
             const recId = job._id;
             const isDone = interestSent[recId] === 'done';
             const isLoading = interestSent[recId] === 'loading';
@@ -89,6 +90,7 @@ function RecommendedJobs({ recommendedJobs, onRefresh }) {
             );
           })}
         </Grid>
+        </Box>
       )}
     </CardSection>
   );

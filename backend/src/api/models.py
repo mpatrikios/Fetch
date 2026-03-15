@@ -50,6 +50,8 @@ class CandidateProfileResponse(BaseModel):
     clifton_strengths: List[str] = []
     status: Optional[str] = None
     created_at: Optional[datetime] = None
+    resume_filename: Optional[str] = None
+    clifton_filename: Optional[str] = None
 
 
 class ProfileUpdateRequest(BaseModel):

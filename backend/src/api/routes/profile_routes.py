@@ -52,14 +52,16 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
 
         return CandidateProfileResponse(
             id=str(candidate["_id"]),
-            full_name=candidate.get("full_name", candidate.get("name", "")),
-            email=candidate.get("email", candidate.get("Email", "")),
+            full_name=candidate.get("full_name", ""),
+            email=candidate.get("email", ""),
             location=candidate.get("Location"),
             has_resume=bool(candidate.get("resume_blob_path")),
             has_clifton_doc=bool(candidate.get("clifton_blob_path")),
             clifton_strengths=clifton_names,
             status=candidate.get("status"),
             created_at=candidate.get("created_at"),
+            resume_filename=candidate.get("resume_filename"),
+            clifton_filename=candidate.get("clifton_filename"),
         )
 
     except HTTPException:
@@ -79,8 +81,11 @@ async def download_my_resume(current_user: Dict = Depends(get_current_user)):
         )
         if not candidate:
             raise HTTPException(status_code=404, detail="Profile not found")
+        resume_blob_path = candidate.get("resume_blob_path")
+        if not resume_blob_path:
+            raise HTTPException(status_code=404, detail="No resume uploaded")
         blob_storage = get_blob_storage()
-        sas_url = blob_storage.generate_sas_url(candidate["resume_blob_path"])
+        sas_url = blob_storage.generate_sas_url(resume_blob_path)
         return {"download_url": sas_url, "filename": candidate.get("resume_filename", "resume")}
     except HTTPException:
         raise

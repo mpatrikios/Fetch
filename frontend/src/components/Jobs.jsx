@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -7,7 +7,6 @@ import {
   Alert,
   Button,
   Divider,
-  Chip,
   IconButton,
   List,
   ListItem,
@@ -15,20 +14,20 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   TextField,
-  MenuItem,
+  Chip,
 } from '@mui/material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jobAPI, documentAPI } from '../utils/api';
+import { jobAPI, documentAPI, parseDelimitedString } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
   SelectableListItem,
-  DetailPanel,
   PrimaryButton,
   FileLink
 } from './common-components/StyledComponents';
@@ -37,8 +36,12 @@ import {
   SearchField,
   FilterMenu,
   EmptyState,
-  FilterIconButton
+  FilterIconButton,
+  ConfirmationDialog,
+  SkillChips,
+  DetailPanelContainer
 } from './common-components/SharedComponents';
+import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 import DocumentUpload from './DocumentUpload';
 import CompanyNameField from './CompanyNameField';
 
@@ -69,16 +72,11 @@ function Jobs() {
     culture_index: '',
   });
   const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const timeoutRefs = useRef([]);
+  const [successMessage, showSuccess] = useAutoHideMessage(5000);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showAddJob, setShowAddJob] = useState(false);
   const [companyName, setCompanyName] = useState('');
-
-  useEffect(() => {
-    return () => {
-      timeoutRefs.current.forEach(clearTimeout);
-    };
-  }, []);
 
   useEffect(() => {
     loadJobs();
@@ -124,7 +122,6 @@ function Jobs() {
     }
   }, [jobs, selectedJob, handleJobSelect, location.state]);
 
-  // Get unique locations for filter dropdown
   const uniqueLocations = useMemo(() => {
     const locations = jobs
       .flatMap(job => job.locations || [])
@@ -209,25 +206,10 @@ function Jobs() {
       setSaving(true);
       setError('');
 
-      const skillsArray = editFormData.skills
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      const locationsArray = editFormData.locations
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      const responsibilitiesArray = editFormData.responsibilities
-        .split('\n')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-
-      const qualificationsArray = editFormData.qualifications
-        .split('\n')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+      const skillsArray = parseDelimitedString(editFormData.skills, ',');
+      const locationsArray = parseDelimitedString(editFormData.locations, ';');
+      const responsibilitiesArray = parseDelimitedString(editFormData.responsibilities, '\n');
+      const qualificationsArray = parseDelimitedString(editFormData.qualifications, '\n');
 
       const updatePayload = {
         summary: editFormData.summary,
@@ -259,8 +241,7 @@ function Jobs() {
       ));
 
       setShowEditDialog(false);
-      setSuccessMessage('Job updated successfully!');
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      showSuccess('Job updated successfully!');
     } catch (err) {
       console.error('Update job error:', err);
       setError('Failed to update job. Please try again.');
@@ -269,47 +250,32 @@ function Jobs() {
     }
   };
 
-  const handleJobUploadSuccess = async (newJob) => {
+  const handleJobUploadSuccess = async () => {
     try {
       setShowAddJob(false);
       await loadJobs();
-      setSuccessMessage('Job uploaded successfully!');
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      showSuccess('Job uploaded successfully!');
     } catch (err) {
       console.error('Failed to reload jobs after upload:', err);
     }
-  }
-        
-  const SummaryDisplay = ({ summary }) => {
-    if (!summary) return <Typography variant="body1" color="text.primary">No summary available</Typography>;
+  };
 
-    const words = summary.split(' ');
-    const shouldTruncate = words.length > 40;
-    const truncatedSummary = shouldTruncate ? words.slice(0, 40).join(' ') + ' ...': summary;
-
-    return (
-      <Box>
-        <Typography variant="body1" color="text.primary" sx={{ mb: shouldTruncate ? 1 : 0 }}>
-          {expandedSummary ? summary : truncatedSummary}
-        </Typography>
-        {shouldTruncate && (
-          <Button
-            size="small"
-            onClick={() => setExpandedSummary(!expandedSummary)}
-            sx={{
-              p: 0,
-              textTransform: 'none',
-              color: 'primary.main',
-              fontSize: '0.875rem',
-              minHeight: 'auto',
-              lineHeight: 1
-            }}
-          >
-            {expandedSummary ? 'Show less' : 'Read more...'}
-          </Button>
-        )}
-      </Box>
-    );
+  const handleDeleteJob = async () => {
+    if (!jobDetails?.mongo_id) return;
+    try {
+      setDeleting(true);
+      await jobAPI.deleteJob(jobDetails.mongo_id);
+      setJobs(prev => prev.filter(j => j.job_id !== jobDetails.job_id));
+      setSelectedJob(null);
+      setJobDetails(null);
+      setShowDeleteDialog(false);
+    } catch (err) {
+      console.error('Delete job error:', err);
+      setError('Failed to delete job. Please try again.');
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -329,7 +295,8 @@ function Jobs() {
   }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
+      <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
@@ -350,14 +317,16 @@ function Jobs() {
         </Alert>
       )}
       {successMessage && (
-        <Alert severity="success" onClose={() => setSuccessMessage('')} sx={{ mb: 2 }}>
+        <Alert severity="success" onClose={() => showSuccess('')} sx={{ mb: 2 }}>
           {successMessage}
         </Alert>
       )}
+      </Box>
 
-      <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
+      <Box sx={{ flex: 1, px: 4, pb: 4, minHeight: 0, overflow: 'hidden' }}>
+      <Grid container spacing={0} sx={{ height: '100%' }}>
         {/* Sidebar - Jobs List */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%' }}>
           <CardSection sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{
               px: 1,
@@ -472,29 +441,8 @@ function Jobs() {
         </Grid>
 
         {/* Main Content - Job Details */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <CardSection sx={{ height: '100%', ml: 2 }}>
-            {!selectedJob ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'text.secondary'
-              }}>
-                <Typography>Select a job to view details</Typography>
-              </Box>
-            ) : detailsLoading ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%'
-              }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <DetailPanel>
+        <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
+          <DetailPanelContainer selected={selectedJob} loading={detailsLoading} emptyText="Select a job to view details">
                 {/* Job Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
@@ -510,6 +458,15 @@ function Jobs() {
                         sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                       >
                         <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowDeleteDialog(true)}
+                        title="Delete job"
+                        aria-label="Delete job"
+                        sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                      >
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
@@ -553,24 +510,7 @@ function Jobs() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Skills
                   </Typography>
-                  {jobDetails?.skills?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {jobDetails.skills.map((skill, index) => (
-                        <Chip
-                          key={index}
-                          label={skill}
-                          size="small"
-                          variant="outlined"
-                          sx={{
-                            borderColor: 'text.primary',
-                            color: 'text.primary'
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No skills listed</Typography>
-                  )}
+                  <SkillChips items={jobDetails?.skills} variant="skill" emptyText="No skills listed" />
                 </Box>
 
                 <Divider />
@@ -580,26 +520,7 @@ function Jobs() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     CliftonStrengths
                   </Typography>
-                  {jobDetails?.clifton_strengths?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {jobDetails.clifton_strengths.map((strength, index) => (
-                        <Chip
-                          key={index}
-                          label={strength}
-                          size="small"
-                          sx={{
-                            backgroundColor: 'success.main',
-                            color: 'white',
-                            '&:hover': {
-                              backgroundColor: 'success.dark',
-                            }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No CliftonStrengths defined</Typography>
-                  )}
+                  <SkillChips items={jobDetails?.clifton_strengths} variant="strength" emptyText="No CliftonStrengths defined" />
                 </Box>
 
                 <Divider />
@@ -689,10 +610,7 @@ function Jobs() {
                         Culture Index
                       </Typography>
                       {(() => {
-                        const traits = jobDetails.culture_index
-                          .split(',')
-                          .map(t => t.trim())
-                          .filter(t => t.length > 0);
+                        const traits = parseDelimitedString(jobDetails.culture_index, ',');
                         const displayTraits = expandedCultureIndex ? traits : traits.slice(0, 3);
                         return (
                           <Box>
@@ -760,19 +678,15 @@ function Jobs() {
                   )}
                 </Box>
 
-              </DetailPanel>
-            )}
-          </CardSection>
+          </DetailPanelContainer>
         </Grid>
       </Grid>
-      
+      </Box>
+
       {/* Add Job Modal */}
       <Dialog
         open={showAddJob}
-        onClose={() => {
-          setShowAddJob(false);
-          setUploadingJob(false);
-        }}
+        onClose={() => setShowAddJob(false)}
         maxWidth="sm"
         fullWidth
       >
@@ -781,12 +695,7 @@ function Jobs() {
           <IconButton
             aria-label="close"
             onClick={() => setShowAddJob(false)}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
           >
             <CloseIcon />
           </IconButton>
@@ -794,12 +703,12 @@ function Jobs() {
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <CompanyNameField
-                label="Company Name"
-                value={companyName}
-                onChange={(val) => setCompanyName(val)}
-                options={[...new Set(jobs.map((job) => job.company))]}
-                required
-                error={companyName.trim() === ""}
+              label="Company Name"
+              value={companyName}
+              onChange={(val) => setCompanyName(val)}
+              options={[...new Set(jobs.map((job) => job.company))]}
+              required
+              error={companyName.trim() === ''}
             />
           </Box>
           <DocumentUpload
@@ -826,6 +735,17 @@ function Jobs() {
           vertical: 'top',
           horizontal: 'right',
         }}
+      />
+
+      {/* Delete Job Dialog */}
+      <ConfirmationDialog
+        open={showDeleteDialog}
+        title="Delete Job"
+        content={<DialogContentText>Delete <strong>{jobDetails?.title}</strong> at <strong>{jobDetails?.company}</strong>? This cannot be undone.</DialogContentText>}
+        onConfirm={handleDeleteJob}
+        onCancel={() => setShowDeleteDialog(false)}
+        loading={deleting}
+        confirmText="Delete"
       />
 
       {/* Edit Job Dialog */}

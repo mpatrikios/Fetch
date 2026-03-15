@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Grid,
@@ -18,20 +18,22 @@ import {
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { clientAPI } from '../utils/api';
+import { clientAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
-  SelectableListItem,
-  DetailPanel
+  SelectableListItem
 } from './common-components/StyledComponents';
 import {
   SummaryDisplay,
   SearchField,
   FilterMenu,
   EmptyState,
-  FilterIconButton
+  FilterIconButton,
+  ConfirmationDialog,
+  DetailPanelContainer
 } from './common-components/SharedComponents';
+import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 
 function Clients() {
   const navigate = useNavigate();
@@ -64,27 +66,14 @@ function Clients() {
   const [activating, setActivating] = useState(false);
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [activateWarnings, setActivateWarnings] = useState([]);
-  const [successMessage, setSuccessMessage] = useState('');
-  const timeoutRefs = useRef([]);
+  const [successMessage, showSuccess] = useAutoHideMessage(5000);
 
   useEffect(() => {
     loadClients();
-    return () => timeoutRefs.current.forEach(clearTimeout);
   }, []);
 
-  // Get unique locations for filter dropdown
-  const uniqueLocations = useMemo(() => {
-    const allLocations = clients.flatMap(client => client.locations || []);
-    return [...new Set(allLocations)].filter(loc => loc && loc.trim() !== '').sort();
-  }, [clients]);
-
-  // Get unique statuses for filter
-  const uniqueStatuses = useMemo(() => {
-    const statuses = clients
-      .map(client => client.status)
-      .filter(status => status && status.trim() !== '');
-    return [...new Set(statuses)].sort();
-  }, [clients]);
+  const uniqueLocations = useMemo(() => getUniqueValues(clients, 'locations'), [clients]);
+  const uniqueStatuses = useMemo(() => getUniqueValues(clients, 'status'), [clients]);
 
   // Filter clients based on search query, location, and status
   const filteredClients = useMemo(() => {
@@ -182,10 +171,7 @@ function Clients() {
       setSaving(true);
       setError('');
 
-      const locationsArray = editFormData.locations
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+      const locationsArray = parseDelimitedString(editFormData.locations, ';');
 
       const updatePayload = {
         company_name: editFormData.company_name,
@@ -226,10 +212,7 @@ function Clients() {
       }));
 
       setShowEditDialog(false);
-      setSuccessMessage('Client updated successfully!');
-      timeoutRefs.current.forEach(clearTimeout);
-      timeoutRefs.current = [];
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      showSuccess('Client updated successfully!');
     } catch (err) {
       console.error('Update client error:', err);
       setError('Failed to update client. Please try again.');
@@ -258,8 +241,7 @@ function Clients() {
       ));
       setSelectedClient(prev => ({ ...prev, status: 'active' }));
       setShowActivateDialog(false);
-      setSuccessMessage(`${clientDetails.company_name} has been activated!`);
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      showSuccess(`${clientDetails.company_name} has been activated!`);
     } catch (err) {
       console.error('Activate client error:', err);
       setError('Failed to activate client. Please try again.');
@@ -286,7 +268,8 @@ function Clients() {
   }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
+      <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
       {/* Header */}
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
         <Button
@@ -308,14 +291,16 @@ function Clients() {
       )}
 
       {successMessage && (
-        <Alert severity="success" onClose={() => setSuccessMessage('')} sx={{ mb: 2 }}>
+        <Alert severity="success" onClose={() => showSuccess('')} sx={{ mb: 2 }}>
           {successMessage}
         </Alert>
       )}
+      </Box>
 
-      <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
+      <Box sx={{ flex: 1, px: 4, pb: 4, minHeight: 0, overflow: 'hidden' }}>
+      <Grid container spacing={0} sx={{ height: '100%' }}>
         {/* Sidebar - Clients List */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%' }}>
           <CardSection sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{
               px: 1,
@@ -454,29 +439,8 @@ function Clients() {
         </Grid>
 
         {/* Main Content - Client Details */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <CardSection sx={{ height: '100%', ml: 2 }}>
-            {!selectedClient ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                color: 'text.secondary'
-              }}>
-                <Typography>Select a client to view details</Typography>
-              </Box>
-            ) : detailsLoading ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%'
-              }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <DetailPanel>
+        <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
+          <DetailPanelContainer selected={selectedClient} loading={detailsLoading} emptyText="Select a client to view details">
                 {/* Client Header */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
@@ -614,11 +578,10 @@ function Clients() {
                     <Typography color="text.secondary">No jobs posted yet</Typography>
                   )}
                 </Box>
-              </DetailPanel>
-            )}
-          </CardSection>
+          </DetailPanelContainer>
         </Grid>
       </Grid>
+      </Box>
 
       {/* Location Filter Menu */}
       <FilterMenu
@@ -631,32 +594,32 @@ function Clients() {
       />
 
       {/* Activate Client Confirmation Dialog */}
-      <Dialog open={showActivateDialog} onClose={() => !activating && setShowActivateDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Activate Client</DialogTitle>
-        <DialogContent>
-          {activateWarnings.length > 0 ? (
-            <Box>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                Some onboarding steps are incomplete:
-                <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
-                  {activateWarnings.map(w => <li key={w}>{w}</li>)}
-                </ul>
-              </Alert>
-              <Typography variant="body2">Activate {clientDetails?.company_name} anyway?</Typography>
-            </Box>
-          ) : (
-            <Typography variant="body2">
-              Activate <strong>{clientDetails?.company_name}</strong> as an active client?
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowActivateDialog(false)} disabled={activating}>Cancel</Button>
-          <Button onClick={handleConfirmActivate} variant="contained" color="success" disabled={activating}>
-            {activating ? 'Activating...' : 'Activate'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmationDialog
+        open={showActivateDialog}
+        title="Activate Client"
+        content={activateWarnings.length > 0 ? (
+          <Box>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Some onboarding steps are incomplete:
+              <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                {activateWarnings.map(w => <li key={w}>{w}</li>)}
+              </ul>
+            </Alert>
+            <Typography variant="body2">Activate {clientDetails?.company_name} anyway?</Typography>
+          </Box>
+        ) : (
+          <Typography variant="body2">
+            Activate <strong>{clientDetails?.company_name}</strong> as an active client?
+          </Typography>
+        )}
+        onConfirm={handleConfirmActivate}
+        onCancel={() => setShowActivateDialog(false)}
+        loading={activating}
+        confirmText="Activate"
+        confirmColor="success"
+        maxWidth="xs"
+        fullWidth
+      />
 
       {/* Edit Client Dialog */}
       <Dialog

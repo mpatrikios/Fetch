@@ -13,6 +13,7 @@ import Clients from './components/Clients';
 import JobRecommendations from './components/JobRecommendations';
 import ExecutiveInfo from './components/ExecutiveInfo';
 import RecruiterInfo from './components/RecruiterInfo';
+import CandidateProfile from './components/CandidateProfile';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
 
@@ -80,6 +81,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <CandidateDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <CandidateProfile />
                 </ProtectedRoute>
               }
             />

@@ -13,7 +13,7 @@ from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
-from src.api.routes.helpers import extract_clifton_names
+from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs
 from src.services.storage.blob_storage import get_blob_storage
 from src.services.document_processing.document_service import DocumentService
 from src.services.email_service import send_email
@@ -64,9 +64,7 @@ async def list_candidates(
                 "_id": 1,
                 "full_name": 1,
                 "email": 1,
-                "Email": 1,  # Legacy field support
                 "location": 1,
-                "Location": 1,  # Legacy field support
                 "Summary": 1,
                 "Skills": 1,
                 "clifton_strengths": 1,
@@ -85,8 +83,8 @@ async def list_candidates(
             formatted_candidates.append({
                 "id": str(candidate.get("_id")),
                 "full_name": candidate.get("full_name", "Unknown"),
-                "email": candidate.get("email", candidate.get("Email", "")),
-                "location": candidate.get("location", candidate.get("Location", "")),
+                "email": candidate.get("email", ""),
+                "location": candidate.get("location", ""),
                 "Summary": candidate.get("Summary"),
                 "skills": candidate.get("Skills", []),
                 "clifton_strengths": clifton_strengths_names,
@@ -124,9 +122,7 @@ async def reject_candidate(candidate_id: str):
             }
         )
         
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Candidate not found")
-        
+        ensure_updated(result, "Candidate")
         logger.info(f"Candidate {candidate_id} has been rejected")
         return {"success": True, "message": "Candidate rejected successfully"}
         
@@ -160,11 +156,11 @@ async def accept_candidate(candidate_id: str):
             tmp_file_path = tmp.name
 
         # Parse resume, upsert data, and generate embeddings (blocking — offload to threadpool)
-        email = candidate.get("email", candidate.get("Email", ""))
+        email = candidate.get("email", "")
         await run_in_threadpool(DocumentService.parse_and_embed_resume, candidate_id, tmp_file_path, email)
 
         # Set accepted status and timestamp
-        mongo_connection.candidates_collection.update_one(
+        result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
@@ -174,6 +170,7 @@ async def accept_candidate(candidate_id: str):
                 "$unset": {"parsing_error": ""},
             }
         )
+        ensure_updated(result, "Candidate")
 
         logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
 
@@ -232,7 +229,7 @@ async def send_assessment(candidate_id: str):
         # - Integrating with external assessment platform
         
         # For now, just update the candidate with assessment sent flag
-        mongo_connection.candidates_collection.update_one(
+        result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
@@ -241,7 +238,8 @@ async def send_assessment(candidate_id: str):
                 }
             }
         )
-        
+        ensure_updated(result, "Candidate")
+
         logger.info(f"Assessment sent to candidate {candidate_id}")
         return {"success": True, "message": "Assessment sent successfully"}
         
@@ -278,9 +276,7 @@ async def update_candidate_profile(candidate_id: str, profile_data: dict):
             {"$set": update_fields}
         )
 
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Candidate not found")
-
+        ensure_updated(result, "Candidate")
         logger.info(f"Profile updated for candidate {candidate_id}")
         return {"success": True, "message": "Profile updated successfully"}
 
@@ -309,12 +305,31 @@ async def update_candidate_notes(candidate_id: str, notes_data: dict):
             }
         )
         
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Candidate not found")
-        
+        ensure_updated(result, "Candidate")
         logger.info(f"Notes updated for candidate {candidate_id}")
         return {"success": True, "message": "Notes updated successfully"}
         
     except Exception as e:
         logger.error(f"Failed to update notes for candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/candidates/{candidate_id}")
+async def delete_candidate(candidate_id: str):
+    """
+    Permanently delete a candidate and their associated blobs from Azure Storage.
+    Historical match documents referencing this candidate are left intact.
+    """
+    validate_object_id(candidate_id)
+
+    cand = mongo_connection.candidates_collection.find_one(
+        {"_id": ObjectId(candidate_id)},
+        {"resume_blob_path": 1, "clifton_blob_path": 1}
+    )
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    delete_document_blobs(cand, ["resume_blob_path", "clifton_blob_path"], candidate_id)
+    mongo_connection.candidates_collection.delete_one({"_id": ObjectId(candidate_id)})
+    logger.info(f"Candidate {candidate_id} deleted")
+    return {"success": True, "message": "Candidate deleted successfully"}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -7,7 +7,6 @@ import {
   Alert,
   Button,
   Divider,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -16,14 +15,13 @@ import {
   TextField,
   IconButton
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, ArrowBack, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { candidateAPI, documentAPI } from '../utils/api';
+import { candidateAPI, documentAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
   SelectableListItem,
-  DetailPanel,
   FileLink,
   NotesField,
   PrimaryButton,
@@ -34,8 +32,12 @@ import {
   SearchField,
   FilterMenu,
   EmptyState,
-  FilterIconButton
+  FilterIconButton,
+  ConfirmationDialog,
+  SkillChips,
+  DetailPanelContainer
 } from './common-components/SharedComponents';
+import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 
 function Candidates() {
   const navigate = useNavigate();
@@ -56,14 +58,16 @@ function Candidates() {
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [acceptingOnly, setAcceptingOnly] = useState(false);
   const [acceptingWithAssessment, setAcceptingWithAssessment] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, showSuccess] = useAutoHideMessage(5000);
+  const [errorMessage, showError] = useAutoHideMessage(5000);
   // Initialize statusFilter from URL query param
   const searchParams = new URLSearchParams(location.search);
   const initialStatus = searchParams.get('status') || 'all';
   const [statusFilter, setStatusFilter] = useState(initialStatus);
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editFormData, setEditFormData] = useState({
     full_name: '',
@@ -72,16 +76,6 @@ function Candidates() {
     skills: ''
   });
   const [saving, setSaving] = useState(false);
-
-  // Refs for timeout cleanup
-  const timeoutRefs = useRef([]);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      timeoutRefs.current.forEach(clearTimeout);
-    };
-  }, []);
 
   useEffect(() => {
     loadCandidates();
@@ -113,13 +107,7 @@ function Candidates() {
     completed_onboarding: 'Completed Onboarding'
   };
 
-  // Get unique locations for filter dropdown
-  const uniqueLocations = useMemo(() => {
-    const locations = candidates
-      .map(candidate => candidate.location)
-      .filter(location => location && location.trim() !== '');
-    return [...new Set(locations)].sort();
-  }, [candidates]);
+  const uniqueLocations = useMemo(() => getUniqueValues(candidates, 'location'), [candidates]);
 
   // Get unique statuses for filter dropdown
   const uniqueStatuses = useMemo(() => {
@@ -238,12 +226,11 @@ function Candidates() {
         ...prev,
         [candidateId]: notes
       }));
-      // Clear any previous error on successful save
-      setErrorMessage('');
+      showError('');
     } catch (err) {
       console.error('Update notes error:', err);
       // Show user-facing error message when notes fail to save
-      setErrorMessage('Failed to save notes. Please try again.');
+      showError('Failed to save notes. Please try again.');
     }
   };
 
@@ -277,9 +264,7 @@ function Candidates() {
       setShowRejectDialog(false);
     } catch (err) {
       console.error('Reject candidate error:', err);
-      setErrorMessage('Failed to reject candidate. Please try again.');
-      // Auto-hide error message after 5 seconds
-      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
+      showError('Failed to reject candidate. Please try again.');
     } finally {
       setRejecting(false);
     }
@@ -295,25 +280,23 @@ function Candidates() {
   const handleAccept = async () => {
     if (!selectedCandidate) return;
     setAcceptingOnly(true);
-    setErrorMessage('');
+    showError('');
     try {
       await candidateAPI.accept(selectedCandidate.id);
-      setSuccessMessage(`${selectedCandidate.full_name} has been accepted.`);
+      showSuccess(`${selectedCandidate.full_name} has been accepted.`);
       setSelectedCandidate(null);
       setCandidateDetails(null);
       loadCandidates();
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
       console.error('Accept candidate error:', err);
       const detail = err.response?.data?.detail;
       if (err.response?.status === 404) {
-        setErrorMessage('Candidate not found. Please refresh the page and try again.');
+        showError('Candidate not found. Please refresh the page and try again.');
       } else if (err.response?.status === 400) {
-        setErrorMessage(detail || 'Cannot accept candidate: a required field is missing.');
+        showError(detail || 'Cannot accept candidate: a required field is missing.');
       } else {
-        setErrorMessage(detail ? `Failed to accept candidate: ${detail}` : 'Failed to accept candidate. Please try again.');
+        showError(detail ? `Failed to accept candidate: ${detail}` : 'Failed to accept candidate. Please try again.');
       }
-      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     } finally {
       setAcceptingOnly(false);
     }
@@ -326,7 +309,7 @@ function Candidates() {
   const handleAcceptAndSendAssessment = async () => {
     if (!selectedCandidate) return;
     setAcceptingWithAssessment(true);
-    setErrorMessage('');
+    showError('');
     try {
       // Step 1: Send assessment — if this fails, accept is never called
       try {
@@ -356,14 +339,12 @@ function Candidates() {
         }
       }
 
-      setSuccessMessage(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      showSuccess(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
       setSelectedCandidate(null);
       setCandidateDetails(null);
       loadCandidates();
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
     } catch (err) {
-      setErrorMessage(err.message);
-      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
+      showError(err.message);
     } finally {
       setAcceptingWithAssessment(false);
     }
@@ -383,8 +364,7 @@ function Candidates() {
       window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Download error:', err);
-      setErrorMessage('Failed to download document.');
-      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
+      showError('Failed to download document.');
     }
   };
 
@@ -414,13 +394,9 @@ function Candidates() {
 
     try {
       setSaving(true);
-      setErrorMessage('');
+      showError('');
 
-      // Parse skills from comma-separated string
-      const skillsArray = editFormData.skills
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+      const skillsArray = parseDelimitedString(editFormData.skills);
 
       await candidateAPI.updateProfile(selectedCandidate.id, {
         full_name: editFormData.full_name,
@@ -456,13 +432,30 @@ function Candidates() {
       }));
 
       setShowEditDialog(false);
-      setSuccessMessage('Profile updated successfully!');
-      timeoutRefs.current.push(setTimeout(() => setSuccessMessage(''), 5000));
+      showSuccess('Profile updated successfully!');
     } catch (err) {
       console.error('Update profile error:', err);
-      setErrorMessage('Failed to update profile. Please try again.');
+      showError('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!selectedCandidate?.id) return;
+    try {
+      setDeleting(true);
+      await candidateAPI.deleteCandidate(selectedCandidate.id);
+      setCandidates(prev => prev.filter(c => c.id !== selectedCandidate.id));
+      setSelectedCandidate(null);
+      setCandidateDetails(null);
+      setShowDeleteDialog(false);
+    } catch (err) {
+      console.error('Delete candidate error:', err);
+      showError('Failed to delete candidate. Please try again.');
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -504,7 +497,7 @@ function Candidates() {
         {successMessage && (
           <Alert
             severity="success"
-            onClose={() => setSuccessMessage('')}
+            onClose={() => showSuccess('')}
             sx={{ mb: 2 }}
           >
             {successMessage}
@@ -513,7 +506,7 @@ function Candidates() {
         {errorMessage && (
           <Alert
             severity="error"
-            onClose={() => setErrorMessage('')}
+            onClose={() => showError('')}
             sx={{ mb: 2 }}
           >
             {errorMessage}
@@ -629,28 +622,7 @@ function Candidates() {
 
         {/* Main Content - Candidate Details */}
         <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
-          <CardSection sx={{ height: '100%', ml: 2 }}>
-            {!selectedCandidate ? (
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100%',
-                color: 'text.secondary'
-              }}>
-                <Typography>Select a candidate to view details</Typography>
-              </Box>
-            ) : detailsLoading ? (
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100%'
-              }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <DetailPanel>
+          <DetailPanelContainer selected={selectedCandidate} loading={detailsLoading} emptyText="Select a candidate to view details">
                 {/* Candidate Header */}
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -664,6 +636,14 @@ function Candidates() {
                       sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
                     >
                       <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => setShowDeleteDialog(true)}
+                      title="Delete candidate"
+                      sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+                    >
+                      <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -712,24 +692,7 @@ function Candidates() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Skills
                   </Typography>
-                  {candidateDetails?.skills?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {candidateDetails.skills.map((skill, index) => (
-                        <Chip
-                          key={index}
-                          label={skill}
-                          size="small"
-                          variant="outlined"
-                          sx={{
-                            borderColor: 'text.primary',
-                            color: 'text.primary'
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No skills listed</Typography>
-                  )}
+                  <SkillChips items={candidateDetails?.skills} variant="skill" emptyText="No skills listed" />
                 </Box>
 
                 <Divider />
@@ -739,26 +702,7 @@ function Candidates() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     CliftonStrengths
                   </Typography>
-                  {candidateDetails?.cliftonStrengths?.length > 0 ? (
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      {candidateDetails.cliftonStrengths.map((strength, index) => (
-                        <Chip
-                          key={index}
-                          label={strength}
-                          size="small"
-                          sx={{
-                            backgroundColor: 'success.main',
-                            color: 'white',
-                            '&:hover': {
-                              backgroundColor: 'success.dark',
-                            }
-                          }}
-                        />
-                      ))}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No CliftonStrengths assessment completed</Typography>
-                  )}
+                  <SkillChips items={candidateDetails?.cliftonStrengths} variant="strength" emptyText="No CliftonStrengths assessment completed" />
                 </Box>
 
                 <Divider />
@@ -828,9 +772,7 @@ function Candidates() {
                     {acceptingWithAssessment ? 'Processing...' : 'Accept & Send CliftonStrengths'}
                   </PrimaryButton>
                 </Box>
-              </DetailPanel>
-            )}
-          </CardSection>
+          </DetailPanelContainer>
         </Grid>
       </Grid>
       </Box>
@@ -859,36 +801,27 @@ function Candidates() {
         labelFn={(status) => statusLabels[status] || status}
       />
 
+      {/* Delete Candidate Dialog */}
+      <ConfirmationDialog
+        open={showDeleteDialog}
+        title="Delete Candidate"
+        content={<DialogContentText>Permanently delete <strong>{candidateDetails?.full_name}</strong>? Their profile and documents will be removed. This cannot be undone.</DialogContentText>}
+        onConfirm={handleDeleteCandidate}
+        onCancel={() => setShowDeleteDialog(false)}
+        loading={deleting}
+        confirmText="Delete"
+      />
+
       {/* Rejection Confirmation Dialog */}
-      <Dialog
+      <ConfirmationDialog
         open={showRejectDialog}
-        onClose={handleCancelReject}
-        aria-labelledby="reject-dialog-title"
-        aria-describedby="reject-dialog-description"
-      >
-        <DialogTitle id="reject-dialog-title">
-          Confirm Candidate Rejection
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="reject-dialog-description">
-            Are you sure you want to reject <strong>{selectedCandidate?.full_name}</strong>? 
-            This action will remove them from the active candidates list and cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCancelReject} disabled={rejecting}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleConfirmReject} 
-            variant="contained" 
-            color="error"
-            disabled={rejecting}
-          >
-            {rejecting ? 'Rejecting...' : 'Reject Candidate'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="Confirm Candidate Rejection"
+        content={<DialogContentText>Are you sure you want to reject <strong>{selectedCandidate?.full_name}</strong>? This action will remove them from the active candidates list and cannot be undone.</DialogContentText>}
+        onConfirm={handleConfirmReject}
+        onCancel={handleCancelReject}
+        loading={rejecting}
+        confirmText="Reject Candidate"
+      />
 
       {/* Edit Profile Dialog */}
       <Dialog

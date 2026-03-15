@@ -58,6 +58,7 @@ export const candidateAPI = {
   reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
   accept: (candidateId) => api.put(`/candidates/${candidateId}/accept`),
   sendAssessment: (candidateId) => api.post(`/candidates/${candidateId}/send-assessment`),
+  deleteCandidate: (candidateId) => api.delete(`/candidates/${candidateId}`),
 };
 
 // Client endpoints
@@ -96,6 +97,7 @@ export const jobAPI = {
   getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
+  deleteJob: (jobId) => api.delete(`/jobs/${jobId}`),
 };
 
 // Matching endpoints
@@ -133,6 +135,8 @@ export const candidateJobsAPI = {
 
 // Profile endpoints (candidate self-service)
 export const profileAPI = {
+  getProfile: () => api.get('/profile'),
+  updateProfile: (data) => api.put('/profile', data),
   getRecommendations: () => api.get('/profile/recommendations'),
   expressInterest: (recId) => api.post(`/profile/recommendations/${recId}/apply`),
   getApplications: () => api.get('/profile/applications'),
@@ -179,5 +183,20 @@ export const myDocumentAPI = {
 
 // Health check
 export const healthCheck = () => api.get('/health');
+
+// --- General utilities ---
+
+export function parseDelimitedString(str, delimiter = ',') {
+  if (!str) return [];
+  return str.split(delimiter).map(s => s.trim()).filter(s => s.length > 0);
+}
+
+export function getUniqueValues(items, field) {
+  const vals = items.flatMap(item => {
+    const v = item[field];
+    return Array.isArray(v) ? v : [v];
+  }).filter(v => v && String(v).trim() !== '');
+  return [...new Set(vals)].sort();
+}
 
 export default api;

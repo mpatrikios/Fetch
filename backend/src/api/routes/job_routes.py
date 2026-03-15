@@ -9,6 +9,8 @@ import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from bson import ObjectId
+from bson.errors import InvalidId
 from src.database.insert_to_mongo import insert_job_description, get_job_description
 from src.database.connection import mongo_connection
 from src.services.document_processing.azure_job_description_parser import (
@@ -24,6 +26,7 @@ from src.api.models import JobResponse, JobListResponse, JobDetailsResponse, Job
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.services.storage.blob_storage import get_blob_storage, get_content_type
+from src.api.routes.helpers import ensure_updated, delete_document_blobs
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -177,7 +180,7 @@ async def list_jobs():
             {"profile_embedding": {"$exists": True}},
             {
                 "_id": 1,
-                "companyName": 1,
+                "CompanyName": 1,
                 "JobTitle": 1,
                 "Locations": 1,
                 "Skills": {"$slice": 10},
@@ -188,12 +191,12 @@ async def list_jobs():
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
-                "company": job.get("companyName", "Unknown"),
+                "company": job.get("CompanyName", "Unknown"),
                 "title": job.get("JobTitle"),
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
+                "job_id": f"{job.get('CompanyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
             })
@@ -214,7 +217,7 @@ async def get_job_details(company_name: str, job_title: str):
     """Get full job details including all fields"""
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
-            "companyName": company_name,
+            "CompanyName": company_name,
             "JobTitle": job_title
         })
 
@@ -224,9 +227,9 @@ async def get_job_details(company_name: str, job_title: str):
         return JobDetailsResponse(
             success=True,
             job=JobDetails(
-                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                job_id=f"{job.get('CompanyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
-                company=job.get("companyName", ""),
+                company=job.get("CompanyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
                 locations=job.get("Locations", []),
@@ -254,9 +257,6 @@ async def get_job_details(company_name: str, job_title: str):
 async def update_job(job_id: str, job_data: dict):
     """Update editable fields of a job description (MLG recruiter only)"""
     try:
-        from bson import ObjectId
-        from bson.errors import InvalidId
-
         try:
             ObjectId(job_id)
         except InvalidId:
@@ -288,8 +288,7 @@ async def update_job(job_id: str, job_data: dict):
             {"$set": update_fields}
         )
 
-        if result.matched_count == 0:
-            raise HTTPException(status_code=404, detail="Job not found")
+        ensure_updated(result, "Job")
 
         # Regenerate embeddings if content-relevant fields changed
         embedding_fields = {"Summary", "Skills", "Responsibilities", "Qualifications"}
@@ -322,6 +321,30 @@ async def update_job(job_id: str, job_data: dict):
     except Exception as e:
         logger.error(f"Failed to update job {job_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    """
+    Delete a job description and its associated blob from Azure Storage.
+    Historical match documents referencing this job are left intact.
+    """
+    try:
+        oid = ObjectId(job_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid job ID")
+
+    job = mongo_connection.job_descriptions_collection.find_one(
+        {"_id": oid}, {"description_blob_path": 1}
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    delete_document_blobs(job, ["description_blob_path"], job_id)
+
+    mongo_connection.job_descriptions_collection.delete_one({"_id": oid})
+    logger.info(f"Job {job_id} deleted")
+    return {"success": True, "message": "Job deleted successfully"}
 
 
 # endpoint to get unique company names for dropdown lists, like filters or selecting company on upload

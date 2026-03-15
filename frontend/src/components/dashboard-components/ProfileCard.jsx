@@ -23,7 +23,7 @@ function ProfileCard({ user }) {
       : []),
   ];
   // Download document from blob storage
-  const handleDocumentDownload = async (docType, myId) => {
+  const handleDocumentDownload = async (docType) => {
     try {
       const apiCall = {
         resume: myDocumentAPI.getMyResumeDownloadUrl,
@@ -32,12 +32,10 @@ function ProfileCard({ user }) {
 
       if (!apiCall) return;
 
-      const response = await apiCall(myId);
+      const response = await apiCall();
       window.open(response.data.download_url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error('Download error:', err);
-      setErrorMessage('Failed to download document.');
-      timeoutRefs.current.push(setTimeout(() => setErrorMessage(''), 5000));
     }
   };
   
