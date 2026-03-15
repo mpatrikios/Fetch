@@ -139,7 +139,6 @@ export const profileAPI = {
   updateProfile: (data) => api.put('/profile', data),
   getRecommendations: () => api.get('/profile/recommendations'),
   expressInterest: (recId) => api.post(`/profile/recommendations/${recId}/apply`),
-  withdrawApplication: (recId) => api.delete(`/profile/recommendations/${recId}/withdraw`),
   getApplications: () => api.get('/profile/applications'),
 };
 

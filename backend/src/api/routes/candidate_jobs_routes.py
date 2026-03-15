@@ -250,35 +250,6 @@ async def express_interest(
     return {"success": True, "message": "Interest expressed successfully"}
 
 
-@router.delete("/profile/recommendations/{rec_id}/withdraw")
-async def withdraw_application(
-    rec_id: str,
-    current_user: Dict = Depends(get_current_user),
-):
-    """
-    Candidate withdraws expressed interest in a job.
-    Deletes the recommendation document entirely.
-    """
-    candidate_id = current_user["_id"]
-    collection = mongo_connection.candidate_jobs_collection
-
-    try:
-        object_id = ObjectId(rec_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid recommendation ID")
-
-    result = collection.delete_one({
-        "_id": object_id,
-        "candidate_id": candidate_id,
-    })
-
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    logger.info(f"Candidate {current_user.get('email')} withdrew application {rec_id}")
-    return {"success": True, "message": "Application withdrawn"}
-
-
 @router.get("/profile/applications")
 async def get_my_applications(
     current_user: Dict = Depends(get_current_user),
