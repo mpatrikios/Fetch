@@ -74,7 +74,6 @@ function Jobs() {
   const timeoutRefs = useRef([]);
   const [showAddJob, setShowAddJob] = useState(false);
   const [companyName, setCompanyName] = useState('');
-  const [uploadingJob, setUploadingJob] = useState(false);
 
   useEffect(() => {
     return () => {
