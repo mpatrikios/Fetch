@@ -20,8 +20,10 @@ import {
   MenuItem
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jobAPI, documentAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
+import { jobAPI, documentAPI, parseDelimitedString } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
@@ -40,6 +42,8 @@ import {
   DetailPanelContainer
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
+import DocumentUpload from './DocumentUpload';
+import CompanyNameField from './CompanyNameField';
 
 function Jobs() {
   const navigate = useNavigate();
@@ -70,6 +74,8 @@ function Jobs() {
   const [successMessage, showSuccess] = useAutoHideMessage(5000);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showAddJob, setShowAddJob] = useState(false);
+  const [companyName, setCompanyName] = useState('');
 
   useEffect(() => {
     loadJobs();
@@ -84,6 +90,7 @@ function Jobs() {
     setExpandedResponsibilities(false);
     setExpandedQualifications(false);
     setExpandedCultureIndex(false);
+    setShowAddJob(false);
 
     try {
       const response = await jobAPI.getDetails(job.company, job.title);
@@ -114,7 +121,12 @@ function Jobs() {
     }
   }, [jobs, selectedJob, handleJobSelect, location.state]);
 
-  const uniqueLocations = useMemo(() => getUniqueValues(jobs, 'location'), [jobs]);
+  const uniqueLocations = useMemo(() => {
+    const locations = jobs
+      .flatMap(job => job.locations || [])
+      .filter(location => location && location.trim() !== '');
+    return [...new Set(locations)].sort();
+  }, [jobs]);
 
   // Filter jobs based on search query and location
   const filteredJobs = useMemo(() => {
@@ -124,7 +136,7 @@ function Jobs() {
         job.company.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesLocation = selectedLocation === '' ||
-        job.location === selectedLocation;
+        (job.locations || []).includes(selectedLocation);
 
       return matchesSearch && matchesLocation;
     });
@@ -237,6 +249,16 @@ function Jobs() {
     }
   };
 
+  const handleJobUploadSuccess = async () => {
+    try {
+      setShowAddJob(false);
+      await loadJobs();
+      showSuccess('Job uploaded successfully!');
+    } catch (err) {
+      console.error('Failed to reload jobs after upload:', err);
+    }
+  };
+
   const handleDeleteJob = async () => {
     if (!jobDetails?.mongo_id) return;
     try {
@@ -334,6 +356,14 @@ function Jobs() {
                       <FilterListOff fontSize="small" />
                     </IconButton>
                   )}
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowAddJob(true)}
+                    title="Add new job"
+                    aria-label="Add new job"
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
                 </Box>
               </Box>
 
@@ -643,6 +673,42 @@ function Jobs() {
         </Grid>
       </Grid>
       </Box>
+
+      {/* Add Job Modal */}
+      <Dialog
+        open={showAddJob}
+        onClose={() => setShowAddJob(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Add Job
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowAddJob(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <CompanyNameField
+              label="Company Name"
+              value={companyName}
+              onChange={(val) => setCompanyName(val)}
+              options={[...new Set(jobs.map((job) => job.company))]}
+              required
+              error={companyName.trim() === ''}
+            />
+          </Box>
+          <DocumentUpload
+            uploadType="job_description"
+            companyName={companyName.trim()}
+            onSuccess={(data) => { handleJobUploadSuccess(data); setCompanyName(''); }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Location Filter Menu */}
       <FilterMenu
