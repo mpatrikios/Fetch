@@ -46,7 +46,7 @@ class CandidateProfileResponse(BaseModel):
     email: str
     location: Optional[str] = None
     has_resume: bool = False
-    has_clifton_doc: bool = False 
+    has_clifton_doc: bool = False
     clifton_strengths: List[str] = []
     status: Optional[str] = None
     created_at: Optional[datetime] = None
