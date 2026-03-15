@@ -95,7 +95,7 @@ function ProfileCard({ user }) {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleDocumentDownload(doc.type, user?.id);
+                      handleDocumentDownload(doc.type);
                     }}
                     style={{ marginRight: 8, fontSize: '0.85rem' }}
                   >
