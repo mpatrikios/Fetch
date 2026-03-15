@@ -100,8 +100,13 @@ async def download_my_clifton_strengths(current_user: Dict = Depends(get_current
         )
         if not candidate:
             raise HTTPException(status_code=404, detail="Profile not found")
+
+        clifton_blob_path = candidate.get("clifton_blob_path")
+        if not clifton_blob_path:
+            raise HTTPException(status_code=404, detail="No Clifton Strengths document uploaded")
+
         blob_storage = get_blob_storage()
-        sas_url = blob_storage.generate_sas_url(candidate["clifton_blob_path"])
+        sas_url = blob_storage.generate_sas_url(clifton_blob_path)
         return {"download_url": sas_url, "filename": candidate.get("clifton_filename", "clifton_strengths")}
     except HTTPException:
         raise
