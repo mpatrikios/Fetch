@@ -777,7 +777,7 @@ function Jobs() {
         fullWidth
       >
         <DialogTitle>
-          <span>&nbsp;</span>
+          Add Job
           <IconButton
             aria-label="close"
             onClick={() => setShowAddJob(false)}
