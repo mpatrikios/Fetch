@@ -39,7 +39,7 @@ async def get_dashboard_stats():
                         {"$count": "count"}
                     ],
                     "onboarding": [
-                        {"$match": {"assessment_sent": True}},
+                        {"$match": {"assessment_sent": True, "status": {"$nin": ["accepted", "rejected"]}}},
                         {"$count": "count"}
                     ]
                 }
@@ -74,7 +74,7 @@ async def get_dashboard_stats():
             {
                 "$facet": {
                     "total": [{"$count": "count"}],
-                    "withEmbeddings": [
+                    "withMatches": [
                         {"$match": {"last_match_generated_at": {"$exists": True}}},
                         {"$count": "count"}
                     ]
@@ -91,8 +91,8 @@ async def get_dashboard_stats():
             facets = job_result[0]
             if facets.get("total") and len(facets["total"]) > 0:
                 total_jobs = facets["total"][0].get("count", 0)
-            if facets.get("withEmbeddings") and len(facets["withEmbeddings"]) > 0:
-                jobs_with_matches = facets["withEmbeddings"][0].get("count", 0)
+            if facets.get("withMatches") and len(facets["withMatches"]) > 0:
+                jobs_with_matches = facets["withMatches"][0].get("count", 0)
 
         # Client stats from clients collection
         clients_collection = mongo_connection.clients_collection

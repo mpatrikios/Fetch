@@ -52,7 +52,7 @@ function JobsMatching({ stats, loading }) {
               <Box
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate('/jobs?filter=has_matches')}
+                  onClick={() => navigate('/jobs?filter=has_matches')}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/jobs?filter=has_matches'); } }}
                 sx={{ cursor: 'pointer', height: '100%' }}
               >

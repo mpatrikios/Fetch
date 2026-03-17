@@ -79,6 +79,11 @@ function Candidates() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setStatusFilter(params.get('status') || 'all');
+  }, [location.search]);
+
+  useEffect(() => {
     loadCandidates();
   }, [statusFilter]);
 

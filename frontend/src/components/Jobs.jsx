@@ -81,6 +81,11 @@ function Jobs() {
   const [companyName, setCompanyName] = useState('');
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setHasMatchesFilter(params.get('filter') === 'has_matches');
+  }, [location.search]);
+
+  useEffect(() => {
     loadJobs();
   }, []);
 
