@@ -97,13 +97,7 @@ async def list_candidates(
                 "has_clifton_doc": bool(candidate.get("clifton_blob_path"))
             })
         
-        total_count = mongo_connection.candidates_collection.count_documents({
-            "$or": [
-                {"status": {"$ne": "rejected"}},
-                {"status": {"$exists": False}},
-                {"status": None}
-            ]
-        })
+        total_count = mongo_connection.candidates_collection.count_documents(query_filter)
 
         return CandidateListResponse(
             success=True,
