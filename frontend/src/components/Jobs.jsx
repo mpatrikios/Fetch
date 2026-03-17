@@ -19,7 +19,7 @@ import {
   TextField,
   Chip,
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon, Assignment } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -49,7 +49,8 @@ import CompanyNameField from './CompanyNameField';
 function Jobs() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasMatchesFilter, setHasMatchesFilter] = useState(location.state?.filter === 'has_matches');
+  const searchParams = new URLSearchParams(location.search);
+  const [hasMatchesFilter, setHasMatchesFilter] = useState(searchParams.get('filter') === 'has_matches');
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -346,12 +347,6 @@ function Jobs() {
                   ({filteredJobs.length} of {jobs.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <FilterIconButton
-                    active={hasMatchesFilter}
-                    onClick={() => setHasMatchesFilter(prev => !prev)}
-                    icon={Assignment}
-                    title="Show only jobs with generated matches"
-                  />
                   <FilterIconButton
                     active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
