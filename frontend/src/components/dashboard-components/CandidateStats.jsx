@@ -56,7 +56,20 @@ function CandidateStats({ stats, loading }) {
             <Skeleton variant="rounded" height={80} />
           ) : (
             <Tooltip title="View candidates in onboarding">
-              <Box onClick={() => handleStatsClick("Onboarding")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Onboarding"); }} sx={{ cursor: 'pointer', height: '100%' }}>
+              <Box
+                onClick={() => handleStatsClick("Onboarding")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === ' ') {
+                      e.preventDefault();
+                    }
+                    handleStatsClick("Onboarding");
+                  }
+                }}
+                sx={{ cursor: 'pointer', height: '100%' }}
+              >
                 <DashboardStatCard
                   value={candidateStats.onboarding}
                   label="Onboarding"
@@ -72,7 +85,20 @@ function CandidateStats({ stats, loading }) {
             <Skeleton variant="rounded" height={80} />
           ) : (
             <Tooltip title="View fully onboarded candidates">
-              <Box onClick={() => handleStatsClick("Fully Onboarded")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Fully Onboarded"); }} sx={{ cursor: 'pointer', height: '100%' }}>
+              <Box
+                onClick={() => handleStatsClick("Fully Onboarded")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === ' ') {
+                      e.preventDefault();
+                    }
+                    handleStatsClick("Fully Onboarded");
+                  }
+                }}
+                sx={{ cursor: 'pointer', height: '100%' }}
+              >
                 <DashboardStatCard
                   value={candidateStats.accepted}
                   label="Fully Onboarded"
@@ -88,7 +114,20 @@ function CandidateStats({ stats, loading }) {
             <Skeleton variant="rounded" height={80} />
           ) : (
             <Tooltip title="View candidates pending approval">
-              <Box onClick={() => handleStatsClick("Pending Approval")} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleStatsClick("Pending Approval"); }} sx={{ cursor: 'pointer', height: '100%' }}>
+              <Box
+                onClick={() => handleStatsClick("Pending Approval")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    if (e.key === ' ') {
+                      e.preventDefault();
+                    }
+                    handleStatsClick("Pending Approval");
+                  }
+                }}
+                sx={{ cursor: 'pointer', height: '100%' }}
+              >
                 <DashboardStatCard
                   value={candidateStats.pending}
                   label="Pending Approval"
