@@ -19,7 +19,7 @@ import {
   TextField,
   Chip,
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon, Assignment } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -49,6 +49,7 @@ import CompanyNameField from './CompanyNameField';
 function Jobs() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [hasMatchesFilter, setHasMatchesFilter] = useState(location.state?.filter === 'has_matches');
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -129,7 +130,7 @@ function Jobs() {
     return [...new Set(locations)].sort();
   }, [jobs]);
 
-  // Filter jobs based on search query and location
+  // Filter jobs based on search query, location, and has_matches
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       const matchesSearch = searchQuery === '' ||
@@ -137,16 +138,19 @@ function Jobs() {
         job.company.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesLocation = selectedLocation === '' ||
-        (job.locations || []).includes(selectedLocation);
+        (Array.isArray(job.locations) ? job.locations : []).some(loc => loc.trim() === selectedLocation.trim());
 
-      return matchesSearch && matchesLocation;
+      const matchesHasMatches = !hasMatchesFilter || !!job.last_match_generated_at;
+
+      return matchesSearch && matchesLocation && matchesHasMatches;
     });
-  }, [jobs, searchQuery, selectedLocation]);
+  }, [jobs, searchQuery, selectedLocation, hasMatchesFilter]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedLocation('');
+    setHasMatchesFilter(false);
   };
 
   const loadJobs = async () => {
@@ -343,12 +347,18 @@ function Jobs() {
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <FilterIconButton
+                    active={hasMatchesFilter}
+                    onClick={() => setHasMatchesFilter(prev => !prev)}
+                    icon={Assignment}
+                    title="Show only jobs with generated matches"
+                  />
+                  <FilterIconButton
                     active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
                     icon={LocationOn}
                     title="Filter by location"
                   />
-                  {(searchQuery || selectedLocation) && (
+                  {(searchQuery || selectedLocation || hasMatchesFilter) && (
                     <IconButton
                       size="small"
                       onClick={clearFilters}

@@ -15,12 +15,32 @@ async def get_dashboard_stats():
     """Get aggregated statistics for the MLG dashboard."""
     try:
         # Candidate stats using aggregation
+        pending_match = {
+            "$or": [
+                {"status": {"$nin": ["rejected", "accepted"]}},
+                {"status": {"$exists": False}},
+                {"status": None}
+            ]
+        }
         candidate_pipeline = [
             {
                 "$facet": {
                     "total": [{"$count": "count"}],
-                    "byStatus": [
-                        {"$group": {"_id": "$status", "count": {"$sum": 1}}}
+                    "pending": [
+                        {"$match": pending_match},
+                        {"$count": "count"}
+                    ],
+                    "accepted": [
+                        {"$match": {"status": "accepted"}},
+                        {"$count": "count"}
+                    ],
+                    "rejected": [
+                        {"$match": {"status": "rejected"}},
+                        {"$count": "count"}
+                    ],
+                    "onboarding": [
+                        {"$match": {"assessment_sent": True}},
+                        {"$count": "count"}
                     ]
                 }
             }
@@ -37,31 +57,25 @@ async def get_dashboard_stats():
 
         if candidate_result:
             facets = candidate_result[0]
-
-            # Total count
-            if facets.get("total") and len(facets["total"]) > 0:
+            if facets.get("total"):
                 total_candidates = facets["total"][0].get("count", 0)
-
-            # Status breakdown
-            for status_group in facets.get("byStatus", []):
-                status = status_group.get("_id")
-                count = status_group.get("count", 0)
-                if status == "scheduled_intake":
-                    pending += count
-                elif status == "onboarding":
-                    onboarding += count
-                elif status == "accepted":
-                    accepted += count
-                elif status == "rejected":
-                    rejected += count
+            if facets.get("pending"):
+                pending = facets["pending"][0].get("count", 0)
+            if facets.get("accepted"):
+                accepted = facets["accepted"][0].get("count", 0)
+            if facets.get("rejected"):
+                rejected = facets["rejected"][0].get("count", 0)
+            if facets.get("onboarding"):
+                onboarding = facets["onboarding"][0].get("count", 0)
 
         # Job stats using aggregation
         job_pipeline = [
+            {"$match": {"profile_embedding": {"$exists": True}}},
             {
                 "$facet": {
                     "total": [{"$count": "count"}],
                     "withEmbeddings": [
-                        {"$match": {"profile_embedding": {"$exists": True}}},
+                        {"$match": {"last_match_generated_at": {"$exists": True}}},
                         {"$count": "count"}
                     ]
                 }
