@@ -48,12 +48,22 @@ function JobsMatching({ stats, loading }) {
           {loading ? (
             <Skeleton variant="rounded" height={80} />
           ) : (
-            <DashboardStatCard
-              value={jobStats.jobsWithMatches}
-              label="Jobs with Generated Matches"
-              icon={Assignment}
-              size="small"
-            />
+            <Tooltip title="View jobs with generated matches">
+              <Box
+                role="button"
+                tabIndex={0}
+                  onClick={() => navigate('/jobs?filter=has_matches')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/jobs?filter=has_matches'); } }}
+                sx={{ cursor: 'pointer', height: '100%' }}
+              >
+                <DashboardStatCard
+                  value={jobStats.jobsWithMatches}
+                  label="Jobs with Generated Matches"
+                  icon={Assignment}
+                  size="small"
+                />
+              </Box>
+            </Tooltip>
           )}
         </Grid>
       </Grid>

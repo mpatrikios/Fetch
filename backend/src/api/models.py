@@ -34,6 +34,7 @@ class ResumeUploadResponse(BaseModel):
 class CandidateListResponse(BaseModel):
     success: bool
     count: int
+    total_count: Optional[int] = None
     candidates: List[CandidateInfo]
 
 
