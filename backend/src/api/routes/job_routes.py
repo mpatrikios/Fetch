@@ -305,7 +305,7 @@ async def list_jobs():
                 "Skills": {"$slice": 10},
                 "last_match_generated_at": 1
             }
-        ).limit(100))
+        ))
 
         formatted_jobs = []
         for job in jobs:

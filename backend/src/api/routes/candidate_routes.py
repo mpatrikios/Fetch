@@ -61,7 +61,7 @@ async def list_candidates(
                 "resume_blob_path": 1,
                 "clifton_blob_path": 1
             }
-        ).sort("full_name", 1).limit(100))
+        ).sort("full_name", 1))
         
         formatted_candidates = []
         for candidate in candidates:

@@ -340,3 +340,16 @@ class ClientDetailsResponse(BaseModel):
     """Response for single client details"""
     success: bool
     client: ClientDetails
+
+
+class ClientCreateRequest(BaseModel):
+    company_name: str = Field(..., min_length=1, max_length=200)
+    contact_email: Optional[str] = Field(None, max_length=200)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    contact_recruiter: Optional[str] = Field(None, max_length=200)
+    locations: Optional[List[str]] = None
+
+class ClientCreateResponse(BaseModel):
+    success: bool
+    client_id: str
+    message: str
