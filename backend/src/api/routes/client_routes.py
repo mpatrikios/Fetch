@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from src.database.connection import mongo_connection
-from src.api.models import ClientListResponse, ClientDetailsResponse, ClientUpdateRequest
+from src.api.models import ClientListResponse, ClientDetailsResponse, ClientUpdateRequest, ClientCreateRequest, ClientCreateResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import validate_object_id
 from src.api.routes.helpers import ensure_updated
@@ -36,7 +36,7 @@ async def list_clients(
                 "locations": 1,
                 "postedJobs": 1
             }
-        ).sort("companyName", 1).limit(100))
+        ).sort("companyName", 1))
 
         formatted_clients = []
         for client in clients:
@@ -167,4 +167,53 @@ async def activate_client(client_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to activate client {client_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/clients/{client_id}")
+async def delete_client(client_id: str):
+    """Permanently delete a client (MLG recruiter only)"""
+    validate_object_id(client_id)
+    try:
+        result = mongo_connection.clients_collection.delete_one(
+            {"_id": ObjectId(client_id)}
+        )
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Client not found")
+        logger.info(f"Client {client_id} deleted")
+        return {"success": True, "message": "Client deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete client {client_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/clients", response_model=ClientCreateResponse)
+async def create_client(client_data: ClientCreateRequest):
+    """Create a new client (MLG recruiter only)"""
+    try:
+        now = datetime.now(timezone.utc)
+        doc = {
+            "companyName": client_data.company_name,
+            "status": "onboarding",
+            "contactEmail": client_data.contact_email,
+            "contactNumber": client_data.contact_number,
+            "contactRecruiter": client_data.contact_recruiter,
+            "locations": client_data.locations or [],
+            "postedJobs": [],
+            "summary": None,
+            "intakeCallNotes": None,
+            "createdAt": now,
+            "profile_updated_at": now,
+        }
+        result = mongo_connection.clients_collection.insert_one(doc)
+        logger.info(f"Created client {result.inserted_id}")
+        return ClientCreateResponse(
+            success=True,
+            client_id=str(result.inserted_id),
+            message="Client created successfully"
+        )
+    except Exception as e:
+        logger.error(f"Failed to create client: {e}")
         raise HTTPException(status_code=500, detail=str(e))

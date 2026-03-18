@@ -12,7 +12,8 @@ import {
   IconButton,
   TextField
 } from '@mui/material';
-import { LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon, Add as AddIcon, BlockOutlined, DeleteOutline, CheckCircleOutlined } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clientAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
@@ -64,6 +65,18 @@ function Clients() {
   const [showActivateDialog, setShowActivateDialog] = useState(false);
   const [activateWarnings, setActivateWarnings] = useState([]);
   const [successMessage, showSuccess] = useAutoHideMessage(5000);
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [addFormData, setAddFormData] = useState({
+    company_name: '',
+    contact_email: '',
+    contact_number: '',
+    contact_recruiter: '',
+    locations: '',
+  });
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -218,6 +231,33 @@ function Clients() {
     }
   };
 
+  const handleAddClient = async () => {
+    if (!addFormData.company_name.trim()) return;
+    setAdding(true);
+    setAddError('');
+    try {
+      const payload = {
+        company_name: addFormData.company_name.trim(),
+        contact_email: addFormData.contact_email.trim() || null,
+        contact_number: addFormData.contact_number.trim() || null,
+        contact_recruiter: addFormData.contact_recruiter.trim() || null,
+        locations: parseDelimitedString(addFormData.locations, ';'),
+      };
+      const response = await clientAPI.create(payload);
+      setShowAddClient(false);
+      setAddFormData({ company_name: '', contact_email: '', contact_number: '', contact_recruiter: '', locations: '' });
+      await loadClients();
+      showSuccess('Client added successfully!');
+      const newId = response.data.client_id;
+      const newClient = { id: newId, company_name: payload.company_name };
+      handleClientSelect(newClient);
+    } catch (err) {
+      setAddError(err.response?.data?.detail || 'Failed to create client');
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const handleActivateClick = () => {
     const warnings = [];
     if (!clientDetails.contact_recruiter) warnings.push('Recruiter not assigned');
@@ -245,6 +285,55 @@ function Clients() {
       setShowActivateDialog(false);
     } finally {
       setActivating(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      const response = await clientAPI.activate(clientDetails.id);
+      const activatedAt = response.data.activated_at;
+      setClientDetails(prev => ({ ...prev, status: 'active', activated_at: activatedAt }));
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id ? { ...c, status: 'active' } : c
+      ));
+      setSelectedClient(prev => ({ ...prev, status: 'active' }));
+      showSuccess(`${clientDetails.company_name} has been marked Active.`);
+    } catch (err) {
+      console.error('Reactivate client error:', err);
+      setError('Failed to reactivate client. Please try again.');
+    }
+  };
+
+  const handleDeactivate = async () => {
+    try {
+      await clientAPI.updateClient(clientDetails.id, { status: 'inactive' });
+      setClientDetails(prev => ({ ...prev, status: 'inactive' }));
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id ? { ...c, status: 'inactive' } : c
+      ));
+      setSelectedClient(prev => ({ ...prev, status: 'inactive' }));
+      showSuccess(`${clientDetails.company_name} has been marked Inactive.`);
+    } catch (err) {
+      console.error('Deactivate client error:', err);
+      setError('Failed to deactivate client. Please try again.');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      setDeleting(true);
+      await clientAPI.deleteClient(clientDetails.id);
+      setClients(prev => prev.filter(c => c.id !== clientDetails.id));
+      setSelectedClient(null);
+      setClientDetails(null);
+      setShowDeleteDialog(false);
+      showSuccess('Client deleted successfully.');
+    } catch (err) {
+      console.error('Delete client error:', err);
+      setError('Failed to delete client. Please try again.');
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -302,6 +391,14 @@ function Clients() {
                   ({filteredClients.length} of {clients.length})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setShowAddClient(true)}
+                    title="Add new client"
+                    aria-label="Add new client"
+                  >
+                    <AddIcon fontSize="small" />
+                  </IconButton>
                   <FilterIconButton
                     active={!!selectedLocation}
                     onClick={(e) => setLocationMenuAnchor(e.currentTarget)}
@@ -413,7 +510,7 @@ function Clients() {
                           label={client.status}
                           size="small"
                           color={getStatusColor(client.status)}
-                          sx={{ ml: 1 }}
+                          sx={{ ml: 1, textTransform: 'capitalize' }}
                         />
                       )}
                     </Box>
@@ -439,17 +536,49 @@ function Clients() {
                         label={clientDetails.status}
                         size="small"
                         color={getStatusColor(clientDetails.status)}
+                        sx={{ textTransform: 'capitalize' }}
                       />
                     )}
-                    <IconButton
-                      size="small"
-                      onClick={handleEditClick}
-                      title="Edit client"
-                      aria-label="Edit client"
-                      sx={{ ml: 'auto' }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+                      <IconButton
+                        size="small"
+                        onClick={handleEditClick}
+                        title="Edit client"
+                        aria-label="Edit client"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      {clientDetails?.status === 'active' && (
+                        <IconButton
+                          size="small"
+                          onClick={handleDeactivate}
+                          title="Mark inactive"
+                          aria-label="Mark inactive"
+                        >
+                          <BlockOutlined fontSize="small" />
+                        </IconButton>
+                      )}
+                      {clientDetails?.status === 'inactive' && (
+                        <IconButton
+                          size="small"
+                          onClick={handleReactivate}
+                          title="Mark active"
+                          aria-label="Mark active"
+                          color="success"
+                        >
+                          <CheckCircleOutlined fontSize="small" />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        size="small"
+                        onClick={() => setShowDeleteDialog(true)}
+                        title="Delete client"
+                        aria-label="Delete client"
+                        color="error"
+                      >
+                        <DeleteOutline fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </Box>
                   {clientDetails?.locations?.length > 0 && (
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -564,6 +693,22 @@ function Clients() {
                     <Typography color="text.secondary">No jobs posted yet</Typography>
                   )}
                 </Box>
+
+                <Divider />
+
+                {/* Intake Call Notes Section */}
+                <Box>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    Intake Call Notes
+                  </Typography>
+                  {clientDetails?.intake_call_notes ? (
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {clientDetails.intake_call_notes}
+                    </Typography>
+                  ) : (
+                    <Typography color="text.secondary">No intake notes recorded</Typography>
+                  )}
+                </Box>
           </DetailPanelContainer>
         </Grid>
       </Grid>
@@ -603,6 +748,68 @@ function Clients() {
         loading={activating}
         confirmText="Activate"
         confirmColor="success"
+        maxWidth="xs"
+        fullWidth
+      />
+
+      {/* Add Client Dialog */}
+      <Dialog
+        open={showAddClient}
+        onClose={() => !adding && setShowAddClient(false)}
+        maxWidth="sm"
+        fullWidth
+        disableEscapeKeyDown={adding}
+      >
+        <DialogTitle>
+          Add Client
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowAddClient(false)}
+            disabled={adding}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            {addError && <Alert severity="error">{addError}</Alert>}
+            <TextField label="Company Name" value={addFormData.company_name}
+              onChange={(e) => setAddFormData(p => ({ ...p, company_name: e.target.value }))}
+              required fullWidth error={!addFormData.company_name.trim()} />
+            <TextField label="Contact Email" value={addFormData.contact_email}
+              onChange={(e) => setAddFormData(p => ({ ...p, contact_email: e.target.value }))} fullWidth />
+            <TextField label="Contact Number" value={addFormData.contact_number}
+              onChange={(e) => setAddFormData(p => ({ ...p, contact_number: e.target.value }))} fullWidth />
+            <TextField label="Contact Recruiter" value={addFormData.contact_recruiter}
+              onChange={(e) => setAddFormData(p => ({ ...p, contact_recruiter: e.target.value }))} fullWidth />
+            <TextField label="Locations (semicolon-separated)" value={addFormData.locations}
+              onChange={(e) => setAddFormData(p => ({ ...p, locations: e.target.value }))}
+              fullWidth placeholder="e.g. New York, NY; Chicago, IL" />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowAddClient(false)} disabled={adding}>Cancel</Button>
+          <Button onClick={handleAddClient} variant="contained" disabled={adding || !addFormData.company_name.trim()}>
+            {adding ? 'Adding...' : 'Add Client'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Client Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showDeleteDialog}
+        title="Delete Client"
+        content={
+          <Typography variant="body2">
+            Permanently delete <strong>{clientDetails?.company_name}</strong>? This action cannot be undone.
+          </Typography>
+        }
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+        loading={deleting}
+        confirmText="Delete"
+        confirmColor="error"
         maxWidth="xs"
         fullWidth
       />
