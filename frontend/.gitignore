@@ -20,8 +20,9 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
+*.slna
 *.sw?
 *.pdf
 *.docx
+cleanup.md
 

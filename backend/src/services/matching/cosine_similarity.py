@@ -95,7 +95,7 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 
 
 # Find top-k candidate matches for a job based on profile embeddings and location
-def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = True, excluded_ids: set = None):
+def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool = True, excluded_ids: set = None):
     """
     Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
     Only includes candidates within reasonable commute distance (80km).
@@ -182,8 +182,9 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
 
     # Sort by score descending
     scored.sort(key=lambda x: x["combined_similarity_score"], reverse=True)
-    # Apply top_k cap directly
-    top_candidates = scored[:top_k]
+    # Dynamic pool sizing: top 30% capped at 40, unless explicit top_k provided
+    effective_k = top_k if top_k is not None else min(40, round(len(scored) * 0.30))
+    top_candidates = scored[:effective_k]
 
     # Generate LLM explanations ONLY for top_k candidates (slow, but limited)
     for match in top_candidates:

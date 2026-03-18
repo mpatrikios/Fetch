@@ -139,7 +139,7 @@ class JobDetailsResponse(BaseModel):
 class MatchRequest(BaseModel):
     company_name: str
     job_title: str
-    top_k: Optional[int] = 10
+    top_k: Optional[int] = None
     use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
@@ -165,6 +165,7 @@ class MatchResult(BaseModel):
     email: Optional[str] = None
     location: Optional[str] = None
     distance_km: Optional[float] = None
+    summary: Optional[str] = None
     scores: Optional[MatchScores] = None
     explanation: MatchExplanation
     clifton_strengths: List[str] = []

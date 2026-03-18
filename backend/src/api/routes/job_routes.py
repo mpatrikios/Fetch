@@ -3,10 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
-import sys
 import logging
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from bson import ObjectId
 from bson.errors import InvalidId

@@ -93,6 +93,7 @@ def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = 
     live = live_candidate or {}
     skills = live.get("Skills") or c.get("skills") or []
     location = live.get("Location") or c.get("location")
+    summary = live.get("Summary") or c.get("summary")
 
     return MatchResult(
         candidate_id=c.get("candidate_id"),
@@ -101,6 +102,7 @@ def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = 
         email=c.get("email"),
         location=location,
         distance_km=c.get("distance_km"),
+        summary=summary,
         scores=c.get("scores"),
         explanation={
             "keyword_overlap": explanation_data.get("keyword_overlap") or [],

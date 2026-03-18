@@ -86,7 +86,7 @@ async def find_matches(request: MatchRequest):
         matches = profile_matching_candidate(
             mongo_connection.database,
             job_doc,
-            top_k=request.top_k or 10,
+            top_k=request.top_k,
             use_cohort=request.use_cohort or False,
             excluded_ids=rejected_ids or None
         )
@@ -107,6 +107,7 @@ async def find_matches(request: MatchRequest):
                 "email": candidate.get("email", ""),
                 "location": candidate.get("location", ""),
                 "distance_km": match.get("distance_km"),
+                "summary": candidate.get("Summary"),
                 "scores": {
                     "combined": round(match["combined_similarity_score"], 3),
                     "profile": round(match["profile_similarity_score"], 3),

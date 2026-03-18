@@ -116,7 +116,7 @@ function JobRecommendations() {
         const response = await matchingAPI.findMatches(
           decodedCompany,
           decodedTitle,
-          10,    // top_k
+          null,  // top_k — dynamic (30% of pool, capped at 40)
           true,  // use_cohort=true hides scores and rankings
           { signal }
         );
@@ -482,6 +482,11 @@ function JobRecommendations() {
                         {selectedCandidate.location}
                       </Typography>
                     )}
+                    {selectedCandidate.distance_km != null && (
+                      <Typography variant="body2" color="text.secondary">
+                        {Math.round(selectedCandidate.distance_km)} km from job location
+                      </Typography>
+                    )}
                   </Box>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
                     <Button
@@ -517,6 +522,21 @@ function JobRecommendations() {
                 </Box>
 
                 <Divider />
+
+                {/* Candidate Bio */}
+                {selectedCandidate.summary && (
+                  <>
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+                        About
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                        {selectedCandidate.summary}
+                      </Typography>
+                    </Box>
+                    <Divider />
+                  </>
+                )}
 
                 {/* Why They Match Section */}
                 {selectedCandidate.explanation?.summary && (
@@ -566,7 +586,7 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Skills
                   </Typography>
-                  <SkillChips items={selectedCandidate.skills} variant="skill" emptyText="No skills listed" />
+                  <SkillChips items={selectedCandidate.skills} variant="skill" emptyText="No skills listed" highlightItems={selectedCandidate.explanation?.keyword_overlap || []} />
                 </Box>
 
                 <Divider />
