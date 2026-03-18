@@ -3,7 +3,6 @@ from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
-from pathlib import Path
 import sys
 import logging
 

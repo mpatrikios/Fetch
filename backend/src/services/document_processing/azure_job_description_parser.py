@@ -2,7 +2,6 @@ import json
 import logging
 import sys
 import time
-from datetime import datetime
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -17,10 +16,6 @@ load_dotenv()
 subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
 if not subscription_key:
     raise ValueError("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY environment variable not set")
-
-def main():
-    azure_job_description_parser("../../testing_files/MLG Head of Technology.pdf")
-
 
 @dataclass(frozen=True, kw_only=True)
 class Settings:
@@ -210,23 +205,6 @@ class AzureContentUnderstandingClient:
         return headers
 
 
-def store_result_to_dir(result_json: dict[str, Any], dir_path: str) -> None:
-    """Stores the JSON result to a directory.
-
-    Args:
-        result (dict): The result to store.
-        dir_path (str): The path to the directory where the result will be stored.
-    """
-    os.makedirs(dir_path, exist_ok=True)
-
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    json_filepath = os.path.join(dir_path, f'jd_result_{timestamp}.json')
-
-    with open(json_filepath, 'w', encoding='utf-8') as f:
-        json.dump(result_json, f, indent=2, ensure_ascii=False)
-
-    print(f"JSON saved to: {json_filepath}")
-
 def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
 
     """
@@ -243,8 +221,6 @@ def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
         ValueError: If the Azure Content Understanding settings are invalid.
         RuntimeError: If the analysis request fails.
     """
-    script_dir = Path(__file__).parent
-    pdf_path =  os.path.join(script_dir.parent.parent, "testing_files", "MLG Head of Technology.pdf")
     # Check if file exists
     if not os.path.isfile(pdf_path):
         raise FileNotFoundError(f"The file {pdf_path} does not exist.")
@@ -266,12 +242,6 @@ def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
         subscription_key=settings.subscription_key,
         token_provider=settings.token_provider,
     )
-    # # Extract company name from PDF filename (e.g., "Brian P.pdf" -> "Brian P")
-    # company_name = pdf_path.stem
-    ### Placeholders
-    company_name = "MLG"
-    job_name = "Head of Technology"
-    print(f"Processing job description for: {company_name}-{job_name}")
     response = client.begin_analyze(settings.analyzer_id, settings.file_location)
     result_json = client.poll_result(
         response,
@@ -280,5 +250,3 @@ def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
     )
     return result_json
 
-if __name__ == "__main__":
-    main()
