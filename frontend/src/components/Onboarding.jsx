@@ -88,7 +88,7 @@ function Onboarding() {
   const handleResumeUploadSuccess = async () => {
     try {
       // Update status to uploaded_resume
-      await authAPI.updateStatus('uploaded_resume');
+      await authAPI.updateStatus('onboarding');
       setShowResumeUpload(false);
       await fetchUserData();
     } catch (err) {
@@ -117,7 +117,7 @@ function Onboarding() {
   const handleCliftonUploadSuccess = async () => {
     try {
       // Update status to uploaded_results when CliftonStrengths upload succeeds
-      await authAPI.updateStatus('uploaded_results');
+      await authAPI.updateStatus('completed_onboarding');
       await fetchUserData();
     } catch (err) {
       console.error('Failed to update status after CliftonStrengths upload:', err);

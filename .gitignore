@@ -19,3 +19,5 @@ dist/
 # PDF documents
 *.pdf
 backend/seed_candidates.py
+backend/testing_jobs/
+backend/src/testing_resumes/

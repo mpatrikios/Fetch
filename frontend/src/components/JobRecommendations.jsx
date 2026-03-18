@@ -465,6 +465,7 @@ function JobRecommendations() {
         {/* Main Content - Candidate Details */}
         <Grid size={{ xs: 12, md: 8 }}>
           <DetailPanelContainer selected={selectedCandidate} emptyText="Select a candidate to view details">
+                {selectedCandidate && (<>
                 {/* Candidate Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
@@ -663,6 +664,7 @@ function JobRecommendations() {
                     </Alert>
                   )}
                 </Box>
+                </>)}
           </DetailPanelContainer>
         </Grid>
       </Grid>
