@@ -102,11 +102,11 @@ export const jobAPI = {
 
 // Matching endpoints
 export const matchingAPI = {
-  findMatches: (companyName, jobTitle, topK = 10, useCohort = true, config = {}) =>
+  findMatches: (companyName, jobTitle, topK = null, useCohort = true, config = {}) =>
     api.post('/matches/find', {
       company_name: companyName,
       job_title: jobTitle,
-      top_k: topK,
+      ...(topK !== null && { top_k: topK }),
       use_cohort: useCohort,
     }, config),
   updateReview: (matchId, candidateId, reviewStatus, config = {}) =>

@@ -148,7 +148,7 @@ function JobRecommendations() {
     try {
       setLoading(true);
       setError('');
-      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, 10, true);
+      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, null, true);
       setRecommendations(response.data.matches || []);
       setMongoMatchId(response.data.mongo_match_id || null);
       setGeneratedAt(response.data.created_at || null);
