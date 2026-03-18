@@ -156,12 +156,12 @@ async def upload_job_description(
             success=True,
             message=message,
             job=JobInfo(
-                company=job_doc.get("CompanyName", company_name),
+                company=job_doc.get("companyName", company_name),
                 title=job_doc.get("JobTitle", ""),
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
                 has_embeddings="profile_embedding" in job_doc,
-                job_id=f"{job_doc.get('CompanyName')}_{job_doc.get('JobTitle')}"
+                job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}"
             )
         )
         
@@ -177,10 +177,10 @@ async def upload_job_description(
 async def list_jobs():
     try:
         jobs = list(mongo_connection.job_descriptions_collection.find(
-            {"profile_embedding": {"$exists": True}},
+            {"profile_embedding": {"$exists": True}, "companyName": {"$exists": True, "$ne": None}},
             {
                 "_id": 1,
-                "CompanyName": 1,
+                "companyName": 1,
                 "JobTitle": 1,
                 "Locations": 1,
                 "Skills": {"$slice": 10},
@@ -191,12 +191,12 @@ async def list_jobs():
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
-                "company": job.get("CompanyName", "Unknown"),
+                "company": job.get("companyName", "Unknown"),
                 "title": job.get("JobTitle"),
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('CompanyName')}_{job.get('JobTitle')}",
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
             })
@@ -217,7 +217,7 @@ async def get_job_details(company_name: str, job_title: str):
     """Get full job details including all fields"""
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
-            "CompanyName": company_name,
+            "companyName": company_name,
             "JobTitle": job_title
         })
 
@@ -227,9 +227,9 @@ async def get_job_details(company_name: str, job_title: str):
         return JobDetailsResponse(
             success=True,
             job=JobDetails(
-                job_id=f"{job.get('CompanyName')}_{job.get('JobTitle')}",
+                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
-                company=job.get("CompanyName", ""),
+                company=job.get("companyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
                 locations=job.get("Locations", []),
@@ -352,7 +352,7 @@ async def delete_job(job_id: str):
 async def list_companies():
     """Get list of unique company names for dropdown selection"""
     try:
-        companies = mongo_connection.job_descriptions_collection.distinct("CompanyName")
+        companies = mongo_connection.job_descriptions_collection.distinct("companyName")
         return {
             "success": True,
             "companies": sorted(companies)

@@ -158,8 +158,8 @@ def profile_matching_candidate(db, job_doc, top_k: int = 10, use_cohort: bool = 
             raw_culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
             culture_similarity = normalize_similarity_score(raw_culture_similarity)
 
-        # Calculate combined score (50/50 weighting)
-        combined_similarity = (profile_similarity * 0.5) + (culture_similarity * 0.5)
+        # Calculate combined score (70/30 weighting: profile / culture)
+        combined_similarity = (profile_similarity * 0.7) + (culture_similarity * 0.3)
         
         # Calculate distance if coordinates available
         distance_km = None
@@ -227,7 +227,7 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
 
     # Candidate experience text
     cand_roles_text = " ".join(
-        exp.get("role", "") for exp in cand_doc.get("Experience", [])
+        exp.get("role") or "" for exp in cand_doc.get("Experience", [])
     )
     cand_resp_text = " ".join(
         (exp.get("responsibilities") or "") for exp in cand_doc.get("Experience", [])

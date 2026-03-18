@@ -240,6 +240,7 @@ async def update_status(
         "registered",
         "onboarding",
         "scheduled_intake",
+        "completed_onboarding",
     ]
     
     if status not in valid_statuses:
