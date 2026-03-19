@@ -34,6 +34,7 @@ class ResumeUploadResponse(BaseModel):
 class CandidateListResponse(BaseModel):
     success: bool
     count: int
+    total_count: Optional[int] = None
     candidates: List[CandidateInfo]
 
 
@@ -156,6 +157,7 @@ class RelevantExperience(BaseModel):
 
 class MatchExplanation(BaseModel):
     keyword_overlap: List[str]
+    skill_overlap: List[str] = []
     relevant_roles: List[str]
     relevant_experience: List[RelevantExperience] = []
     candidate_companies: List[str]
@@ -168,6 +170,7 @@ class MatchResult(BaseModel):
     email: Optional[str] = None
     location: Optional[str] = None
     distance_km: Optional[float] = None
+    summary: Optional[str] = None
     scores: Optional[MatchScores] = None
     explanation: MatchExplanation
     clifton_strengths: List[str] = []

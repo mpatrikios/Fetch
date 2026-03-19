@@ -10,6 +10,7 @@ from src.database.insert_to_mongo import upsert_candidate, get_candidate
 from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_document_file
 from src.services.document_processing.azure_resume_parser import AzureContentUnderstandingClient, Settings
 from src.services.document_processing.resume_standardizing import standardize_resume
+from src.services.document_processing.fallback_resume_parser import fallback_parse
 from src.services.embeddings.generate_embeddings import embed_candidate_profile, embed_candidate_location
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,34 @@ class DocumentService:
         )
 
         standardized_data = standardize_resume(azure_result)
+
+        # Fill empty fields using the text-based fallback parser
+        needs_fallback = (
+            not standardized_data.get("Skills")
+            or not standardized_data.get("Experience")
+            or not standardized_data.get("Companies")
+            or not standardized_data.get("Location")
+        )
+        if needs_fallback:
+            try:
+                fallback_data = fallback_parse(file_path)
+                for field in ("Skills", "Experience", "Companies", "Location", "Summary"):
+                    if not standardized_data.get(field) and fallback_data.get(field):
+                        standardized_data[field] = fallback_data[field]
+                logger.info(
+                    "Fallback parser supplemented missing fields",
+                    extra={
+                        "candidate_id": candidate_id,
+                        "file_name": os.path.basename(file_path),
+                        "filled_fields": [
+                            f for f in ("Skills", "Experience", "Companies", "Location", "Summary")
+                            if fallback_data.get(f)
+                        ],
+                    },
+                )
+            except Exception as e:
+                logger.warning(f"Fallback parser failed for {file_path}: {e}")
+
         # Log only metadata about the standardization step
         logger.info(
             "Resume standardization completed",

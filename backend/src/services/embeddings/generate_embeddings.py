@@ -83,10 +83,10 @@ def create_location_embedding(coordinates: Optional[Dict[str, float]]) -> Option
 
 # generate and store candidate profile embeddings
 def embed_candidate_profile(candidate_doc):
-    text = f"{candidate_doc.get('Summary', '')} " + \
-           " ".join(candidate_doc.get('Skills', [])) + " " + \
-           " ".join([exp.get('role', '') for exp in (candidate_doc.get('Experience') or []) if exp]) + " " + \
-           " ".join([comp.get('companyName', '') for comp in (candidate_doc.get('Companies') or []) if comp])
+    text = f"{candidate_doc.get('Summary', '') or ''} " + \
+           " ".join(s for s in (candidate_doc.get('Skills') or []) if s) + " " + \
+           " ".join(exp.get('role') or '' for exp in (candidate_doc.get('Experience') or []) if exp) + " " + \
+           " ".join(comp.get('companyName') or '' for comp in (candidate_doc.get('Companies') or []) if comp)
     embedding = generate_embedding(text)
     if embedding is None:
         logger.error(f"Failed to generate profile embedding for candidate {candidate_doc.get('_id')}")

@@ -42,6 +42,9 @@ import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 function Candidates() {
   const navigate = useNavigate();
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialStatus = searchParams.get('status') || 'all';
+  const initialCandidateStatus = searchParams.get('candidateStatus') || '';
   const [candidates, setCandidates] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [candidateDetails, setCandidateDetails] = useState(null);
@@ -54,16 +57,14 @@ function Candidates() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
-  const [selectedCandidateStatus, setSelectedCandidateStatus] = useState('');
+  const [selectedCandidateStatus, setSelectedCandidateStatus] = useState(initialCandidateStatus);
   const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
   const [acceptingOnly, setAcceptingOnly] = useState(false);
   const [acceptingWithAssessment, setAcceptingWithAssessment] = useState(false);
   const [successMessage, showSuccess] = useAutoHideMessage(5000);
   const [errorMessage, showError] = useAutoHideMessage(5000);
-  // Initialize statusFilter from URL query param
-  const searchParams = new URLSearchParams(location.search);
-  const initialStatus = searchParams.get('status') || 'all';
   const [statusFilter, setStatusFilter] = useState(initialStatus);
+  const [totalCandidates, setTotalCandidates] = useState(0);
   const [notesLastSaved, setNotesLastSaved] = useState({});
   const [savedNotesContent, setSavedNotesContent] = useState({});
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -76,6 +77,11 @@ function Candidates() {
     skills: ''
   });
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setStatusFilter(params.get('status') || 'all');
+  }, [location.search]);
 
   useEffect(() => {
     loadCandidates();
@@ -158,6 +164,7 @@ function Candidates() {
       setLoading(true);
       const response = await candidateAPI.list(statusFilter);
       setCandidates(response.data.candidates || []);
+      setTotalCandidates(response.data.total_count ?? response.data.count ?? 0);
     } catch (err) {
       setError('Failed to load candidates');
       console.error('Load candidates error:', err);
@@ -531,7 +538,7 @@ function Candidates() {
                   Candidates
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                  ({filteredCandidates.length} of {candidates.length})
+                  ({filteredCandidates.length} of {totalCandidates})
                 </Typography>
                 <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
                   <FilterIconButton

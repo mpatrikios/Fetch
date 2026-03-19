@@ -10,6 +10,7 @@ from src.services.document_processing.azure_clifton_parser import azure_clifton_
 from src.api.routes.auth_routes import get_current_user
 from src.database.connection import mongo_connection
 from src.services.storage.blob_storage import get_blob_storage, get_content_type
+from src.services.embeddings.generate_embeddings import embed_candidate_culture
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,6 +68,17 @@ async def upload_clifton_strengths(
             except Exception as e:
                 logger.error(f"Failed to update candidate document with Clifton Strengths for {current_user['email']}: {e}")
                 raise
+
+            # Generate culture embedding from the newly stored strengths (non-critical)
+            try:
+                candidate_doc = mongo_connection.candidates_collection.find_one(
+                    {"email": current_user["email"]}
+                )
+                if candidate_doc:
+                    await run_in_threadpool(embed_candidate_culture, candidate_doc)
+                    logger.info(f"Culture embedding generated for {current_user['email']}")
+            except Exception as e:
+                logger.error(f"Culture embedding generation failed for {current_user['email']}: {e}")
 
         # Upload original document to Azure Blob Storage
         blob_stored = False

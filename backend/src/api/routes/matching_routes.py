@@ -26,6 +26,28 @@ from src.api.routes.helpers import extract_clifton_names, build_match_result_fro
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
+
+def _fetch_live_candidates(stored_candidates: list) -> dict:
+    """
+    Batch-fetch current candidate documents from MongoDB for a list of stored
+    match entries.  Returns a dict keyed by candidate_id string.
+    """
+    ids = []
+    for c in stored_candidates:
+        cid = c.get("candidate_id")
+        if cid:
+            try:
+                ids.append(ObjectId(cid))
+            except Exception:
+                pass
+    if not ids:
+        return {}
+    docs = mongo_connection.candidates_collection.find(
+        {"_id": {"$in": ids}},
+        {"Skills": 1, "Location": 1, "Summary": 1}
+    )
+    return {str(d["_id"]): d for d in docs}
+
 # API endpoint to find matching candidates for a job description
 @router.post("/matches/find", response_model=MatchResponse)
 async def find_matches(request: MatchRequest):
@@ -64,7 +86,7 @@ async def find_matches(request: MatchRequest):
         matches = profile_matching_candidate(
             mongo_connection.database,
             job_doc,
-            top_k=request.top_k or 10,
+            top_k=request.top_k,
             use_cohort=request.use_cohort or False,
             excluded_ids=rejected_ids or None
         )
@@ -85,6 +107,7 @@ async def find_matches(request: MatchRequest):
                 "email": candidate.get("email", ""),
                 "location": candidate.get("location", ""),
                 "distance_km": match.get("distance_km"),
+                "summary": candidate.get("Summary"),
                 "scores": {
                     "combined": round(match["combined_similarity_score"], 3),
                     "profile": round(match["profile_similarity_score"], 3),
@@ -92,6 +115,7 @@ async def find_matches(request: MatchRequest):
                 },
                 "explanation": {
                     "keyword_overlap": match.get("explanation", {}).get("keyword_overlap", [])[:10],
+                    "skill_overlap": match.get("explanation", {}).get("skill_overlap", [])[:15],
                     "relevant_roles": match.get("explanation", {}).get("relevant_roles", [])[:3],
                     "relevant_experience": match.get("explanation", {}).get("relevant_experience", [])[:3],
                     "candidate_companies": match.get("explanation", {}).get("candidate_companies", [])[:3],
@@ -186,7 +210,12 @@ async def get_stored_matches(company_name: str, job_title: str):
                 detail=f"No stored matches found for: {company_name} - {job_title}"
             )
 
-        matches = [build_match_result_from_candidate(c) for c in match_doc.get("candidates", []) if c is not None]
+        candidates_list = [c for c in match_doc.get("candidates", []) if c is not None]
+        live_candidates = _fetch_live_candidates(candidates_list)
+        matches = [
+            build_match_result_from_candidate(c, live_candidates.get(c.get("candidate_id")))
+            for c in candidates_list
+        ]
 
         return MatchResponse(
             success=True,
@@ -236,7 +265,12 @@ async def get_match_by_id(match_id: str):
         if not match_doc:
             raise HTTPException(status_code=404, detail=f"Match not found: {match_id}")
 
-        matches = [build_match_result_from_candidate(c) for c in match_doc.get("candidates", []) if c is not None]
+        candidates_list = [c for c in match_doc.get("candidates", []) if c is not None]
+        live_candidates = _fetch_live_candidates(candidates_list)
+        matches = [
+            build_match_result_from_candidate(c, live_candidates.get(c.get("candidate_id")))
+            for c in candidates_list
+        ]
 
         return MatchResponse(
             success=True,

@@ -292,20 +292,26 @@ export const ConfirmationDialog = ({
 /**
  * Renders a list of skill or strength chips
  */
-export const SkillChips = ({ items = [], variant = 'skill', emptyText }) => {
+export const SkillChips = ({ items = [], variant = 'skill', emptyText, highlightItems = [] }) => {
   if (!items.length) {
     return emptyText ? <Typography color="text.secondary">{emptyText}</Typography> : null;
   }
-  const chipSx = variant === 'strength'
-    ? { backgroundColor: 'success.main', color: 'white' }
-    : { borderColor: 'text.primary', color: 'text.primary' };
+  const highlightSet = new Set(highlightItems.map(h => h.toLowerCase()));
   return (
     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-      {items.map((item, i) => (
-        <Chip key={i} label={item} size="small"
-          variant={variant === 'strength' ? 'filled' : 'outlined'}
-          sx={chipSx} />
-      ))}
+      {items.map((item, i) => {
+        const isHighlighted = variant === 'skill' && highlightSet.size > 0 && highlightSet.has(item.toLowerCase());
+        const chipSx = isHighlighted
+          ? { backgroundColor: 'primary.main', color: 'white' }
+          : variant === 'strength'
+            ? { backgroundColor: 'success.main', color: 'white' }
+            : { borderColor: 'text.primary', color: 'text.primary' };
+        return (
+          <Chip key={i} label={item} size="small"
+            variant={isHighlighted || variant === 'strength' ? 'filled' : 'outlined'}
+            sx={chipSx} />
+        );
+      })}
     </Box>
   );
 };

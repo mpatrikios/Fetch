@@ -74,31 +74,46 @@ def delete_document_blobs(doc: dict, blob_fields: List[str], entity_id: str) -> 
                 logger.warning(f"Blob delete failed for {entity_id} ({field}): {e}")
 
 
-def build_match_result_from_candidate(c: dict) -> MatchResult:
-    """Build a MatchResult Pydantic model from a stored match candidate dict."""
+def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = None) -> MatchResult:
+    """Build a MatchResult Pydantic model from a stored match candidate dict.
+
+    Args:
+        c: Stored candidate entry from the Matches collection.
+        live_candidate: Optional live document from Candidates — used to freshen
+            profile fields (skills, location) that may have been empty at match time.
+    """
     explanation_data = c.get("explanation") or {}
     relevant_experience = [
         {"role": e.get("role", ""), "company": e.get("company")}
         for e in (explanation_data.get("relevant_experience") or [])
         if e is not None
     ]
+    # Prefer live candidate data for profile fields that could have changed since
+    # the match was generated (e.g. after a resume backfill).
+    live = live_candidate or {}
+    skills = live.get("Skills") or c.get("skills") or []
+    location = live.get("Location") or c.get("location")
+    summary = live.get("Summary") or c.get("summary")
+
     return MatchResult(
         candidate_id=c.get("candidate_id"),
         rank=c.get("rank"),
         full_name=c.get("full_name", "Unknown"),
         email=c.get("email"),
-        location=c.get("location"),
+        location=location,
         distance_km=c.get("distance_km"),
+        summary=summary,
         scores=c.get("scores"),
         explanation={
             "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+            "skill_overlap": explanation_data.get("skill_overlap") or [],
             "relevant_roles": explanation_data.get("relevant_roles") or [],
             "relevant_experience": relevant_experience,
             "candidate_companies": explanation_data.get("candidate_companies") or [],
             "summary": explanation_data.get("summary") or "No summary available",
         },
         clifton_strengths=c.get("clifton_strengths") or [],
-        skills=c.get("skills") or [],
+        skills=skills[:10],
         review_status=c.get("review_status"),
         reviewed_at=c.get("reviewed_at"),
         reviewed_by=c.get("reviewed_by"),

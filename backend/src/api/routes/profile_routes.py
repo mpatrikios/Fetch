@@ -21,6 +21,7 @@ from src.api.models import (
     AccountDeleteResponse,
 )
 from src.services.embeddings.generate_embeddings import embed_candidate_location
+from src.api.routes.helpers import extract_clifton_names
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,15 +41,7 @@ async def get_own_profile(current_user: Dict = Depends(get_current_user)):
         if not candidate:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        # Extract clifton strengths names only
-        clifton_raw = candidate.get("clifton_strengths", [])
-        clifton_names = []
-        for strength in clifton_raw:
-            if isinstance(strength, dict):
-                clifton_names.append(strength.get("name", ""))
-            elif isinstance(strength, str):
-                clifton_names.append(strength)
-        clifton_names = [name for name in clifton_names if name]
+        clifton_names = extract_clifton_names(candidate.get("clifton_strengths", []))
 
         return CandidateProfileResponse(
             id=str(candidate["_id"]),

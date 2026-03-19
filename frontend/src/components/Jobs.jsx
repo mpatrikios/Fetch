@@ -49,6 +49,8 @@ import CompanyNameField from './CompanyNameField';
 function Jobs() {
   const navigate = useNavigate();
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const [hasMatchesFilter, setHasMatchesFilter] = useState(searchParams.get('filter') === 'has_matches');
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetails, setJobDetails] = useState(null);
@@ -77,6 +79,11 @@ function Jobs() {
   const [deleting, setDeleting] = useState(false);
   const [showAddJob, setShowAddJob] = useState(false);
   const [companyName, setCompanyName] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setHasMatchesFilter(params.get('filter') === 'has_matches');
+  }, [location.search]);
 
   useEffect(() => {
     loadJobs();
@@ -129,7 +136,7 @@ function Jobs() {
     return [...new Set(locations)].sort();
   }, [jobs]);
 
-  // Filter jobs based on search query and location
+  // Filter jobs based on search query, location, and has_matches
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       const matchesSearch = searchQuery === '' ||
@@ -137,16 +144,19 @@ function Jobs() {
         job.company.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesLocation = selectedLocation === '' ||
-        (job.locations || []).includes(selectedLocation);
+        (Array.isArray(job.locations) ? job.locations : []).some(loc => loc.trim() === selectedLocation.trim());
 
-      return matchesSearch && matchesLocation;
+      const matchesHasMatches = !hasMatchesFilter || !!job.last_match_generated_at;
+
+      return matchesSearch && matchesLocation && matchesHasMatches;
     });
-  }, [jobs, searchQuery, selectedLocation]);
+  }, [jobs, searchQuery, selectedLocation, hasMatchesFilter]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedLocation('');
+    setHasMatchesFilter(false);
   };
 
   const loadJobs = async () => {
@@ -350,7 +360,7 @@ function Jobs() {
                     icon={LocationOn}
                     title="Filter by location"
                   />
-                  {(searchQuery || selectedLocation) && (
+                  {(searchQuery || selectedLocation || hasMatchesFilter) && (
                     <IconButton
                       size="small"
                       onClick={clearFilters}

@@ -116,7 +116,7 @@ function JobRecommendations() {
         const response = await matchingAPI.findMatches(
           decodedCompany,
           decodedTitle,
-          10,    // top_k
+          null,  // top_k — dynamic (30% of pool, capped at 40)
           true,  // use_cohort=true hides scores and rankings
           { signal }
         );
@@ -148,7 +148,7 @@ function JobRecommendations() {
     try {
       setLoading(true);
       setError('');
-      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, 10, true);
+      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, null, true);
       setRecommendations(response.data.matches || []);
       setMongoMatchId(response.data.mongo_match_id || null);
       setGeneratedAt(response.data.created_at || null);
@@ -465,6 +465,7 @@ function JobRecommendations() {
         {/* Main Content - Candidate Details */}
         <Grid size={{ xs: 12, md: 8 }}>
           <DetailPanelContainer selected={selectedCandidate} emptyText="Select a candidate to view details">
+                {selectedCandidate && (<>
                 {/* Candidate Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <Box>
@@ -479,6 +480,11 @@ function JobRecommendations() {
                     {selectedCandidate.location && (
                       <Typography variant="body2" color="text.secondary">
                         {selectedCandidate.location}
+                      </Typography>
+                    )}
+                    {selectedCandidate.distance_km != null && (
+                      <Typography variant="body2" color="text.secondary">
+                        {Math.round(selectedCandidate.distance_km)} km from job location
                       </Typography>
                     )}
                   </Box>
@@ -516,6 +522,21 @@ function JobRecommendations() {
                 </Box>
 
                 <Divider />
+
+                {/* Candidate Bio */}
+                {selectedCandidate.summary && (
+                  <>
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
+                        About
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                        {selectedCandidate.summary}
+                      </Typography>
+                    </Box>
+                    <Divider />
+                  </>
+                )}
 
                 {/* Why They Match Section */}
                 {selectedCandidate.explanation?.summary && (
@@ -565,7 +586,7 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Skills
                   </Typography>
-                  <SkillChips items={selectedCandidate.skills} variant="skill" emptyText="No skills listed" />
+                  <SkillChips items={selectedCandidate.skills} variant="skill" emptyText="No skills listed" highlightItems={selectedCandidate.explanation?.keyword_overlap || []} />
                 </Box>
 
                 <Divider />
@@ -663,6 +684,7 @@ function JobRecommendations() {
                     </Alert>
                   )}
                 </Box>
+                </>)}
           </DetailPanelContainer>
         </Grid>
       </Grid>

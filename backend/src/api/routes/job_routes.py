@@ -3,11 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from typing import List, Optional
 from datetime import datetime, timezone
 import os
-from pathlib import Path
-import sys
 import logging
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -153,6 +149,7 @@ async def upload_job_description(
             message=message,
             job=JobInfo(
                 company=job_doc.get("companyName", company_name),
+                company=job_doc.get("companyName", company_name),
                 title=job_doc.get("JobTitle", ""),
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
@@ -174,7 +171,7 @@ async def upload_job_description(
 async def list_jobs():
     try:
         jobs = list(mongo_connection.job_descriptions_collection.find(
-            {"profile_embedding": {"$exists": True}},
+            {"profile_embedding": {"$exists": True}, "companyName": {"$exists": True, "$ne": None}},
             {
                 "_id": 1,
                 "companyName": 1,
@@ -193,6 +190,7 @@ async def list_jobs():
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
                 "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
@@ -224,7 +222,9 @@ async def get_job_details(job_id: str):
             success=True,
             job=JobDetails(
                 job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
+                company=job.get("companyName", ""),
                 company=job.get("companyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),

@@ -20,9 +20,12 @@ function CandidateDashboard() {
     try {
       setLoading(true);
       
-      // Get current user info
-      const userResponse = await authAPI.getCurrentUser();
-      setUser(userResponse.data);
+      // Get current user info and profile (for has_resume, has_clifton_doc)
+      const [userResponse, profileResponse] = await Promise.all([
+        authAPI.getCurrentUser(),
+        profileAPI.getProfile(),
+      ]);
+      setUser({ ...userResponse.data, ...profileResponse.data });
       
       // Get jobs recommended specifically for this candidate
       const recsResponse = await profileAPI.getRecommendations();
@@ -61,7 +64,7 @@ function CandidateDashboard() {
         {/* Welcome Section */}
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" gutterBottom>
-            Welcome back, {user?.name || 'Candidate'}!
+            Welcome back, {user?.full_name || 'Candidate'}!
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Track your applications and discover new opportunities

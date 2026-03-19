@@ -53,6 +53,8 @@ async def list_candidates(
             query_filter = {
                 "assessment_sent": True
             }
+        elif status == "accepted":
+            query_filter = {"status": "accepted"}
         else:
             # Log invalid status and default to pending logic
             logger.warning(f"Invalid status filter '{status}' provided, defaulting to 'pending'")
@@ -95,9 +97,18 @@ async def list_candidates(
                 "has_clifton_doc": bool(candidate.get("clifton_blob_path"))
             })
         
+        total_count = mongo_connection.candidates_collection.count_documents({
+            "$or": [
+                {"status": {"$ne": "rejected"}},
+                {"status": {"$exists": False}},
+                {"status": None}
+            ]
+        })
+
         return CandidateListResponse(
             success=True,
             count=len(formatted_candidates),
+            total_count=total_count,
             candidates=formatted_candidates
         )
         
