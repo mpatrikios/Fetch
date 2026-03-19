@@ -116,6 +116,11 @@ class JobListResponse(BaseModel):
     jobs: List[JobInfo]
 
 
+class SuggestedStrength(BaseModel):
+    strength: str
+    rationale: str
+
+
 class JobDetails(BaseModel):
     job_id: str
     company: str
@@ -132,11 +137,58 @@ class JobDetails(BaseModel):
     has_description: bool = False
     mongo_id: Optional[str] = None
     last_match_generated_at: Optional[str] = None
+    suggested_clifton_strengths: List[SuggestedStrength] = []
+    culture_strengths_status: Optional[str] = None
+    culture_doc_filename: Optional[str] = None
 
 
 class JobDetailsResponse(BaseModel):
     success: bool
     job: JobDetails
+
+
+class JobPartialParseResponse(BaseModel):
+    success: bool
+    needs_review: bool = True
+    message: str
+    company_name: str
+    parsed_fields: Dict[str, Any]
+    blob_path: Optional[str] = None
+    blob_filename: Optional[str] = None
+
+
+class JobFinalizeRequest(BaseModel):
+    company_name: str
+    title: str
+    job_id: str
+    summary: Optional[str] = None
+    locations: List[str] = []
+    skills: List[str] = []
+    responsibilities: List[str] = []
+    qualifications: List[str] = []
+    min_years: Optional[str] = None
+    culture_index: Optional[str] = None
+    blob_path: Optional[str] = None
+    blob_filename: Optional[str] = None
+
+
+class CultureDocumentUploadResponse(BaseModel):
+    success: bool
+    message: str
+    job_id: str
+    suggested_clifton_strengths: List[SuggestedStrength]
+    culture_strengths_status: str
+
+
+class CliftonStrengthsUpdateRequest(BaseModel):
+    clifton_strengths: List[str]
+
+
+class CliftonStrengthsUpdateResponse(BaseModel):
+    success: bool
+    message: str
+    clifton_strengths: List[str]
+    embeddings_generated: bool
 
 # Matching Models
 class MatchRequest(BaseModel):
