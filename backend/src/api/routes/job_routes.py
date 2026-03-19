@@ -151,7 +151,6 @@ async def upload_job_description(
             message=message,
             job=JobInfo(
                 company=job_doc.get("companyName", company_name),
-                company=job_doc.get("companyName", company_name),
                 title=job_doc.get("JobTitle", ""),
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
@@ -225,9 +224,7 @@ async def get_job_details(job_id: str):
             success=True,
             job=JobDetails(
                 job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
-                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
-                company=job.get("companyName", ""),
                 company=job.get("companyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
