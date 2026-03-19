@@ -273,6 +273,7 @@ class ClientUpdateRequest(BaseModel):
     summary: Optional[str] = None
     locations: Optional[List[str]] = None
     intake_call_notes: Optional[str] = None
+    posted_jobs: Optional[List[str]] = None
 
 
 class ClientListResponse(BaseModel):

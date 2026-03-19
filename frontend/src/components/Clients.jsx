@@ -17,6 +17,8 @@ import {
   TextField
 } from '@mui/material';
 import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
+import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clientAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
@@ -34,6 +36,7 @@ import {
   DetailPanelContainer
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
+import DocumentUpload from './DocumentUpload';
 
 function Clients() {
   const navigate = useNavigate();
@@ -47,6 +50,7 @@ function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [showAddJob, setShowAddJob] = useState(false);
   // Initialize statusFilter from URL query param
   const searchParams = new URLSearchParams(location.search);
   const initialStatus = searchParams.get('status') || '';
@@ -130,6 +134,7 @@ function Clients() {
     setSelectedClient(client);
     setDetailsLoading(true);
     setClientDetails(null);
+    setShowAddJob(false);
 
     try {
       const response = await clientAPI.getDetails(client.id);
@@ -248,6 +253,22 @@ function Clients() {
       setShowActivateDialog(false);
     } finally {
       setActivating(false);
+    }
+  };
+
+  const handleJobUploadSuccess = async (newJobTitle) => {
+    try {
+      setShowAddJob(false);
+      const jobUpdatePayload = {
+        posted_jobs: [...(clientDetails.posted_jobs || []), newJobTitle]
+      };
+      await clientAPI.updateClient(clientDetails.id, jobUpdatePayload);
+
+      let response = await clientAPI.getDetails(clientDetails.id);
+      setClientDetails(response.data.client);
+      showSuccess('Job uploaded successfully!');
+    } catch (err) {
+      console.error('Failed to reload client after upload:', clientDetails.id, err);
     }
   };
 
@@ -548,9 +569,26 @@ function Clients() {
 
                 {/* Posted Jobs Section */}
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Posted Jobs ({clientDetails?.posted_jobs?.length || 0})
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Posted Jobs ({clientDetails?.posted_jobs?.length || 0})
+                    </Typography>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setShowAddJob(true)}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        color: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                        }
+                      }}
+                    >
+                      + Add New Job
+                    </Button>
+                  </Box>
                   {clientDetails?.posted_jobs?.length > 0 ? (
                     <List disablePadding>
                       {clientDetails.posted_jobs.map((job, index) => (
@@ -705,6 +743,32 @@ function Clients() {
             {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Add Job Dialog */}
+      <Dialog
+        open={showAddJob}
+        onClose={() => setShowAddJob(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Add Job
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowAddJob(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <DocumentUpload
+            uploadType="job_description"
+            companyName={clientDetails?.company_name || ''}
+            onSuccess={(data) => handleJobUploadSuccess(data?.job?.title || 'Unknown Job Title')}
+          />
+        </DialogContent>
       </Dialog>
     </Box>
   );
