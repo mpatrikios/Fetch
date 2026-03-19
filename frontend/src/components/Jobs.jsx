@@ -114,7 +114,7 @@ function Jobs() {
     setShowAddJob(false);
 
     try {
-      const response = await jobAPI.getDetails(job.mongo_id);
+      const response = await jobAPI.getDetailsById(job.mongo_id);
       setJobDetails(response.data.job);
     } catch (err) {
       console.error('Load job details error:', err);
@@ -294,7 +294,7 @@ function Jobs() {
     }
     if (data?.job?.mongo_id) {
       try {
-        const response = await jobAPI.getDetails(data.job.mongo_id);
+        const response = await jobAPI.getDetailsById(data.job.mongo_id);
         setJobDetails(response.data.job);
         setJobs(prev => [response.data.job, ...prev]);
         setShowAddJob(false);
@@ -378,7 +378,7 @@ function Jobs() {
     setCliftonSaving(true);
     try {
       await jobAPI.updateCliftonStrengths(jobDetails.mongo_id, pendingStrengths);
-      const res = await jobAPI.getDetails(jobDetails.company, jobDetails.title);
+      const res = await jobAPI.getDetailsById(jobDetails.mongo_id);
       setJobDetails(res.data.job);
       setCultureDialogOpen(false);
       showSuccess('CliftonStrengths confirmed and culture embedding generated');

@@ -326,9 +326,54 @@ async def list_jobs():
         logger.error(f"Failed to fetch jobs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/jobs/{company_name}/{job_title}", response_model=List[JobDetailsResponse])
+async def get_job_details_by_company_and_title(company_name: str, job_title: str):
+    """Get all jobs with shared company name and job title"""
+    try:
+        jobs = mongo_connection.job_descriptions_collection.find({
+            "companyName": company_name,
+            "JobTitle": job_title
+        })
+    except Exception as e:
+        logger.error(f"Failed to fetch job by company and title: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not jobs:
+        raise HTTPException(status_code=404, detail=f"Job {company_name}_{job_title} not found")
+    
+    job_details_list = []
+    for job in jobs:
+        job_details_list.append(
+            JobDetailsResponse(
+                success=True,
+                job=JobDetails(
+                    job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                    mongo_id=str(job.get("_id")),
+                    company=job.get("companyName", ""),
+                    title=job.get("JobTitle", ""),
+                    summary=job.get("Summary"),
+                    locations=job.get("Locations", []),
+                    skills=job.get("Skills", []),
+                    responsibilities=job.get("Responsibilities", []),
+                    min_years=job.get("MinYears"),
+                    culture_index=job.get("CultureIndex"),
+                    qualifications=job.get("Qualifications", []),
+                    clifton_strengths=[str(s.get("name")) if isinstance(s, dict) and s.get("name") else str(s) for s in job.get("clifton_strengths", []) if s],
+                    has_embeddings="profile_embedding" in job,
+                    has_description=bool(job.get("description_blob_path")),
+                    last_match_generated_at=job.get("last_match_generated_at"),
+                    suggested_clifton_strengths=job.get("suggested_clifton_strengths", []),
+                    culture_strengths_status=job.get("culture_strengths_status"),
+                    culture_doc_filename=job.get("culture_doc_filename"),
+                )
+            )
+        )
+    return job_details_list
+
+
 # Endpoint to get full job details
 @router.get("/jobs/{job_id}", response_model=JobDetailsResponse)
-async def get_job_details(job_id: str):
+async def get_job_details_by_id(job_id: str):
     """Get full job details including all fields"""
     validate_object_id(job_id)
     try:
@@ -337,7 +382,7 @@ async def get_job_details(job_id: str):
         })
 
         if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
+            raise HTTPException(status_code=404, detail=f"Job ID: {job_id} not found")
 
         return JobDetailsResponse(
             success=True,
@@ -565,7 +610,7 @@ async def delete_job(job_id: str, company_name: str):
     logger.info(f"Job {job_id} deleted")
 
     client = mongo_connection.clients_collection.find_one(
-        {"company_name": company_name}, {"postedJobs": 1}
+        {"companyName": company_name}, {"postedJobs": 1}
     )
     if client and client.get("postedJobs"):
         mongo_connection.clients_collection.update_one(

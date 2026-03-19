@@ -94,7 +94,8 @@ export const jobAPI = {
     });
   },
   list: () => api.get('/jobs'),
-  getDetails: (jobId) => api.get(`/jobs/${jobId}`),
+  getDetailsByTitle: (companyName, jobTitle) => api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`),
+  getDetailsById: (jobId) => api.get(`/jobs/${jobId}`),
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
   deleteJob: (jobId, companyName) => api.delete(`/jobs/${jobId}`, { params: { company_name: companyName } }),
