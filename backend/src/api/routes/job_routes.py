@@ -7,6 +7,8 @@ import logging
 
 from bson import ObjectId
 from bson.errors import InvalidId
+from src.api.utils import validate_object_id
+
 from src.database.insert_to_mongo import insert_job_description, get_job_description
 from src.database.connection import mongo_connection
 from src.services.document_processing.azure_job_description_parser import (
@@ -210,6 +212,7 @@ async def list_jobs():
 @router.get("/jobs/{job_id}", response_model=JobDetailsResponse)
 async def get_job_details(job_id: str):
     """Get full job details including all fields"""
+    validate_object_id(job_id)
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
             "_id": ObjectId(job_id)
