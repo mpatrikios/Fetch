@@ -17,7 +17,9 @@ router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 
 @router.get("/clients", response_model=ClientListResponse)
 async def list_clients(
-    status: Optional[str] = Query(None, description="Filter by client status: onboarding, active, etc.")
+    status: Optional[str] = Query(None, description="Filter by client status: onboarding, active, etc."),
+    limit: int = Query(500, ge=1, le=10000),
+    offset: int = Query(0, ge=0)
 ):
     """List all clients with optional status filter"""
     try:
@@ -36,7 +38,7 @@ async def list_clients(
                 "locations": 1,
                 "postedJobs": 1
             }
-        ).sort("companyName", 1))
+        ).sort("companyName", 1).skip(offset).limit(limit))
 
         formatted_clients = []
         for client in clients:

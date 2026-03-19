@@ -755,7 +755,7 @@ function Clients() {
       {/* Add Client Dialog */}
       <Dialog
         open={showAddClient}
-        onClose={() => !adding && setShowAddClient(false)}
+        onClose={() => { if (!adding) { setAddError(''); setShowAddClient(false); } }}
         maxWidth="sm"
         fullWidth
         disableEscapeKeyDown={adding}
@@ -764,7 +764,7 @@ function Clients() {
           Add Client
           <IconButton
             aria-label="close"
-            onClick={() => setShowAddClient(false)}
+            onClick={() => { setAddError(''); setShowAddClient(false); }}
             disabled={adding}
             sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
           >
@@ -789,7 +789,7 @@ function Clients() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowAddClient(false)} disabled={adding}>Cancel</Button>
+          <Button onClick={() => { setAddError(''); setShowAddClient(false); }} disabled={adding}>Cancel</Button>
           <Button onClick={handleAddClient} variant="contained" disabled={adding || !addFormData.company_name.trim()}>
             {adding ? 'Adding...' : 'Add Client'}
           </Button>
