@@ -153,6 +153,7 @@ class RelevantExperience(BaseModel):
 
 class MatchExplanation(BaseModel):
     keyword_overlap: List[str]
+    skill_overlap: List[str] = []
     relevant_roles: List[str]
     relevant_experience: List[RelevantExperience] = []
     candidate_companies: List[str]

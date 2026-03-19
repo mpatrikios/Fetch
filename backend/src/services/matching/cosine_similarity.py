@@ -43,16 +43,16 @@ STOPWORDS = {
 # Extract keywords from text by tokenizing, lowercasing, and removing stopwords
 def extract_keywords(text: str) -> set[str]:
     """
-    Extracts keywords from the input text that are longer than 4 characters and are not common stopwords.
+    Extracts keywords from the input text that are at least 2 characters and are not common stopwords.
 
     Parameters:
         text (str): The input text from which to extract keywords.
 
     Returns:
-        set[str]: A set of keywords (strings) that are longer than 4 characters and not in the STOPWORDS list.
+        set[str]: A set of keywords (strings) that are at least 2 characters and not in the STOPWORDS list.
     """
     tokens = re.findall(r"[A-Za-z]+", text.lower())
-    return {t for t in tokens if t not in STOPWORDS and len(t) > 4}
+    return {t for t in tokens if t not in STOPWORDS and len(t) >= 2}
 
 
 # Calculates simple cosine similarity between two vectors
@@ -275,8 +275,14 @@ def build_match_explanation(job_doc: dict, cand_doc: dict) -> dict:
     cand_role_count = len(cand_doc.get("Experience", []))
     
 
+    # Direct case-insensitive intersection of the parsed Skills arrays
+    job_skills_lower = {s.lower() for s in (job_doc.get("Skills") or []) if s}
+    cand_skills_lower = {s.lower() for s in (cand_doc.get("Skills") or []) if s}
+    skill_overlap = sorted(job_skills_lower & cand_skills_lower)
+
     return {
         "keyword_overlap": keyword_overlap[:15],  # cap for readability
+        "skill_overlap": skill_overlap[:15],
         "relevant_roles": relevant_roles,
         "relevant_experience": relevant_experience,
         "candidate_companies": candidate_companies,

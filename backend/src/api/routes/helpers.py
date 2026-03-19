@@ -106,6 +106,7 @@ def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = 
         scores=c.get("scores"),
         explanation={
             "keyword_overlap": explanation_data.get("keyword_overlap") or [],
+            "skill_overlap": explanation_data.get("skill_overlap") or [],
             "relevant_roles": explanation_data.get("relevant_roles") or [],
             "relevant_experience": relevant_experience,
             "candidate_companies": explanation_data.get("candidate_companies") or [],
