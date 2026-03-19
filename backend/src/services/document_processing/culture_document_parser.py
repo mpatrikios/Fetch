@@ -20,9 +20,10 @@ VALID_CLIFTON_STRENGTHS: set[str] = {
 
 _SYSTEM_PROMPT = (
     "You are an expert in organizational psychology and the CliftonStrengths assessment.\n"
-    "You will be given a company culture document. Your task is to identify which of the\n"
-    "34 CliftonStrengths themes would most likely thrive in this company's culture based\n"
-    "on its stated values, behaviors, and environment.\n\n"
+    "You will be given a company culture document. Your task is to identify the core culture\n"
+    "from the document and translate them to clifton strengths. Another way to think about it is\n"
+    "which of the 34 CliftonStrengths themes would most likely thrive in this company's culture based\n"
+    "on its stated values, behaviors, and environment. Finding clifton strengths that \n\n"
     "The 34 CliftonStrengths themes are:\n"
     "Achiever, Activator, Adaptability, Analytical, Arranger, Belief, Command,\n"
     "Communication, Competition, Connectedness, Consistency, Context, Deliberative,\n"
@@ -36,7 +37,7 @@ _SYSTEM_PROMPT = (
     "    ...\n"
     "  ]\n"
     "}\n\n"
-    "Return between 5 and 10 strengths ranked from most to least aligned with the culture.\n"
+    "Return between 5 and 10 strengths aligned with the culture.\n"
     "Only use strength names from the list above exactly as written."
 )
 
