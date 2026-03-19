@@ -98,6 +98,16 @@ export const jobAPI = {
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
   deleteJob: (jobId) => api.delete(`/jobs/${jobId}`),
+  uploadCultureDocument: (jobId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/jobs/${jobId}/culture-document`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  updateCliftonStrengths: (jobId, strengths) =>
+    api.put(`/jobs/${jobId}/clifton-strengths`, { clifton_strengths: strengths }),
+  finalizeJob: (data) => api.post('/job/finalize', data),
 };
 
 // Matching endpoints
@@ -173,6 +183,7 @@ export const documentAPI = {
   getResumeDownloadUrl: (candidateId) => api.get(`/documents/resume/${candidateId}/download`),
   getJobDownloadUrl: (jobId) => api.get(`/documents/job/${jobId}/download`),
   getCliftonDownloadUrl: (candidateId) => api.get(`/documents/clifton/${candidateId}/download`),
+  getCultureDocDownloadUrl: (jobId) => api.get(`/documents/culture-job/${jobId}/download`),
 };
 
 // Document download endpoints for authenticated candidate

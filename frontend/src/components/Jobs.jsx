@@ -74,11 +74,24 @@ function Jobs() {
     culture_index: '',
   });
   const [saving, setSaving] = useState(false);
+  const [cultureDialogOpen, setCultureDialogOpen] = useState(false);
+  const [cultureDialogStep, setCultureDialogStep] = useState('upload'); // 'upload' | 'confirm'
+  const [cultureFile, setCultureFile] = useState(null);
+  const [cultureUploading, setCultureUploading] = useState(false);
+  const [cultureUploadError, setCultureUploadError] = useState('');
+  const [pendingStrengths, setPendingStrengths] = useState([]);
+  const [cliftonSaving, setCliftonSaving] = useState(false);
   const [successMessage, showSuccess] = useAutoHideMessage(5000);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showAddJob, setShowAddJob] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [pendingJobReview, setPendingJobReview] = useState(null);
+  const [reviewFormData, setReviewFormData] = useState({
+    title: '', summary: '', locations: '', skills: '',
+    responsibilities: '', qualifications: '', min_years: '', culture_index: '',
+  });
+  const [reviewSaving, setReviewSaving] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -260,13 +273,108 @@ function Jobs() {
     }
   };
 
-  const handleJobUploadSuccess = async () => {
-    try {
+  const handleJobUploadSuccess = async (data) => {
+    if (data?.needs_review) {
+      const p = data.parsed_fields || {};
+      setPendingJobReview(data);
+      setReviewFormData({
+        title: p.JobTitle || '',
+        summary: p.Summary || '',
+        locations: (p.Locations || []).join('; '),
+        skills: (p.Skills || []).join(', '),
+        responsibilities: (p.Responsibilities || []).join('\n'),
+        qualifications: (p.Qualifications || []).join('\n'),
+        min_years: p.MinYears || '',
+        culture_index: p.CultureIndex || '',
+      });
       setShowAddJob(false);
+      setCompanyName('');
+      return;
+    }
+    setShowAddJob(false);
+    setCompanyName('');
+    await loadJobs();
+    showSuccess('Job uploaded successfully!');
+  };
+
+  const handleFinalizeJob = async () => {
+    if (!reviewFormData.title.trim()) {
+      setError('Job title is required');
+      return;
+    }
+    setReviewSaving(true);
+    setError('');
+    try {
+      await jobAPI.finalizeJob({
+        company_name: pendingJobReview.company_name,
+        title: reviewFormData.title.trim(),
+        summary: reviewFormData.summary,
+        locations: parseDelimitedString(reviewFormData.locations, ';'),
+        skills: parseDelimitedString(reviewFormData.skills, ','),
+        responsibilities: parseDelimitedString(reviewFormData.responsibilities, '\n'),
+        qualifications: parseDelimitedString(reviewFormData.qualifications, '\n'),
+        min_years: reviewFormData.min_years,
+        culture_index: reviewFormData.culture_index,
+        blob_path: pendingJobReview.blob_path,
+        blob_filename: pendingJobReview.blob_filename,
+      });
+      setPendingJobReview(null);
       await loadJobs();
-      showSuccess('Job uploaded successfully!');
+      showSuccess('Job created successfully!');
     } catch (err) {
-      console.error('Failed to reload jobs after upload:', err);
+      setError(err.response?.data?.detail || 'Failed to save job');
+    } finally {
+      setReviewSaving(false);
+    }
+  };
+
+  const handleOpenCultureDialog = () => {
+    if (jobDetails?.culture_strengths_status === 'pending_review' &&
+        jobDetails?.suggested_clifton_strengths?.length > 0) {
+      setPendingStrengths(jobDetails.suggested_clifton_strengths.map(s => s.strength));
+      setCultureDialogStep('confirm');
+    } else {
+      setCultureFile(null);
+      setCultureUploadError('');
+      setCultureDialogStep('upload');
+    }
+    setCultureDialogOpen(true);
+  };
+
+  const handleCultureDocUpload = async () => {
+    if (!cultureFile) return;
+    setCultureUploading(true);
+    setCultureUploadError('');
+    try {
+      const res = await jobAPI.uploadCultureDocument(jobDetails.mongo_id, cultureFile);
+      const data = res.data;
+      setJobDetails(prev => ({
+        ...prev,
+        culture_strengths_status: data.culture_strengths_status,
+        suggested_clifton_strengths: data.suggested_clifton_strengths,
+        culture_doc_filename: cultureFile.name,
+      }));
+      setPendingStrengths(data.suggested_clifton_strengths.map(s => s.strength));
+      setCultureDialogStep('confirm');
+    } catch (err) {
+      setCultureUploadError(err?.response?.data?.detail || 'Upload failed');
+    } finally {
+      setCultureUploading(false);
+    }
+  };
+
+  const handleConfirmStrengths = async () => {
+    setCliftonSaving(true);
+    try {
+      await jobAPI.updateCliftonStrengths(jobDetails.mongo_id, pendingStrengths);
+      const res = await jobAPI.getDetails(jobDetails.company, jobDetails.title);
+      setJobDetails(res.data.job);
+      setCultureDialogOpen(false);
+      showSuccess('CliftonStrengths confirmed and culture embedding generated');
+    } catch (err) {
+      setCultureUploadError(err?.response?.data?.detail || 'Save failed');
+    } finally {
+      setCliftonSaving(false);
     }
   };
 
@@ -527,10 +635,35 @@ function Jobs() {
 
                 {/* CliftonStrengths Section */}
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    CliftonStrengths
-                  </Typography>
-                  <SkillChips items={jobDetails?.clifton_strengths} variant="strength" emptyText="No CliftonStrengths defined" />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>CliftonStrengths</Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleOpenCultureDialog}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      {jobDetails?.culture_strengths_status === 'pending_review'
+                        ? 'Review Suggestions'
+                        : jobDetails?.culture_doc_filename
+                          ? 'Re-upload Culture Doc'
+                          : 'Upload Culture Doc'}
+                    </Button>
+                  </Box>
+
+                  {jobDetails?.culture_strengths_status === 'pending_review' && (
+                    <Chip
+                      label="Pending Review"
+                      color="warning"
+                      size="small"
+                      sx={{ mb: 1.5 }}
+                    />
+                  )}
+                  <SkillChips
+                    items={jobDetails?.clifton_strengths}
+                    variant="strength"
+                    emptyText="No CliftonStrengths defined"
+                  />
                 </Box>
 
                 <Divider />
@@ -659,18 +792,38 @@ function Jobs() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     Documents
                   </Typography>
-                  {jobDetails?.has_description ? (
+                  {jobDetails?.has_description || jobDetails?.culture_doc_filename ? (
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                      <FileLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDescriptionDownload();
-                        }}
-                      >
-                        <FileIcon fontSize="small" />
-                        Job Description Document
-                      </FileLink>
+                      {jobDetails?.has_description && (
+                        <FileLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDescriptionDownload();
+                          }}
+                        >
+                          <FileIcon fontSize="small" />
+                          Job Description Document
+                        </FileLink>
+                      )}
+                      {jobDetails?.culture_doc_filename && (
+                        <FileLink
+                          href="#"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const res = await documentAPI.getCultureDocDownloadUrl(jobDetails.mongo_id);
+                              window.open(res.data.download_url, '_blank', 'noopener,noreferrer');
+                            } catch (err) {
+                              console.error('Culture doc download error:', err);
+                              setError('Failed to download culture document.');
+                            }
+                          }}
+                        >
+                          <FileIcon fontSize="small" />
+                          Culture Document ({jobDetails.culture_doc_filename})
+                        </FileLink>
+                      )}
                     </Box>
                   ) : (
                     <Box sx={{
@@ -692,6 +845,96 @@ function Jobs() {
         </Grid>
       </Grid>
       </Box>
+
+      {/* Culture Document / Clifton Strengths Dialog */}
+      <Dialog open={cultureDialogOpen} onClose={() => setCultureDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {cultureDialogStep === 'upload' ? 'Upload Culture Document' : 'Confirm CliftonStrengths'}
+          <IconButton onClick={() => setCultureDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          {cultureDialogStep === 'upload' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Upload any culture assessment document (OCAI, Denison, Gallup Q12, etc.) — PDF, DOC, or DOCX.
+                The AI will suggest matching CliftonStrengths themes for you to review.
+              </Typography>
+              <Button variant="outlined" component="label" sx={{ textTransform: 'none' }}>
+                {cultureFile ? cultureFile.name : 'Choose file…'}
+                <input type="file" accept=".pdf,.doc,.docx" hidden
+                  onChange={(e) => { setCultureFile(e.target.files[0] || null); setCultureUploadError(''); }} />
+              </Button>
+              {cultureUploadError && <Alert severity="error">{cultureUploadError}</Alert>}
+            </Box>
+          )}
+
+          {cultureDialogStep === 'confirm' && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Review and edit the AI-suggested strengths below. Click a chip to remove it. Then confirm to generate the culture embedding.
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {pendingStrengths.map((s) => (
+                  <Chip
+                    key={s}
+                    label={s}
+                    onDelete={() => setPendingStrengths(prev => prev.filter(x => x !== s))}
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Box>
+              {jobDetails?.suggested_clifton_strengths?.filter(s => pendingStrengths.includes(s.strength)).length > 0 && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                    Why these strengths?
+                  </Typography>
+                  {jobDetails.suggested_clifton_strengths
+                    .filter(s => pendingStrengths.includes(s.strength))
+                    .map(s => (
+                      <Box key={s.strength} sx={{ mt: 0.5 }}>
+                        <Typography variant="caption">
+                          <strong>{s.strength}:</strong> {s.rationale}
+                        </Typography>
+                      </Box>
+                    ))}
+                </Box>
+              )}
+              {cultureUploadError && <Alert severity="error">{cultureUploadError}</Alert>}
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setCultureDialogOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+          {cultureDialogStep === 'upload' && (
+            <Button
+              variant="contained"
+              disabled={!cultureFile || cultureUploading}
+              onClick={handleCultureDocUpload}
+              sx={{ textTransform: 'none' }}
+            >
+              {cultureUploading ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
+              {cultureUploading ? 'Uploading…' : 'Upload & Analyze'}
+            </Button>
+          )}
+          {cultureDialogStep === 'confirm' && (
+            <Button
+              variant="contained"
+              disabled={pendingStrengths.length === 0 || cliftonSaving}
+              onClick={handleConfirmStrengths}
+              sx={{ textTransform: 'none' }}
+            >
+              {cliftonSaving ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
+              {cliftonSaving ? 'Saving…' : 'Confirm Strengths'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       {/* Add Job Modal */}
       <Dialog
@@ -757,6 +1000,108 @@ function Jobs() {
         loading={deleting}
         confirmText="Delete"
       />
+
+      {/* Complete Job Details Dialog (partial parse) */}
+      <Dialog
+        open={!!pendingJobReview}
+        onClose={() => setPendingJobReview(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Complete Job Details
+          <IconButton
+            onClick={() => setPendingJobReview(null)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+            Some fields could not be extracted from the document. Please fill in any missing details below.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Job Title *"
+              fullWidth
+              value={reviewFormData.title}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, title: e.target.value }))}
+              error={!reviewFormData.title.trim()}
+              helperText={!reviewFormData.title.trim() ? 'Required' : ''}
+            />
+            <TextField
+              label="Summary"
+              fullWidth
+              multiline
+              minRows={3}
+              value={reviewFormData.summary}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, summary: e.target.value }))}
+            />
+            <TextField
+              label="Locations"
+              fullWidth
+              value={reviewFormData.locations}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, locations: e.target.value }))}
+              helperText="Separate locations with semicolons"
+            />
+            <TextField
+              label="Skills"
+              fullWidth
+              multiline
+              minRows={2}
+              value={reviewFormData.skills}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, skills: e.target.value }))}
+              helperText="Separate skills with commas"
+            />
+            <TextField
+              label="Minimum Years of Experience"
+              fullWidth
+              value={reviewFormData.min_years}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, min_years: e.target.value }))}
+            />
+            <TextField
+              label="Responsibilities"
+              fullWidth
+              multiline
+              minRows={4}
+              value={reviewFormData.responsibilities}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, responsibilities: e.target.value }))}
+              helperText="Enter each responsibility on a new line"
+            />
+            <TextField
+              label="Qualifications"
+              fullWidth
+              multiline
+              minRows={4}
+              value={reviewFormData.qualifications}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, qualifications: e.target.value }))}
+              helperText="Enter each qualification on a new line"
+            />
+            <TextField
+              label="Culture Index"
+              fullWidth
+              multiline
+              minRows={2}
+              value={reviewFormData.culture_index}
+              onChange={(e) => setReviewFormData(prev => ({ ...prev, culture_index: e.target.value }))}
+              helperText="Separate traits with commas"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingJobReview(null)} disabled={reviewSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleFinalizeJob}
+            variant="contained"
+            disabled={!reviewFormData.title.trim() || reviewSaving}
+          >
+            {reviewSaving ? 'Saving...' : 'Save Job'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Job Dialog */}
       <Dialog

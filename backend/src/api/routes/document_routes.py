@@ -50,3 +50,17 @@ async def download_clifton_strengths(
     blob_storage = get_blob_storage()
     sas_url = blob_storage.generate_sas_url(candidate["clifton_blob_path"])
     return {"download_url": sas_url, "filename": candidate.get("clifton_filename", "clifton_strengths")}
+
+
+@router.get("/documents/culture-job/{job_id}/download")
+async def download_culture_document(
+    job_id: str,
+    current_user: Dict = Depends(get_current_mlg_recruiter),
+):
+    """Generate a SAS download URL for a job's culture document."""
+    validate_object_id(job_id)
+    job = get_job_or_404(job_id, required_field="culture_doc_blob_path", missing_msg="No culture document uploaded")
+
+    blob_storage = get_blob_storage()
+    sas_url = blob_storage.generate_sas_url(job["culture_doc_blob_path"])
+    return {"download_url": sas_url, "filename": job.get("culture_doc_filename", "culture_document")}
