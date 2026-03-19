@@ -118,7 +118,7 @@ async def upload_job_description(
             blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
 
             mongo_connection.job_descriptions_collection.update_one(
-                {"_id": mongo_id},
+                {"_id": ObjectId(mongo_id)},
                 {"$set": {
                     "description_blob_path": blob_path,
                     "description_blob_url": blob_url,
@@ -320,7 +320,7 @@ async def update_job(job_id: str, job_data: dict):
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id: str):
+async def delete_job(job_id: str, company_name: str):
     """
     Delete a job description and its associated blob from Azure Storage.
     Historical match documents referencing this job are left intact.
@@ -340,6 +340,16 @@ async def delete_job(job_id: str):
 
     mongo_connection.job_descriptions_collection.delete_one({"_id": oid})
     logger.info(f"Job {job_id} deleted")
+
+    client = mongo_connection.clients_collection.find_one(
+        {"company_name": company_name}, {"postedJobs": 1}
+    )
+    if client and client.get("postedJobs"):
+        mongo_connection.clients_collection.update_one(
+            {"_id": client["_id"]},
+            {"$pull": {"postedJobs": {"job_id": job_id}}}
+        )
+        logger.info(f"Job {job_id} removed from client {company_name}'s profile")
     return {"success": True, "message": "Job deleted successfully"}
 
 

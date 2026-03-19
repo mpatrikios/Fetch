@@ -235,7 +235,7 @@ function Jobs() {
       }));
 
       setJobs(prev => prev.map(j =>
-        j.job_id === jobDetails.job_id
+        j.mongo_id === jobDetails.mongo_id
           ? { ...j, locations: locationsArray, skills: skillsArray.slice(0, 10) }
           : j
       ));
@@ -250,10 +250,12 @@ function Jobs() {
     }
   };
 
-  const handleJobUploadSuccess = async () => {
+  const handleJobUploadSuccess = async (newJob) => {
     try {
       setShowAddJob(false);
-      await loadJobs();
+      const response = await jobAPI.getDetails(newJob.mongo_id);
+      setJobDetails(response.data.job);
+      setJobs(prev => [...prev, response.data.job]);
       showSuccess('Job uploaded successfully!');
     } catch (err) {
       console.error('Failed to reload jobs after upload:', err);
@@ -264,8 +266,8 @@ function Jobs() {
     if (!jobDetails?.mongo_id) return;
     try {
       setDeleting(true);
-      await jobAPI.deleteJob(jobDetails.mongo_id);
-      setJobs(prev => prev.filter(j => j.job_id !== jobDetails.job_id));
+      await jobAPI.deleteJob(jobDetails.mongo_id, jobDetails.company);
+      setJobs(prev => prev.filter(j => j.mongo_id !== jobDetails.mongo_id));
       setSelectedJob(null);
       setJobDetails(null);
       setShowDeleteDialog(false);

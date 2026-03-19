@@ -256,16 +256,28 @@ function Clients() {
     }
   };
 
-  const handleJobUploadSuccess = async (newJobTitle) => {
+  const handleJobUploadSuccess = async (newJob) => {
     try {
       setShowAddJob(false);
+      if (!newJob || !newJob.title || !newJob.mongo_id) {
+        setError('Uploaded job is missing required job title and job ID.');
+        return;
+      }
+      const jobData = {
+        JobTitle: newJob.title,
+        job_id: newJob.mongo_id
+      };
       const jobUpdatePayload = {
-        posted_jobs: [...(clientDetails.posted_jobs || []), newJobTitle]
+        posted_jobs: [...(clientDetails.posted_jobs || []), jobData]
       };
       await clientAPI.updateClient(clientDetails.id, jobUpdatePayload);
 
       let response = await clientAPI.getDetails(clientDetails.id);
       setClientDetails(response.data.client);
+      setSelectedClient(prev => ({ ...prev, posted_jobs: response.data.client.posted_jobs }));
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id ? { ...c, posted_jobs_count: response.data.client.posted_jobs.length } : c
+      ));
       showSuccess('Job uploaded successfully!');
     } catch (err) {
       console.error('Failed to reload client after upload:', clientDetails.id, err);
@@ -593,7 +605,7 @@ function Clients() {
                     <List disablePadding>
                       {clientDetails.posted_jobs.map((job, index) => (
                         <SelectableListItem
-                          key={index}
+                          key={job.job_id || index}
                           sx={{
                             py: 0.5,
                             px: 1,
@@ -605,10 +617,10 @@ function Clients() {
                             }
                           }}
                           onClick={() => navigate('/jobs', {
-                            state: { selectedJobTitle: job, selectedCompany: clientDetails.company_name }
+                            state: { selectedJobTitle: job.JobTitle, selectedCompany: clientDetails.company_name }
                           })}
                         >
-                          {job}
+                          {job.JobTitle}
                         </SelectableListItem>
                       ))}
                     </List>
@@ -765,8 +777,8 @@ function Clients() {
         <DialogContent dividers>
           <DocumentUpload
             uploadType="job_description"
-            companyName={clientDetails?.company_name || ''}
-            onSuccess={(data) => handleJobUploadSuccess(data?.job?.title || 'Unknown Job Title')}
+            companyName={clientDetails?.company_name || 'Unknown Company'}
+            onSuccess={(data) => handleJobUploadSuccess(data?.job || 'Unknown Job ID')}
           />
         </DialogContent>
       </Dialog>

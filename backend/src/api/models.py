@@ -91,6 +91,9 @@ class AccountDeleteResponse(BaseModel):
 
 
 # Job Models
+class PostedJob(BaseModel):
+    JobTitle: str
+    job_id: str
 class JobInfo(BaseModel):
     company: str
     title: str
@@ -258,7 +261,7 @@ class ClientDetails(BaseModel):
     contact_recruiter: Optional[str] = None
     summary: Optional[str] = None
     locations: List[str] = []
-    posted_jobs: List[str] = []
+    posted_jobs: List[PostedJob] = []
     intake_call_notes: Optional[str] = None
     activated_at: Optional[str] = None
 
@@ -273,7 +276,7 @@ class ClientUpdateRequest(BaseModel):
     summary: Optional[str] = None
     locations: Optional[List[str]] = None
     intake_call_notes: Optional[str] = None
-    posted_jobs: Optional[List[str]] = None
+    posted_jobs: Optional[List[PostedJob]] = None
 
 
 class ClientListResponse(BaseModel):

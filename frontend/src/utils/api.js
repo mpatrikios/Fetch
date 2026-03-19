@@ -97,7 +97,7 @@ export const jobAPI = {
   getDetails: (jobId) => api.get(`/jobs/${jobId}`),
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
-  deleteJob: (jobId) => api.delete(`/jobs/${jobId}`),
+  deleteJob: (jobId, companyName) => api.delete(`/jobs/${jobId}`, companyName),
 };
 
 // Matching endpoints
