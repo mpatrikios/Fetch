@@ -103,7 +103,7 @@ function Jobs() {
   }, []);
 
   const handleJobSelect = useCallback(async (job) => {
-    if (selectedJob?.job_id === job.job_id) return;
+    if (selectedJob?.mongo_id === job.mongo_id) return;
 
     setSelectedJob(job);
     setDetailsLoading(true);
@@ -289,6 +289,7 @@ function Jobs() {
       });
       setShowAddJob(false);
       setCompanyName('');
+      setSelectedJob(null);
       return;
     }
     if (data?.job?.mongo_id) {
@@ -298,6 +299,7 @@ function Jobs() {
         setJobs(prev => [response.data.job, ...prev]);
         setShowAddJob(false);
         setCompanyName('');
+        setSelectedJob(response.data.job);
         showSuccess('Job uploaded successfully!');
       } catch (err) {
         setError('Failed to fetch job details.');
