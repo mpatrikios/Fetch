@@ -198,7 +198,7 @@ function Jobs() {
 
   const handleFindRecommendations = () => {
     if (!jobDetails) return;
-    navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/matches`);
+    navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/${encodeURIComponent(jobDetails.mongo_id)}/matches`);
   };
 
   const handleEditClick = () => {

@@ -128,20 +128,20 @@ async def remove_recommendation(
     return {"success": True, "message": "Recommendation removed"}
 
 
-@router.get("/jobs/{company_name}/{job_title}/recommendations")
+@router.get("/jobs/{company_name}/{job_title}/{job_id}/recommendations")
 async def get_job_recommendations(
     company_name: str,
     job_title: str,
+    job_id: str,
     current_user: Dict = Depends(get_current_mlg_recruiter),
 ):
     """
     Return all recommendations for a specific job (by recruiter).
     Used to populate button state on the JobRecommendations page.
     """
-    job_mongo_id = f"{company_name}_{job_title}"
     collection = mongo_connection.candidate_jobs_collection
     docs = list(collection.find(
-        {"job_mongo_id": job_mongo_id},
+        {"job_mongo_id": job_id},
         {"_id": 1, "candidate_id": 1}
     ))
     entries = [{"rec_id": str(d["_id"]), "candidate_id": d["candidate_id"]} for d in docs]

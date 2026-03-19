@@ -113,11 +113,11 @@ export const jobAPI = {
 
 // Matching endpoints
 export const matchingAPI = {
-  findMatches: (companyName, jobTitle, topK = null, useCohort = true, jobId = null, config = {}) =>
+  findMatches: (companyName, jobTitle, jobId, topK = null, useCohort = true, config = {}) =>
     api.post('/matches/find', {
       company_name: companyName,
       job_title: jobTitle,
-      ...(jobId !== null && { job_id: jobId }),
+      job_id: jobId,
       ...(topK !== null && { top_k: topK }),
       use_cohort: useCohort,
     }, config),
@@ -141,8 +141,8 @@ export const candidateJobsAPI = {
     api.delete(`/candidates/${candidateId}/recommendations/${recId}`),
   updateStatus: (candidateId, recId, status) =>
     api.put(`/candidates/${candidateId}/recommendations/${recId}/status`, { status }),
-  getJobRecommendations: (companyName, jobTitle) =>
-    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/recommendations`),
+  getJobRecommendations: (companyName, jobTitle, jobId) =>
+    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}/recommendations`),
 };
 
 // Profile endpoints (candidate self-service)
