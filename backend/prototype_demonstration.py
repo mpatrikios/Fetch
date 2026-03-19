@@ -114,9 +114,11 @@ def process_job_description(pdf_path: str):
             pass
         else:
             raise Exception(f"MongoDB operation failed: {mongo_result.get('error')}")
-        
+        mongo_id = mongo_result.get("document_id")
+        if not mongo_id:
+            raise Exception("MongoDB operation did not return an _id")
         # Step 4: Retrieve job description document from MongoDB
-        job_doc = get_job_description(company_name, standardized_data.get("JobTitle"))
+        job_doc = get_job_description(mongo_id)
         if not job_doc:
             raise Exception("Failed to retrieve job description")
         
@@ -132,7 +134,7 @@ def process_job_description(pdf_path: str):
         embed_job_description_culture(job_doc)
         
         # Step 6: Verify embeddings were stored
-        updated_job = get_job_description(company_name, standardized_data.get("JobTitle"))
+        updated_job = get_job_description(mongo_id)
         
         if updated_job:
             profile_check = "profile_embedding" in updated_job

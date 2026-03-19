@@ -141,6 +141,7 @@ class JobDetailsResponse(BaseModel):
 class MatchRequest(BaseModel):
     company_name: str
     job_title: str
+    job_id: str
     top_k: Optional[int] = 10
     use_cohort: Optional[bool] = True
 
