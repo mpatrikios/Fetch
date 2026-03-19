@@ -98,7 +98,7 @@ class JobInfo(BaseModel):
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str
-    mongo_id: Optional[str] = None
+    mongo_id: str
     last_match_generated_at: Optional[str] = None
 
 class JobResponse(BaseModel):

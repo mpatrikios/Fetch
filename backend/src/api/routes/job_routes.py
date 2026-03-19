@@ -102,27 +102,23 @@ async def upload_job_description(
         mongo_result = insert_job_description(standardized_data)
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
-        
+        mongo_id = mongo_result.get("document_id")
+        if not mongo_id:
+            raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
         # Retrieve the inserted job description
-        job_docs = get_job_description(company_name, job_title)
-        if not job_docs:
-            raise HTTPException(status_code=500, detail="Failed to retrieve job after insertion")
-        
-        job_doc = job_docs[0] if isinstance(job_docs, list) else job_docs
-
+        job_doc = get_job_description(mongo_id)
         # Upload original document to Azure Blob Storage
         blob_stored = False
         try:
             with open(tmp_file_path, "rb") as f:
                 file_bytes = f.read()
             blob_storage = get_blob_storage()
-            document_id = str(job_doc.get("_id"))
-            blob_path = f"job-descriptions/{document_id}/{file.filename}"
+            blob_path = f"job-descriptions/{mongo_id}/{file.filename}"
             blob_content_type = get_content_type(file.filename)
             blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
 
             mongo_connection.job_descriptions_collection.update_one(
-                {"_id": job_doc["_id"]},
+                {"_id": mongo_id},
                 {"$set": {
                     "description_blob_path": blob_path,
                     "description_blob_url": blob_url,
@@ -131,7 +127,7 @@ async def upload_job_description(
             )
             blob_stored = True
         except Exception as e:
-            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}: {e}")
+            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}/{mongo_id}: {e}")
 
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not openai_api_key:
@@ -140,7 +136,7 @@ async def upload_job_description(
             try:
                 await run_in_threadpool(embed_job_description_profile, job_doc)
                 await run_in_threadpool(embed_job_description_location, job_doc)
-                job_doc = get_job_description(company_name, job_title)
+                job_doc = get_job_description(mongo_id)
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
         
@@ -156,12 +152,13 @@ async def upload_job_description(
             success=True,
             message=message,
             job=JobInfo(
-                company=job_doc.get("CompanyName", company_name),
+                company=job_doc.get("companyName", company_name),
                 title=job_doc.get("JobTitle", ""),
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
                 has_embeddings="profile_embedding" in job_doc,
-                job_id=f"{job_doc.get('CompanyName')}_{job_doc.get('JobTitle')}"
+                job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}",
+                mongo_id=mongo_id,
             )
         )
         
@@ -180,7 +177,7 @@ async def list_jobs():
             {"profile_embedding": {"$exists": True}},
             {
                 "_id": 1,
-                "CompanyName": 1,
+                "companyName": 1,
                 "JobTitle": 1,
                 "Locations": 1,
                 "Skills": {"$slice": 10},
@@ -191,12 +188,12 @@ async def list_jobs():
         formatted_jobs = []
         for job in jobs:
             formatted_jobs.append({
-                "company": job.get("CompanyName", "Unknown"),
+                "company": job.get("companyName", "Unknown"),
                 "title": job.get("JobTitle"),
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
                 "has_embeddings": "profile_embedding" in job,
-                "job_id": f"{job.get('CompanyName')}_{job.get('JobTitle')}",
+                "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
             })
@@ -212,13 +209,12 @@ async def list_jobs():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint to get full job details
-@router.get("/jobs/{company_name}/{job_title}", response_model=JobDetailsResponse)
-async def get_job_details(company_name: str, job_title: str):
+@router.get("/jobs/{job_id}", response_model=JobDetailsResponse)
+async def get_job_details(job_id: str):
     """Get full job details including all fields"""
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
-            "CompanyName": company_name,
-            "JobTitle": job_title
+            "_id": ObjectId(job_id)
         })
 
         if not job:
@@ -227,9 +223,9 @@ async def get_job_details(company_name: str, job_title: str):
         return JobDetailsResponse(
             success=True,
             job=JobDetails(
-                job_id=f"{job.get('CompanyName')}_{job.get('JobTitle')}",
+                job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
                 mongo_id=str(job.get("_id")),
-                company=job.get("CompanyName", ""),
+                company=job.get("companyName", ""),
                 title=job.get("JobTitle", ""),
                 summary=job.get("Summary"),
                 locations=job.get("Locations", []),
@@ -352,7 +348,7 @@ async def delete_job(job_id: str):
 async def list_companies():
     """Get list of unique company names for dropdown selection"""
     try:
-        companies = mongo_connection.job_descriptions_collection.distinct("CompanyName")
+        companies = mongo_connection.job_descriptions_collection.distinct("companyName")
         return {
             "success": True,
             "companies": sorted(companies)

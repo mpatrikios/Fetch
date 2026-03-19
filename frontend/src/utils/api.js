@@ -94,7 +94,7 @@ export const jobAPI = {
     });
   },
   list: () => api.get('/jobs'),
-  getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
+  getDetails: (jobId) => api.get(`/jobs/${jobId}`),
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
   deleteJob: (jobId) => api.delete(`/jobs/${jobId}`),

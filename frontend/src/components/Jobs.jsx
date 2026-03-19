@@ -94,7 +94,7 @@ function Jobs() {
     setShowAddJob(false);
 
     try {
-      const response = await jobAPI.getDetails(job.company, job.title);
+      const response = await jobAPI.getDetails(job.mongo_id);
       setJobDetails(response.data.job);
     } catch (err) {
       console.error('Load job details error:', err);
@@ -394,8 +394,8 @@ function Jobs() {
               ) : (
                 filteredJobs.map((job, index) => (
                   <SelectableListItem
-                    key={job.job_id || index}
-                    selected={selectedJob?.job_id === job.job_id}
+                    key={job.mongo_id || index}
+                    selected={selectedJob?.mongo_id === job.mongo_id}
                     onClick={() => handleJobSelect(job)}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>

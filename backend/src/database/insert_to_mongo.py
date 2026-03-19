@@ -154,7 +154,7 @@ def insert_job_description(job_data: Dict[str, Any]) -> Dict[str, Any]:
             "job_title": job_data.get('JobTitle', 'Unknown')
         }
 
-def get_job_description(company_name: str, job_title: str = None) -> Dict[str, Any] | List[Dict[str, Any]] | None:
+def get_job_description(job_id: str) -> Dict[str, Any] | None:
     """
     Retrieve job description document(s) from MongoDB by companyName and optionally JobTitle.
     
@@ -166,30 +166,14 @@ def get_job_description(company_name: str, job_title: str = None) -> Dict[str, A
         Dictionary containing the job description document, list of documents, or None if not found
     """
     try:
-        query = {"companyName": company_name}
-        if job_title:
-            query["JobTitle"] = job_title
-            job_description = job_descriptions_collection.find_one(query)
-            if job_description:
-                logging.info(f"Retrieved job description: {company_name} - {job_title}")
-                return job_description
-            else:
-                logging.warning(f"Job description not found: {company_name} - {job_title}")
-                return None
-        else:
-            job_descriptions = list(
-                job_descriptions_collection
-                .find(query)
-                .sort("extracted_at", -1)
-            )
-            if job_descriptions:
-                logging.info(f"Retrieved {len(job_descriptions)} job descriptions for company: {company_name}")
-                return job_descriptions
-            else:
-                logging.warning(f"No job descriptions found for company: {company_name}")
-                return None
+        from bson import ObjectId
+        query = {"_id": ObjectId(job_id)}
+        job_description = job_descriptions_collection.find_one(query)
+        if job_description:
+            logging.info(f"Retrieved job description: {job_description.get('companyName', 'Unknown company name')} - {job_description.get('JobTitle', 'Unknown job title')}")
+            return job_description
     except Exception as e:
-        logging.error(f"Error retrieving job description(s) for {company_name}: {str(e)}")
+        logging.error(f"Error retrieving job description for {job_id}: {str(e)}")
         return None
     
 
