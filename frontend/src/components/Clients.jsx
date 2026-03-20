@@ -777,7 +777,7 @@ function Clients() {
           <DocumentUpload
             uploadType="job_description"
             companyName={clientDetails?.company_name || 'Unknown Company'}
-            onSuccess={(data) => handleJobUploadSuccess(data?.job || 'Unknown Job ID')}
+            onSuccess={(data) => handleJobUploadSuccess(data?.job)}
           />
         </DialogContent>
       </Dialog>
