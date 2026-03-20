@@ -778,35 +778,6 @@ function JobRecommendations() {
                   </>
                 )}
 
-                {recommendedCandidates.has(selectedCandidate.candidate_id) && (() => {
-                  const rec = recommendedCandidates.get(selectedCandidate.candidate_id);
-                  return (
-                    <>
-                      <Divider />
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Pipeline Status</Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Chip
-                            label={rec.status}
-                            color={rec.status === 'applied' ? 'primary' : rec.status === 'pending' ? 'warning' : 'default'}
-                            size="small"
-                          />
-                          {rec.status === 'pending' && (
-                            <Button
-                              variant="contained"
-                              color="success"
-                              disabled={applyLoading}
-                              onClick={() => handleMarkApplied(selectedCandidate.candidate_id)}
-                            >
-                              Mark as Applied
-                            </Button>
-                          )}
-                        </Box>
-                        {applyError && <Alert severity="error" sx={{ mt: 1 }}>{applyError}</Alert>}
-                      </Box>
-                    </>
-                  );
-                })()}
                 </>)}
           </DetailPanelContainer>
         </Grid>
