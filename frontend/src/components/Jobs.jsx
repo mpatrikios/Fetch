@@ -8,8 +8,10 @@ import {
   Button,
   Divider,
   IconButton,
+  InputAdornment,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   Dialog,
   DialogTitle,
@@ -18,12 +20,13 @@ import {
   DialogActions,
   TextField,
   Chip,
+  Snackbar,
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon, PersonAdd } from '@mui/icons-material';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jobAPI, documentAPI, parseDelimitedString } from '../utils/api';
+import { jobAPI, documentAPI, candidateAPI, candidateJobsAPI, parseDelimitedString } from '../utils/api';
 import {
   SectionHeader,
   CardSection,
@@ -92,6 +95,13 @@ function Jobs() {
     responsibilities: '', qualifications: '', min_years: '', culture_index: '',
   });
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [manualQuery, setManualQuery] = useState('');
+  const [manualResults, setManualResults] = useState([]);
+  const [manualSearching, setManualSearching] = useState(false);
+  const [manualRecommendingId, setManualRecommendingId] = useState(null);
+  const [recommendSnackbar, setRecommendSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [recommendedCandidates, setRecommendedCandidates] = useState(new Map());
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -101,6 +111,68 @@ function Jobs() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  const loadPushedCandidates = useCallback(async (company, title) => {
+    try {
+      const res = await candidateJobsAPI.getJobRecommendations(company, title);
+      const map = new Map(
+        (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
+      );
+      setRecommendedCandidates(map);
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!manualQuery.trim()) {
+      setManualResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setManualSearching(true);
+      try {
+        const res = await candidateAPI.search(manualQuery);
+        setManualResults(res.data.candidates || []);
+      } catch {
+        setManualResults([]);
+      } finally {
+        setManualSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [manualQuery]);
+
+  const handleCloseManualDialog = () => {
+    setManualDialogOpen(false);
+    setManualQuery('');
+    setManualResults([]);
+  };
+
+  const handleManualRecommend = async (candidate) => {
+    if (!jobDetails) return;
+    setManualRecommendingId(candidate.candidate_id);
+    try {
+      const res = await candidateJobsAPI.recommendJob(candidate.candidate_id, {
+        job_mongo_id: jobDetails.mongo_id || `${jobDetails.company}_${jobDetails.title}`,
+        company_name: jobDetails.company,
+        job_title: jobDetails.title,
+        job_location: jobDetails.locations?.[0] || '',
+        skills: jobDetails.skills || [],
+      });
+      const recId = res.data.recommendation?._id;
+      setRecommendedCandidates(prev => new Map([...prev, [candidate.candidate_id, recId]]));
+      setRecommendSnackbar({ open: true, message: `Job recommended to ${candidate.full_name}.`, severity: 'success' });
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setRecommendSnackbar({ open: true, message: 'Already recommended to this candidate.', severity: 'info' });
+      } else {
+        setRecommendSnackbar({ open: true, message: 'Failed to recommend job.', severity: 'error' });
+      }
+    } finally {
+      setManualRecommendingId(null);
+    }
+  };
 
   const handleJobSelect = useCallback(async (job) => {
     if (selectedJob?.job_id === job.job_id) return;
@@ -112,6 +184,7 @@ function Jobs() {
     setExpandedQualifications(false);
     setExpandedCultureIndex(false);
     setShowAddJob(false);
+    setRecommendedCandidates(new Map());
 
     try {
       const response = await jobAPI.getDetails(job.company, job.title);
@@ -122,7 +195,8 @@ function Jobs() {
     } finally {
       setDetailsLoading(false);
     }
-  }, [selectedJob]);
+    loadPushedCandidates(job.company, job.title);
+  }, [selectedJob, loadPushedCandidates]);
 
   /* automatically select job if navigated to by the clients page */
   useEffect(() => {
@@ -601,14 +675,25 @@ function Jobs() {
                       </Typography>
                     )}
                   </Box>
-                  <PrimaryButton
-                    onClick={handleFindRecommendations}
-                    disabled={!jobDetails?.has_embeddings}
-                    startIcon={<Work />}
-                    sx={{ flexShrink: 0 }}
-                  >
-                    {jobDetails?.last_match_generated_at ? 'View Recommendations' : 'Generate Recommendations'}
-                  </PrimaryButton>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
+                    <PrimaryButton
+                      onClick={handleFindRecommendations}
+                      disabled={!jobDetails?.has_embeddings}
+                      startIcon={<Work />}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      {jobDetails?.last_match_generated_at ? 'View Recommendations' : 'Generate Recommendations'}
+                    </PrimaryButton>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<PersonAdd fontSize="small" />}
+                      onClick={() => setManualDialogOpen(true)}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      Recommend Candidate
+                    </Button>
+                  </Box>
                 </Box>
 
                 <Divider />
@@ -845,6 +930,88 @@ function Jobs() {
         </Grid>
       </Grid>
       </Box>
+
+      {/* Manually Recommend Candidate Dialog */}
+      <Dialog open={manualDialogOpen} onClose={handleCloseManualDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Recommend Candidate
+          <IconButton
+            onClick={handleCloseManualDialog}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Search for a candidate to manually recommend <strong>{jobDetails?.title}</strong> to.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            placeholder="Search by name or email..."
+            value={manualQuery}
+            onChange={(e) => setManualQuery(e.target.value)}
+            sx={{ mb: 1 }}
+            InputProps={{
+              endAdornment: manualSearching ? (
+                <InputAdornment position="end">
+                  <CircularProgress size={16} />
+                </InputAdornment>
+              ) : null,
+            }}
+          />
+          {manualResults.length > 0 ? (
+            <List dense disablePadding>
+              {manualResults.map((c) => {
+                const alreadyPushed = recommendedCandidates.has(c.candidate_id);
+                const isProcessing = manualRecommendingId === c.candidate_id;
+                return (
+                  <ListItemButton
+                    key={c.candidate_id}
+                    disabled={alreadyPushed || isProcessing}
+                    onClick={() => handleManualRecommend(c)}
+                    sx={{ borderRadius: 1 }}
+                  >
+                    <ListItemText
+                      primary={c.full_name}
+                      secondary={`${c.email}${c.location ? ` · ${c.location}` : ''}`}
+                    />
+                    {alreadyPushed && (
+                      <Typography variant="caption" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
+                        Already recommended
+                      </Typography>
+                    )}
+                    {isProcessing && <CircularProgress size={16} sx={{ ml: 1 }} />}
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          ) : manualQuery.trim() && !manualSearching ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+              No candidates found
+            </Typography>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseManualDialog} sx={{ textTransform: 'none' }}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={recommendSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={recommendSnackbar.severity}
+          onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        >
+          {recommendSnackbar.message}
+        </Alert>
+      </Snackbar>
 
       {/* Culture Document / Clifton Strengths Dialog */}
       <Dialog open={cultureDialogOpen} onClose={() => setCultureDialogOpen(false)} maxWidth="sm" fullWidth>

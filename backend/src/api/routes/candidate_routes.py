@@ -325,6 +325,29 @@ async def update_candidate_notes(candidate_id: str, notes_data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/candidates/search")
+async def search_candidates(q: str = Query(..., min_length=1)):
+    """Search candidates by name or email for manual job recommendations."""
+    pattern = {"$regex": q, "$options": "i"}
+    candidates = list(mongo_connection.candidates_collection.find(
+        {
+            "$or": [{"full_name": pattern}, {"email": pattern}],
+            "status": {"$ne": "rejected"},
+        },
+        {"_id": 1, "full_name": 1, "email": 1, "location": 1}
+    ).limit(10))
+    results = [
+        {
+            "candidate_id": str(c["_id"]),
+            "full_name": c.get("full_name", "Unknown"),
+            "email": c.get("email", ""),
+            "location": c.get("location", ""),
+        }
+        for c in candidates
+    ]
+    return {"success": True, "candidates": results}
+
+
 @router.delete("/candidates/{candidate_id}")
 async def delete_candidate(candidate_id: str):
     """

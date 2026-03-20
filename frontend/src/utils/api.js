@@ -53,6 +53,7 @@ export const resumeAPI = {
 // Candidate endpoints
 export const candidateAPI = {
   list: (status = 'all') => api.get('/candidates', { params: { status } }),
+  search: (q) => api.get('/candidates/search', { params: { q } }),
   updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
   updateProfile: (candidateId, profileData) => api.put(`/candidates/${candidateId}/profile`, profileData),
   reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
