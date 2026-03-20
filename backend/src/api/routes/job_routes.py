@@ -571,7 +571,15 @@ async def delete_job(job_id: str):
     mongo_connection.job_descriptions_collection.delete_one({"_id": oid})
 
     mongo_connection.matches_collection.delete_many(
-        {"companyName": job.get("companyName"), "JobTitle": job.get("JobTitle")}
+        {
+            "$or": [
+                {"JobId": job_id},
+                {
+                    "companyName": job.get("companyName"),
+                    "JobTitle": job.get("JobTitle"),
+                },
+            ]
+        }
     )
 
     logger.info(f"Job {job_id} deleted")
