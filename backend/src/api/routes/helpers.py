@@ -92,6 +92,25 @@ def non_rejected_candidates_filter() -> dict:
     ]}
 
 
+def anonymize_candidate_in_matches(candidate_id: str) -> None:
+    """Anonymize PII for a deleted candidate across all historical match documents."""
+    mongo_connection.matches_collection.update_many(
+        {"candidates.candidate_id": candidate_id},
+        {"$set": {
+            "candidates.$[elem].full_name": "[DELETED]",
+            "candidates.$[elem].email": None,
+            "candidates.$[elem].location": None,
+            "candidates.$[elem].summary": None,
+            "candidates.$[elem].skills": [],
+            "candidates.$[elem].clifton_strengths": [],
+            "candidates.$[elem].explanation.relevant_experience": [],
+            "candidates.$[elem].explanation.candidate_companies": [],
+            "candidates.$[elem].explanation.relevant_roles": [],
+        }},
+        array_filters=[{"elem.candidate_id": candidate_id}]
+    )
+
+
 def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = None) -> MatchResult:
     """Build a MatchResult Pydantic model from a stored match candidate dict.
 

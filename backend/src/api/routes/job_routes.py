@@ -554,21 +554,34 @@ async def update_job(job_id: str, job_data: dict):
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str):
     """
-    Delete a job description and its associated blob from Azure Storage.
-    Historical match documents referencing this job are left intact.
+    Delete a job description and its associated blobs from Azure Storage.
+    Also deletes all match documents for this job.
     """
     validate_object_id(job_id)
     oid = ObjectId(job_id)
 
     job = mongo_connection.job_descriptions_collection.find_one(
-        {"_id": oid}, {"description_blob_path": 1}
+        {"_id": oid}, {"description_blob_path": 1, "culture_doc_blob_path": 1, "companyName": 1, "JobTitle": 1}
     )
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    delete_document_blobs(job, ["description_blob_path"], job_id)
+    delete_document_blobs(job, ["description_blob_path", "culture_doc_blob_path"], job_id)
 
     mongo_connection.job_descriptions_collection.delete_one({"_id": oid})
+
+    mongo_connection.matches_collection.delete_many(
+        {
+            "$or": [
+                {"JobId": job_id},
+                {
+                    "companyName": job.get("companyName"),
+                    "JobTitle": job.get("JobTitle"),
+                },
+            ]
+        }
+    )
+
     logger.info(f"Job {job_id} deleted")
     return {"success": True, "message": "Job deleted successfully"}
 
