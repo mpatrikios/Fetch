@@ -74,6 +74,24 @@ def delete_document_blobs(doc: dict, blob_fields: List[str], entity_id: str) -> 
                 logger.warning(f"Blob delete failed for {entity_id} ({field}): {e}")
 
 
+def pending_candidates_filter() -> dict:
+    """Excludes rejected and accepted candidates (pending workflow state)."""
+    return {"$or": [
+        {"status": {"$nin": ["rejected", "accepted"]}},
+        {"status": {"$exists": False}},
+        {"status": None}
+    ]}
+
+
+def non_rejected_candidates_filter() -> dict:
+    """Excludes only explicitly rejected candidates (includes accepted)."""
+    return {"$or": [
+        {"status": {"$ne": "rejected"}},
+        {"status": {"$exists": False}},
+        {"status": None}
+    ]}
+
+
 def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = None) -> MatchResult:
     """Build a MatchResult Pydantic model from a stored match candidate dict.
 

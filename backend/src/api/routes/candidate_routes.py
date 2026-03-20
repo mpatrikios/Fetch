@@ -13,7 +13,7 @@ from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
-from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs
+from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs, pending_candidates_filter, non_rejected_candidates_filter
 from src.services.storage.blob_storage import get_blob_storage
 from src.services.document_processing.document_service import DocumentService
 from src.services.email_service import send_email
@@ -28,25 +28,10 @@ async def list_candidates(
     status: Optional[str] = Query("all", description="Filter by candidate status: pending, all")
 ):
     try:
-        # Define common query patterns
-        pending_query = {
-            "$or": [
-                {"status": {"$nin": ["rejected", "accepted"]}},  # Exclude rejected and accepted
-                {"status": {"$exists": False}},                  # Include documents missing status
-                {"status": None}                                 # Include documents with null status
-            ]
-        }
-        
         # Build query filter based on status parameter
+        pending_query = pending_candidates_filter()
         if status == "all":
-            # Include candidates without a status or with non-rejected status
-            query_filter = {
-                "$or": [
-                    {"status": {"$ne": "rejected"}},           # Exclude only explicitly rejected
-                    {"status": {"$exists": False}},            # Include documents missing status
-                    {"status": None}                           # Include documents with null status
-                ]
-            }
+            query_filter = non_rejected_candidates_filter()
         elif status == "pending":
             query_filter = pending_query
         elif status == "onboarding":
@@ -97,13 +82,7 @@ async def list_candidates(
                 "has_clifton_doc": bool(candidate.get("clifton_blob_path"))
             })
         
-        total_count = mongo_connection.candidates_collection.count_documents({
-            "$or": [
-                {"status": {"$ne": "rejected"}},
-                {"status": {"$exists": False}},
-                {"status": None}
-            ]
-        })
+        total_count = mongo_connection.candidates_collection.count_documents(query_filter)
 
         return CandidateListResponse(
             success=True,

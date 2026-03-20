@@ -5,6 +5,7 @@ import logging
 from src.database.connection import mongo_connection
 from src.api.models import DashboardStatsResponse, CandidateStats, JobStats, ClientStats
 from src.api.auth_utils import get_current_mlg_recruiter
+from src.api.routes.helpers import pending_candidates_filter
 
 logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
@@ -15,13 +16,7 @@ async def get_dashboard_stats():
     """Get aggregated statistics for the MLG dashboard."""
     try:
         # Candidate stats using aggregation
-        pending_match = {
-            "$or": [
-                {"status": {"$nin": ["rejected", "accepted"]}},
-                {"status": {"$exists": False}},
-                {"status": None}
-            ]
-        }
+        pending_match = pending_candidates_filter()
         candidate_pipeline = [
             {
                 "$facet": {
