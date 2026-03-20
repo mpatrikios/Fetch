@@ -210,4 +210,14 @@ export function getUniqueValues(items, field) {
   return [...new Set(vals)].sort();
 }
 
+/**
+ * Returns true if the candidate has reached a status that grants dashboard access.
+ * - 'interviewing': recruiter has recommended at least one job
+ * - 'completed_onboarding': completed the self-service onboarding flow
+ * Note: 'accepted' (passed intake call but not yet uploaded Clifton Strengths) stays on /onboarding.
+ */
+export function canAccessDashboard(user) {
+  return ['interviewing', 'completed_onboarding'].includes(user?.status);
+}
+
 export default api;

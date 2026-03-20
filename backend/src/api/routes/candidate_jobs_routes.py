@@ -19,8 +19,8 @@ from src.api.auth_utils import get_current_mlg_recruiter
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-VALID_STATUSES = {"recommended", "pending", "interview", "accepted", "rejected"}
-RECRUITER_UPDATABLE_STATUSES = {"pending", "interview", "accepted", "rejected"}
+VALID_STATUSES = {"recommended", "pending", "applied", "interview", "accepted", "rejected"}
+RECRUITER_UPDATABLE_STATUSES = {"pending", "applied", "interview", "accepted", "rejected"}
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +97,21 @@ async def recommend_job(
         f"Recruiter {current_user.get('email')} recommended job {body.job_mongo_id} "
         f"to candidate {candidate_id}"
     )
+
+    # Statuses that already give dashboard access — don't downgrade
+    DASHBOARD_STATUSES = {"interviewing", "accepted", "completed_onboarding"}
+    try:
+        candidate = mongo_connection.candidates_collection.find_one(
+            {"_id": ObjectId(candidate_id)},
+            {"status": 1}
+        )
+        if candidate and candidate.get("status") not in DASHBOARD_STATUSES:
+            mongo_connection.candidates_collection.update_one(
+                {"_id": ObjectId(candidate_id)},
+                {"$set": {"status": "interviewing"}}
+            )
+    except Exception as e:
+        logger.warning(f"Could not update candidate {candidate_id} status to interviewing: {e}")
 
     return {"success": True, "recommendation": doc}
 
