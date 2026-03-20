@@ -19,8 +19,8 @@ from src.api.auth_utils import get_current_mlg_recruiter
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-VALID_STATUSES = {"recommended", "pending", "interview", "accepted", "rejected"}
-RECRUITER_UPDATABLE_STATUSES = {"pending", "interview", "accepted", "rejected"}
+VALID_STATUSES = {"recommended", "pending", "applied", "interview", "accepted", "rejected"}
+RECRUITER_UPDATABLE_STATUSES = {"pending", "applied", "interview", "accepted", "rejected"}
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +98,21 @@ async def recommend_job(
         f"to candidate {candidate_id}"
     )
 
+    # Statuses that already give dashboard access — don't downgrade
+    DASHBOARD_STATUSES = {"interviewing", "accepted", "completed_onboarding"}
+    try:
+        candidate = mongo_connection.candidates_collection.find_one(
+            {"_id": ObjectId(candidate_id)},
+            {"status": 1}
+        )
+        if candidate and candidate.get("status") not in DASHBOARD_STATUSES:
+            mongo_connection.candidates_collection.update_one(
+                {"_id": ObjectId(candidate_id)},
+                {"$set": {"status": "interviewing"}}
+            )
+    except Exception as e:
+        logger.warning(f"Could not update candidate {candidate_id} status to interviewing: {e}")
+
     return {"success": True, "recommendation": doc}
 
 
@@ -137,14 +152,43 @@ async def get_job_recommendations(
 ):
     """
     Return all recommendations for a specific job (by recruiter).
-    Used to populate button state on the JobRecommendations page.
+    Enriched with candidate profile fields so the sidebar can show
+    manually-recommended candidates who are not in the ML results.
     """
     collection = mongo_connection.candidate_jobs_collection
+    candidates_col = mongo_connection.candidates_collection
+
+    job_doc = mongo_connection.job_descriptions_collection.find_one(
+        {"_id": ObjectId(job_id)}
+    )
+    if not job_doc:
+        return {"success": True, "recommendations": []}
     docs = list(collection.find(
         {"job_mongo_id": job_id},
         {"_id": 1, "candidate_id": 1}
     ))
-    entries = [{"rec_id": str(d["_id"]), "candidate_id": d["candidate_id"]} for d in docs]
+    entries = []
+    for d in docs:
+        entry = {
+            "rec_id": str(d["_id"]),
+            "candidate_id": d["candidate_id"],
+            "status": d.get("status", "recommended"),
+        }
+        try:
+            profile = candidates_col.find_one(
+                {"_id": ObjectId(d["candidate_id"])},
+                {"full_name": 1, "email": 1, "location": 1, "Summary": 1, "Skills": 1, "clifton_strengths": 1}
+            )
+            if profile:
+                entry["full_name"] = profile.get("full_name", "")
+                entry["email"] = profile.get("email", "")
+                entry["location"] = profile.get("location", "")
+                entry["summary"] = profile.get("Summary", "")
+                entry["skills"] = profile.get("Skills", [])
+                entry["clifton_strengths"] = profile.get("clifton_strengths", [])
+        except Exception:
+            pass
+        entries.append(entry)
     return {"success": True, "recommendations": entries}
 
 

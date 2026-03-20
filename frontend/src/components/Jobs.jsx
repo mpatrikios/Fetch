@@ -8,27 +8,22 @@ import {
   Button,
   Divider,
   IconButton,
+  InputAdornment,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
   DialogContentText,
-  DialogActions,
   TextField,
   Chip,
+  Snackbar,
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Work, Description, Edit as EditIcon, InsertDriveFile as FileIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
-import CloseIcon from '@mui/icons-material/Close';
+import { LocationOn, FilterListOff, Description, InsertDriveFile as FileIcon } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { jobAPI, documentAPI, parseDelimitedString } from '../utils/api';
+import { jobAPI, documentAPI, candidateAPI, candidateJobsAPI, parseDelimitedString } from '../utils/api';
 import {
-  SectionHeader,
   CardSection,
   SelectableListItem,
-  PrimaryButton,
   FileLink
 } from './common-components/StyledComponents';
 import {
@@ -39,11 +34,18 @@ import {
   FilterIconButton,
   ConfirmationDialog,
   SkillChips,
-  DetailPanelContainer
+  DetailPanelContainer,
+  ClosableDialog,
+  PageHeader
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 import DocumentUpload from './DocumentUpload';
 import CompanyNameField from './CompanyNameField';
+import ExpandableListSection from './common-components/ExpandableListSection';
+import JobFormFields from './JobFormFields';
+import JobDetailsHeader from './JobDetailsHeader';
+import { useCultureDocumentUpload } from '../hooks/useCultureDocumentUpload';
+import CultureDocumentDialog from './CultureDocumentDialog';
 
 
 function Jobs() {
@@ -74,14 +76,20 @@ function Jobs() {
     culture_index: '',
   });
   const [saving, setSaving] = useState(false);
-  const [cultureDialogOpen, setCultureDialogOpen] = useState(false);
-  const [cultureDialogStep, setCultureDialogStep] = useState('upload'); // 'upload' | 'confirm'
-  const [cultureFile, setCultureFile] = useState(null);
-  const [cultureUploading, setCultureUploading] = useState(false);
-  const [cultureUploadError, setCultureUploadError] = useState('');
-  const [pendingStrengths, setPendingStrengths] = useState([]);
-  const [cliftonSaving, setCliftonSaving] = useState(false);
   const [successMessage, showSuccess] = useAutoHideMessage(5000);
+  const {
+    cultureDialogOpen,
+    cultureDialogStep,
+    cultureFile, setCultureFile,
+    cultureUploading,
+    cultureUploadError, setCultureUploadError,
+    pendingStrengths, setPendingStrengths,
+    cliftonSaving,
+    handleOpenCultureDialog,
+    handleCultureDocUpload,
+    handleConfirmStrengths,
+    handleCloseCultureDialog,
+  } = useCultureDocumentUpload({ jobDetails, setJobDetails, showSuccess });
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showAddJob, setShowAddJob] = useState(false);
@@ -92,6 +100,13 @@ function Jobs() {
     responsibilities: '', qualifications: '', min_years: '', culture_index: '',
   });
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [manualDialogOpen, setManualDialogOpen] = useState(false);
+  const [manualQuery, setManualQuery] = useState('');
+  const [manualResults, setManualResults] = useState([]);
+  const [manualSearching, setManualSearching] = useState(false);
+  const [manualRecommendingId, setManualRecommendingId] = useState(null);
+  const [recommendSnackbar, setRecommendSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [recommendedCandidates, setRecommendedCandidates] = useState(new Map());
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -101,6 +116,68 @@ function Jobs() {
   useEffect(() => {
     loadJobs();
   }, []);
+
+  const loadPushedCandidates = useCallback(async (company, title) => {
+    try {
+      const res = await candidateJobsAPI.getJobRecommendations(company, title);
+      const map = new Map(
+        (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
+      );
+      setRecommendedCandidates(map);
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!manualQuery.trim()) {
+      setManualResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setManualSearching(true);
+      try {
+        const res = await candidateAPI.search(manualQuery);
+        setManualResults(res.data.candidates || []);
+      } catch {
+        setManualResults([]);
+      } finally {
+        setManualSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [manualQuery]);
+
+  const handleCloseManualDialog = () => {
+    setManualDialogOpen(false);
+    setManualQuery('');
+    setManualResults([]);
+  };
+
+  const handleManualRecommend = async (candidate) => {
+    if (!jobDetails) return;
+    setManualRecommendingId(candidate.candidate_id);
+    try {
+      const res = await candidateJobsAPI.recommendJob(candidate.candidate_id, {
+        job_mongo_id: jobDetails.mongo_id || `${jobDetails.company}_${jobDetails.title}`,
+        company_name: jobDetails.company,
+        job_title: jobDetails.title,
+        job_location: jobDetails.locations?.[0] || '',
+        skills: jobDetails.skills || [],
+      });
+      const recId = res.data.recommendation?._id;
+      setRecommendedCandidates(prev => new Map([...prev, [candidate.candidate_id, recId]]));
+      setRecommendSnackbar({ open: true, message: `Job recommended to ${candidate.full_name}.`, severity: 'success' });
+    } catch (err) {
+      if (err.response?.status === 409) {
+        setRecommendSnackbar({ open: true, message: 'Already recommended to this candidate.', severity: 'info' });
+      } else {
+        setRecommendSnackbar({ open: true, message: 'Failed to recommend job.', severity: 'error' });
+      }
+    } finally {
+      setManualRecommendingId(null);
+    }
+  };
 
   const handleJobSelect = useCallback(async (job) => {
     if (selectedJob?.mongo_id === job.mongo_id) return;
@@ -112,6 +189,7 @@ function Jobs() {
     setExpandedQualifications(false);
     setExpandedCultureIndex(false);
     setShowAddJob(false);
+    setRecommendedCandidates(new Map());
 
     try {
       const response = await jobAPI.getDetailsById(job.mongo_id);
@@ -122,7 +200,8 @@ function Jobs() {
     } finally {
       setDetailsLoading(false);
     }
-  }, [selectedJob]);
+    loadPushedCandidates(job.company, job.title);
+  }, [selectedJob, loadPushedCandidates]);
 
   /* automatically select job if navigated to by the clients page */
   useEffect(() => {
@@ -338,57 +417,6 @@ function Jobs() {
       setReviewSaving(false);
     }
   };
-
-  const handleOpenCultureDialog = () => {
-    if (jobDetails?.culture_strengths_status === 'pending_review' &&
-        jobDetails?.suggested_clifton_strengths?.length > 0) {
-      setPendingStrengths(jobDetails.suggested_clifton_strengths.map(s => s.strength));
-      setCultureDialogStep('confirm');
-    } else {
-      setCultureFile(null);
-      setCultureUploadError('');
-      setCultureDialogStep('upload');
-    }
-    setCultureDialogOpen(true);
-  };
-
-  const handleCultureDocUpload = async () => {
-    if (!cultureFile) return;
-    setCultureUploading(true);
-    setCultureUploadError('');
-    try {
-      const res = await jobAPI.uploadCultureDocument(jobDetails.mongo_id, cultureFile);
-      const data = res.data;
-      setJobDetails(prev => ({
-        ...prev,
-        culture_strengths_status: data.culture_strengths_status,
-        suggested_clifton_strengths: data.suggested_clifton_strengths,
-        culture_doc_filename: cultureFile.name,
-      }));
-      setPendingStrengths(data.suggested_clifton_strengths.map(s => s.strength));
-      setCultureDialogStep('confirm');
-    } catch (err) {
-      setCultureUploadError(err?.response?.data?.detail || 'Upload failed');
-    } finally {
-      setCultureUploading(false);
-    }
-  };
-
-  const handleConfirmStrengths = async () => {
-    setCliftonSaving(true);
-    try {
-      await jobAPI.updateCliftonStrengths(jobDetails.mongo_id, pendingStrengths);
-      const res = await jobAPI.getDetailsById(jobDetails.mongo_id);
-      setJobDetails(res.data.job);
-      setCultureDialogOpen(false);
-      showSuccess('CliftonStrengths confirmed and culture embedding generated');
-    } catch (err) {
-      setCultureUploadError(err?.response?.data?.detail || 'Save failed');
-    } finally {
-      setCliftonSaving(false);
-    }
-  };
-
   const handleDeleteJob = async () => {
     if (!jobDetails?.mongo_id) return;
     try {
@@ -427,18 +455,7 @@ function Jobs() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
       <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/mlg-dashboard')}
-          sx={{ color: 'text.secondary' }}
-        >
-          Back
-        </Button>
-        <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
-          MLG Manage Jobs
-        </SectionHeader>
-      </Box>
+      <PageHeader title="MLG Manage Jobs" onBack={() => navigate('/mlg-dashboard')} />
 
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
@@ -573,54 +590,13 @@ function Jobs() {
         <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
           <DetailPanelContainer selected={selectedJob} loading={detailsLoading} emptyText="Select a job to view details">
                 {/* Job Header */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography variant="h5" sx={{ fontWeight: 600 }}>
-                        {jobDetails?.title}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={handleEditClick}
-                        title="Edit job details"
-                        aria-label="Edit job details"
-                        sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowDeleteDialog(true)}
-                        title="Delete job"
-                        aria-label="Delete job"
-                        sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-                      {jobDetails?.company}
-                    </Typography>
-                    {jobDetails?.locations?.length > 0 && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        {jobDetails.locations.join('; ')}
-                      </Typography>
-                    )}
-                    {jobDetails?.min_years && (
-                      <Typography variant="body2" color="text.secondary">
-                        Experience: {jobDetails.min_years}
-                      </Typography>
-                    )}
-                  </Box>
-                  <PrimaryButton
-                    onClick={handleFindRecommendations}
-                    disabled={!jobDetails?.has_embeddings}
-                    startIcon={<Work />}
-                    sx={{ flexShrink: 0 }}
-                  >
-                    {jobDetails?.last_match_generated_at ? 'View Recommendations' : 'Generate Recommendations'}
-                  </PrimaryButton>
-                </Box>
+                <JobDetailsHeader
+                  jobDetails={jobDetails}
+                  onEdit={handleEditClick}
+                  onDelete={() => setShowDeleteDialog(true)}
+                  onFindRecommendations={handleFindRecommendations}
+                  onRecommendCandidate={() => setManualDialogOpen(true)}
+                />
 
                 <Divider />
 
@@ -680,119 +656,38 @@ function Jobs() {
                 <Divider />
 
                 {/* Responsibilities Section */}
-                <Box>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Responsibilities
-                  </Typography>
-                  {jobDetails?.responsibilities?.length > 0 ? (
-                    <Box>
-                      <List disablePadding>
-                        {(expandedResponsibilities
-                          ? jobDetails.responsibilities
-                          : jobDetails.responsibilities.slice(0, 4)
-                        ).map((resp, index) => (
-                          <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
-                            <ListItemText
-                              primary={`• ${resp}`}
-                              primaryTypographyProps={{ variant: 'body1' }}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                      {jobDetails.responsibilities.length > 4 && (
-                        <Button
-                          size="small"
-                          onClick={() => setExpandedResponsibilities(!expandedResponsibilities)}
-                          sx={{ mt: 1, p: 0, textTransform: 'none', color: 'primary.main' }}
-                        >
-                          {expandedResponsibilities
-                            ? 'Show less'
-                            : `Read more (${jobDetails.responsibilities.length - 4} more)`}
-                        </Button>
-                      )}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No responsibilities listed</Typography>
-                  )}
-                </Box>
+                <ExpandableListSection
+                  title="Responsibilities"
+                  items={jobDetails?.responsibilities || []}
+                  expanded={expandedResponsibilities}
+                  onToggle={() => setExpandedResponsibilities((v) => !v)}
+                  threshold={4}
+                  emptyText="No responsibilities listed"
+                />
 
                 <Divider />
 
                 {/* Qualifications Section */}
-                <Box>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Qualifications
-                  </Typography>
-                  {jobDetails?.qualifications?.length > 0 ? (
-                    <Box>
-                      <List disablePadding>
-                        {(expandedQualifications
-                          ? jobDetails.qualifications
-                          : jobDetails.qualifications.slice(0, 4)
-                        ).map((qual, index) => (
-                          <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
-                            <ListItemText
-                              primary={`• ${qual}`}
-                              primaryTypographyProps={{ variant: 'body1' }}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                      {jobDetails.qualifications.length > 4 && (
-                        <Button
-                          size="small"
-                          onClick={() => setExpandedQualifications(!expandedQualifications)}
-                          sx={{ mt: 1, p: 0, textTransform: 'none', color: 'primary.main' }}
-                        >
-                          {expandedQualifications
-                            ? 'Show less'
-                            : `Read more (${jobDetails.qualifications.length - 4} more)`}
-                        </Button>
-                      )}
-                    </Box>
-                  ) : (
-                    <Typography color="text.secondary">No qualifications listed</Typography>
-                  )}
-                </Box>
+                <ExpandableListSection
+                  title="Qualifications"
+                  items={jobDetails?.qualifications || []}
+                  expanded={expandedQualifications}
+                  onToggle={() => setExpandedQualifications((v) => !v)}
+                  threshold={4}
+                  emptyText="No qualifications listed"
+                />
 
                 {/* Culture Index Section */}
                 {jobDetails?.culture_index && (
                   <>
                     <Divider />
-                    <Box>
-                      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                        Culture Index
-                      </Typography>
-                      {(() => {
-                        const traits = parseDelimitedString(jobDetails.culture_index, ',');
-                        const displayTraits = expandedCultureIndex ? traits : traits.slice(0, 3);
-                        return (
-                          <Box>
-                            <List disablePadding>
-                              {displayTraits.map((trait, index) => (
-                                <ListItem key={index} sx={{ py: 0.5, px: 0 }}>
-                                  <ListItemText
-                                    primary={`• ${trait}`}
-                                    primaryTypographyProps={{ variant: 'body1' }}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                            {traits.length > 3 && (
-                              <Button
-                                size="small"
-                                onClick={() => setExpandedCultureIndex(!expandedCultureIndex)}
-                                sx={{ mt: 1, p: 0, textTransform: 'none', color: 'primary.main' }}
-                              >
-                                {expandedCultureIndex
-                                  ? 'Show less'
-                                  : `Read more (${traits.length - 3} more)`}
-                              </Button>
-                            )}
-                          </Box>
-                        );
-                      })()}
-                    </Box>
+                    <ExpandableListSection
+                      title="Culture Index"
+                      items={parseDelimitedString(jobDetails.culture_index, ',')}
+                      expanded={expandedCultureIndex}
+                      onToggle={() => setExpandedCultureIndex((v) => !v)}
+                      threshold={3}
+                    />
                   </>
                 )}
 
@@ -857,131 +752,114 @@ function Jobs() {
       </Grid>
       </Box>
 
-      {/* Culture Document / Clifton Strengths Dialog */}
-      <Dialog open={cultureDialogOpen} onClose={() => setCultureDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {cultureDialogStep === 'upload' ? 'Upload Culture Document' : 'Confirm CliftonStrengths'}
-          <IconButton onClick={() => setCultureDialogOpen(false)}
-            sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          {cultureDialogStep === 'upload' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Upload any culture assessment document (OCAI, Denison, Gallup Q12, etc.) — PDF, DOC, or DOCX.
-                The AI will suggest matching CliftonStrengths themes for you to review.
-              </Typography>
-              <Button variant="outlined" component="label" sx={{ textTransform: 'none' }}>
-                {cultureFile ? cultureFile.name : 'Choose file…'}
-                <input type="file" accept=".pdf,.doc,.docx" hidden
-                  onChange={(e) => { setCultureFile(e.target.files[0] || null); setCultureUploadError(''); }} />
-              </Button>
-              {cultureUploadError && <Alert severity="error">{cultureUploadError}</Alert>}
-            </Box>
-          )}
-
-          {cultureDialogStep === 'confirm' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Review and edit the AI-suggested strengths below. Click a chip to remove it. Then confirm to generate the culture embedding.
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {pendingStrengths.map((s) => (
-                  <Chip
-                    key={s}
-                    label={s}
-                    onDelete={() => setPendingStrengths(prev => prev.filter(x => x !== s))}
-                    color="primary"
-                    variant="outlined"
+      {/* Manually Recommend Candidate Dialog */}
+      <ClosableDialog
+        open={manualDialogOpen}
+        onClose={handleCloseManualDialog}
+        title="Recommend Candidate"
+        actions={<Button onClick={handleCloseManualDialog} sx={{ textTransform: 'none' }}>Close</Button>}
+      >
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Search for a candidate to manually recommend <strong>{jobDetails?.title}</strong> to.
+        </Typography>
+        <TextField
+          autoFocus
+          fullWidth
+          size="small"
+          placeholder="Search by name or email..."
+          value={manualQuery}
+          onChange={(e) => setManualQuery(e.target.value)}
+          sx={{ mb: 1 }}
+          InputProps={{
+            endAdornment: manualSearching ? (
+              <InputAdornment position="end">
+                <CircularProgress size={16} />
+              </InputAdornment>
+            ) : null,
+          }}
+        />
+        {manualResults.length > 0 ? (
+          <List dense disablePadding>
+            {manualResults.map((c) => {
+              const alreadyPushed = recommendedCandidates.has(c.candidate_id);
+              const isProcessing = manualRecommendingId === c.candidate_id;
+              return (
+                <ListItemButton
+                  key={c.candidate_id}
+                  disabled={alreadyPushed || isProcessing}
+                  onClick={() => handleManualRecommend(c)}
+                  sx={{ borderRadius: 1 }}
+                >
+                  <ListItemText
+                    primary={c.full_name}
+                    secondary={`${c.email}${c.location ? ` · ${c.location}` : ''}`}
                   />
-                ))}
-              </Box>
-              {jobDetails?.suggested_clifton_strengths?.filter(s => pendingStrengths.includes(s.strength)).length > 0 && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                    Why these strengths?
-                  </Typography>
-                  {jobDetails.suggested_clifton_strengths
-                    .filter(s => pendingStrengths.includes(s.strength))
-                    .map(s => (
-                      <Box key={s.strength} sx={{ mt: 0.5 }}>
-                        <Typography variant="caption">
-                          <strong>{s.strength}:</strong> {s.rationale}
-                        </Typography>
-                      </Box>
-                    ))}
-                </Box>
-              )}
-              {cultureUploadError && <Alert severity="error">{cultureUploadError}</Alert>}
-            </Box>
-          )}
-        </DialogContent>
+                  {alreadyPushed && (
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
+                      Already recommended
+                    </Typography>
+                  )}
+                  {isProcessing && <CircularProgress size={16} sx={{ ml: 1 }} />}
+                </ListItemButton>
+              );
+            })}
+          </List>
+        ) : manualQuery.trim() && !manualSearching ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+            No candidates found
+          </Typography>
+        ) : null}
+      </ClosableDialog>
 
-        <DialogActions>
-          <Button onClick={() => setCultureDialogOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          {cultureDialogStep === 'upload' && (
-            <Button
-              variant="contained"
-              disabled={!cultureFile || cultureUploading}
-              onClick={handleCultureDocUpload}
-              sx={{ textTransform: 'none' }}
-            >
-              {cultureUploading ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
-              {cultureUploading ? 'Uploading…' : 'Upload & Analyze'}
-            </Button>
-          )}
-          {cultureDialogStep === 'confirm' && (
-            <Button
-              variant="contained"
-              disabled={pendingStrengths.length === 0 || cliftonSaving}
-              onClick={handleConfirmStrengths}
-              sx={{ textTransform: 'none' }}
-            >
-              {cliftonSaving ? <CircularProgress size={18} sx={{ mr: 1 }} /> : null}
-              {cliftonSaving ? 'Saving…' : 'Confirm Strengths'}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+      <Snackbar
+        open={recommendSnackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={recommendSnackbar.severity}
+          onClose={() => setRecommendSnackbar(prev => ({ ...prev, open: false }))}
+        >
+          {recommendSnackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Culture Document / Clifton Strengths Dialog */}
+      <CultureDocumentDialog
+        open={cultureDialogOpen}
+        onClose={handleCloseCultureDialog}
+        step={cultureDialogStep}
+        cultureFile={cultureFile}
+        onFileChange={(e) => { setCultureFile(e.target.files[0] || null); setCultureUploadError(''); }}
+        cultureUploading={cultureUploading}
+        cultureUploadError={cultureUploadError}
+        pendingStrengths={pendingStrengths}
+        onRemoveStrength={(s) => setPendingStrengths(prev => prev.filter(x => x !== s))}
+        cliftonSaving={cliftonSaving}
+        suggestedStrengths={jobDetails?.suggested_clifton_strengths}
+        onUpload={handleCultureDocUpload}
+        onConfirm={handleConfirmStrengths}
+      />
 
       {/* Add Job Modal */}
-      <Dialog
-        open={showAddJob}
-        onClose={() => setShowAddJob(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          Add Job
-          <IconButton
-            aria-label="close"
-            onClick={() => setShowAddJob(false)}
-            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <CompanyNameField
-              label="Company Name"
-              value={companyName}
-              onChange={(val) => setCompanyName(val)}
-              options={[...new Set(jobs.map((job) => job.company))]}
-              required
-              error={companyName.trim() === ''}
-            />
-          </Box>
-          <DocumentUpload
-            uploadType="job_description"
-            companyName={companyName.trim()}
-            onSuccess={(data) => { handleJobUploadSuccess(data); setCompanyName(''); }}
+      <ClosableDialog open={showAddJob} onClose={() => setShowAddJob(false)} title="Add Job">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <CompanyNameField
+            label="Company Name"
+            value={companyName}
+            onChange={(val) => setCompanyName(val)}
+            options={[...new Set(jobs.map((job) => job.company))]}
+            required
+            error={companyName.trim() === ''}
           />
-        </DialogContent>
-      </Dialog>
+        </Box>
+        <DocumentUpload
+          uploadType="job_description"
+          companyName={companyName.trim()}
+          onSuccess={(data) => { handleJobUploadSuccess(data); setCompanyName(''); }}
+        />
+      </ClosableDialog>
 
       {/* Location Filter Menu */}
       <FilterMenu
@@ -1013,189 +891,66 @@ function Jobs() {
       />
 
       {/* Complete Job Details Dialog (partial parse) */}
-      <Dialog
+      <ClosableDialog
         open={!!pendingJobReview}
         onClose={() => setPendingJobReview(null)}
+        title="Complete Job Details"
+        dividers={false}
         maxWidth="md"
-        fullWidth
+        actions={
+          <>
+            <Button onClick={() => setPendingJobReview(null)} disabled={reviewSaving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleFinalizeJob}
+              variant="contained"
+              disabled={!reviewFormData.title.trim() || reviewSaving}
+            >
+              {reviewSaving ? 'Saving...' : 'Save Job'}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle>
-          Complete Job Details
-          <IconButton
-            onClick={() => setPendingJobReview(null)}
-            sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
-            Some fields could not be extracted from the document. Please fill in any missing details below.
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Job Title *"
-              fullWidth
-              value={reviewFormData.title}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, title: e.target.value }))}
-              error={!reviewFormData.title.trim()}
-              helperText={!reviewFormData.title.trim() ? 'Required' : ''}
-            />
-            <TextField
-              label="Summary"
-              fullWidth
-              multiline
-              minRows={3}
-              value={reviewFormData.summary}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, summary: e.target.value }))}
-            />
-            <TextField
-              label="Locations"
-              fullWidth
-              value={reviewFormData.locations}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, locations: e.target.value }))}
-              helperText="Separate locations with semicolons"
-            />
-            <TextField
-              label="Skills"
-              fullWidth
-              multiline
-              minRows={2}
-              value={reviewFormData.skills}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, skills: e.target.value }))}
-              helperText="Separate skills with commas"
-            />
-            <TextField
-              label="Minimum Years of Experience"
-              fullWidth
-              value={reviewFormData.min_years}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, min_years: e.target.value }))}
-            />
-            <TextField
-              label="Responsibilities"
-              fullWidth
-              multiline
-              minRows={4}
-              value={reviewFormData.responsibilities}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, responsibilities: e.target.value }))}
-              helperText="Enter each responsibility on a new line"
-            />
-            <TextField
-              label="Qualifications"
-              fullWidth
-              multiline
-              minRows={4}
-              value={reviewFormData.qualifications}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, qualifications: e.target.value }))}
-              helperText="Enter each qualification on a new line"
-            />
-            <TextField
-              label="Culture Index"
-              fullWidth
-              multiline
-              minRows={2}
-              value={reviewFormData.culture_index}
-              onChange={(e) => setReviewFormData(prev => ({ ...prev, culture_index: e.target.value }))}
-              helperText="Separate traits with commas"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPendingJobReview(null)} disabled={reviewSaving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleFinalizeJob}
-            variant="contained"
-            disabled={!reviewFormData.title.trim() || reviewSaving}
-          >
-            {reviewSaving ? 'Saving...' : 'Save Job'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+          Some fields could not be extracted from the document. Please fill in any missing details below.
+        </Typography>
+        <JobFormFields
+          formData={reviewFormData}
+          onChange={(field, value) => setReviewFormData((prev) => ({ ...prev, [field]: value }))}
+          showTitle
+        />
+      </ClosableDialog>
 
       {/* Edit Job Dialog */}
-      <Dialog
+      <ClosableDialog
         open={showEditDialog}
         onClose={() => setShowEditDialog(false)}
+        title="Edit Job Details"
+        dividers={false}
         maxWidth="md"
-        fullWidth
+        actions={
+          <>
+            <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveJob}
+              variant="contained"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle>Edit Job Details</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Summary"
-              fullWidth
-              multiline
-              minRows={3}
-              value={editFormData.summary}
-              onChange={(e) => handleEditFormChange('summary', e.target.value)}
-            />
-            <TextField
-              label="Locations"
-              fullWidth
-              value={editFormData.locations}
-              onChange={(e) => handleEditFormChange('locations', e.target.value)}
-              helperText="Separate locations with semicolons"
-            />
-            <TextField
-              label="Skills"
-              fullWidth
-              multiline
-              minRows={2}
-              value={editFormData.skills}
-              onChange={(e) => handleEditFormChange('skills', e.target.value)}
-              helperText="Separate skills with commas"
-            />
-            <TextField
-              label="Minimum Years of Experience"
-              fullWidth
-              value={editFormData.min_years}
-              onChange={(e) => handleEditFormChange('min_years', e.target.value)}
-            />
-            <TextField
-              label="Responsibilities"
-              fullWidth
-              multiline
-              minRows={4}
-              value={editFormData.responsibilities}
-              onChange={(e) => handleEditFormChange('responsibilities', e.target.value)}
-              helperText="Enter each responsibility on a new line"
-            />
-            <TextField
-              label="Qualifications"
-              fullWidth
-              multiline
-              minRows={4}
-              value={editFormData.qualifications}
-              onChange={(e) => handleEditFormChange('qualifications', e.target.value)}
-              helperText="Enter each qualification on a new line"
-            />
-            <TextField
-              label="Culture Index"
-              fullWidth
-              multiline
-              minRows={2}
-              value={editFormData.culture_index}
-              onChange={(e) => handleEditFormChange('culture_index', e.target.value)}
-              helperText="Separate traits with commas"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveJob}
-            variant="contained"
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Box sx={{ pt: 1 }}>
+          <JobFormFields
+            formData={editFormData}
+            onChange={handleEditFormChange}
+          />
+        </Box>
+      </ClosableDialog>
     </Box>
   );
 }

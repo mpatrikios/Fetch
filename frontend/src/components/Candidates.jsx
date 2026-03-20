@@ -7,19 +7,14 @@ import {
   Alert,
   Button,
   Divider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   DialogContentText,
   TextField,
   IconButton
 } from '@mui/material';
-import { InsertDriveFile as FileIcon, ArrowBack, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
+import { InsertDriveFile as FileIcon, LocationOn, FilterListOff, Edit as EditIcon, Label as LabelIcon, DeleteOutline as DeleteIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { candidateAPI, documentAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
-  SectionHeader,
   CardSection,
   SelectableListItem,
   FileLink,
@@ -35,7 +30,9 @@ import {
   FilterIconButton,
   ConfirmationDialog,
   SkillChips,
-  DetailPanelContainer
+  DetailPanelContainer,
+  PageHeader,
+  ClosableDialog
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 
@@ -487,18 +484,7 @@ function Candidates() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
       {/* Header + Alerts */}
       <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
-        <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/mlg-dashboard')}
-            sx={{ color: 'text.secondary' }}
-          >
-            Back
-          </Button>
-          <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
-            MLG Manage Candidates
-          </SectionHeader>
-        </Box>
+        <PageHeader title="MLG Manage Candidates" onBack={() => navigate('/mlg-dashboard')} />
 
         {/* Success/Error Messages */}
         {successMessage && (
@@ -831,72 +817,69 @@ function Candidates() {
       />
 
       {/* Edit Profile Dialog */}
-      <Dialog
+      <ClosableDialog
         open={showEditDialog}
         onClose={() => setShowEditDialog(false)}
+        title="Edit Candidate Profile"
+        dividers={false}
         maxWidth="md"
-        fullWidth
-        aria-labelledby="edit-dialog-title"
+        actions={
+          <>
+            <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              variant="contained"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle id="edit-dialog-title">
-          Edit Candidate Profile
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <TextField
-              label="Full Name"
-              fullWidth
-              value={editFormData.full_name}
-              onChange={(e) => handleEditFormChange('full_name', e.target.value)}
-            />
-            <TextField
-              label="Location"
-              fullWidth
-              value={editFormData.location}
-              onChange={(e) => handleEditFormChange('location', e.target.value)}
-            />
-            <TextField
-              label="Summary / Position"
-              fullWidth
-              multiline
-              minRows={3}
-              value={editFormData.summary}
-              onChange={(e) => handleEditFormChange('summary', e.target.value)}
-              slotProps={{
-                input: {
-                  sx: { resize: 'vertical', overflow: 'auto' }
-                }
-              }}
-            />
-            <TextField
-              label="Skills"
-              fullWidth
-              multiline
-              minRows={2}
-              value={editFormData.skills}
-              onChange={(e) => handleEditFormChange('skills', e.target.value)}
-              helperText="Enter skills separated by commas"
-              slotProps={{
-                input: {
-                  sx: { resize: 'vertical', overflow: 'auto' }
-                }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveProfile}
-            variant="contained"
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            label="Full Name"
+            fullWidth
+            value={editFormData.full_name}
+            onChange={(e) => handleEditFormChange('full_name', e.target.value)}
+          />
+          <TextField
+            label="Location"
+            fullWidth
+            value={editFormData.location}
+            onChange={(e) => handleEditFormChange('location', e.target.value)}
+          />
+          <TextField
+            label="Summary / Position"
+            fullWidth
+            multiline
+            minRows={3}
+            value={editFormData.summary}
+            onChange={(e) => handleEditFormChange('summary', e.target.value)}
+            slotProps={{
+              input: {
+                sx: { resize: 'vertical', overflow: 'auto' }
+              }
+            }}
+          />
+          <TextField
+            label="Skills"
+            fullWidth
+            multiline
+            minRows={2}
+            value={editFormData.skills}
+            onChange={(e) => handleEditFormChange('skills', e.target.value)}
+            helperText="Enter skills separated by commas"
+            slotProps={{
+              input: {
+                sx: { resize: 'vertical', overflow: 'auto' }
+              }
+            }}
+          />
+        </Box>
+      </ClosableDialog>
     </Box>
   );
 }

@@ -53,6 +53,7 @@ export const resumeAPI = {
 // Candidate endpoints
 export const candidateAPI = {
   list: (status = 'all') => api.get('/candidates', { params: { status } }),
+  search: (q) => api.get('/candidates/search', { params: { q } }),
   updateNotes: (candidateId, notes) => api.put(`/candidates/${candidateId}/notes`, { notes }),
   updateProfile: (candidateId, profileData) => api.put(`/candidates/${candidateId}/profile`, profileData),
   reject: (candidateId) => api.put(`/candidates/${candidateId}/reject`),
@@ -70,6 +71,8 @@ export const clientAPI = {
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
   updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
   activate: (clientId) => api.post(`/clients/${clientId}/activate`),
+  create: (clientData) => api.post('/clients', clientData),
+  deleteClient: (clientId) => api.delete(`/clients/${clientId}`),
 };
 
 export const cliftonStrengthsAPI = {
@@ -210,6 +213,16 @@ export function getUniqueValues(items, field) {
     return Array.isArray(v) ? v : [v];
   }).filter(v => v && String(v).trim() !== '');
   return [...new Set(vals)].sort();
+}
+
+/**
+ * Returns true if the candidate has reached a status that grants dashboard access.
+ * - 'interviewing': recruiter has recommended at least one job
+ * - 'completed_onboarding': completed the self-service onboarding flow
+ * Note: 'accepted' (passed intake call but not yet uploaded Clifton Strengths) stays on /onboarding.
+ */
+export function canAccessDashboard(user) {
+  return ['interviewing', 'completed_onboarding'].includes(user?.status);
 }
 
 export default api;
