@@ -49,19 +49,25 @@ function JobRecommendations() {
   const [jobSkills, setJobSkills] = useState([]);
   const [recommendSnackbar, setRecommendSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [recommendingId, setRecommendingId] = useState(null);
-  // Map of candidate_id -> rec_id for candidates already recommended for this job
+  // Map of candidate_id -> { rec_id, status } for candidates already recommended for this job
   const [recommendedCandidates, setRecommendedCandidates] = useState(new Map());
+  // Enriched pipeline entries from candidate_jobs (used to show manually-recommended candidates)
+  const [pipelineProfiles, setPipelineProfiles] = useState([]);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [applyError, setApplyError] = useState('');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const loadRecommendedCandidates = useCallback(async () => {
     try {
       const res = await candidateJobsAPI.getJobRecommendations(decodedCompany, decodedTitle);
+      const entries = res.data.recommendations || [];
       const map = new Map(
-        (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
+        entries.map(({ candidate_id, rec_id, status }) => [candidate_id, { rec_id, status }])
       );
       setRecommendedCandidates(map);
+      setPipelineProfiles(entries);
     } catch (err) {
-      // Non-critical — silently ignore, button defaults to "Recommend this Job"
+      // Non-critical — silently ignore
     }
   }, [decodedCompany, decodedTitle]);
 
@@ -190,6 +196,17 @@ function JobRecommendations() {
     });
   }, [recommendations, searchQuery]);
 
+  // Manually-recommended candidates not present in the ML results
+  const pipelineOnlyCandidates = useMemo(() => {
+    const mlIds = new Set(recommendations.map(r => r.candidate_id));
+    return pipelineProfiles
+      .filter(p => !mlIds.has(p.candidate_id))
+      .filter(p => {
+        const name = p.full_name || '';
+        return searchQuery === '' || name.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+  }, [recommendations, pipelineProfiles, searchQuery]);
+
   const handleCandidateSelect = (candidate) => {
     setSelectedCandidate(candidate);
     setReviewError('');
@@ -238,7 +255,7 @@ function JobRecommendations() {
         skills: jobSkills,
       });
       const recId = res.data.recommendation?._id;
-      setRecommendedCandidates(prev => new Map([...prev, [candidateId, recId]]));
+      setRecommendedCandidates(prev => new Map([...prev, [candidateId, { rec_id: recId, status: 'recommended' }]]));
       setRecommendSnackbar({ open: true, message: 'Job recommended successfully.', severity: 'success' });
     } catch (err) {
       if (err.response?.status === 409) {
@@ -256,8 +273,9 @@ function JobRecommendations() {
     setConfirmDialogOpen(false);
     if (!selectedCandidate) return;
     const candidateId = selectedCandidate.candidate_id;
-    const recId = recommendedCandidates.get(candidateId);
-    if (!recId) return;
+    const rec = recommendedCandidates.get(candidateId);
+    if (!rec) return;
+    const recId = rec.rec_id;
     setRecommendingId(candidateId);
     try {
       await candidateJobsAPI.removeRecommendation(candidateId, recId);
@@ -271,6 +289,25 @@ function JobRecommendations() {
       setRecommendSnackbar({ open: true, message: 'Failed to remove recommendation.', severity: 'error' });
     } finally {
       setRecommendingId(null);
+    }
+  };
+
+  const handleMarkApplied = async (candidateId) => {
+    const rec = recommendedCandidates.get(candidateId);
+    if (!rec) return;
+    try {
+      setApplyLoading(true);
+      setApplyError('');
+      await candidateJobsAPI.updateStatus(candidateId, rec.rec_id, 'applied');
+      setRecommendedCandidates(prev => {
+        const next = new Map(prev);
+        next.set(candidateId, { ...rec, status: 'applied' });
+        return next;
+      });
+    } catch (err) {
+      setApplyError('Failed to update status. Please try again.');
+    } finally {
+      setApplyLoading(false);
     }
   };
 
@@ -290,8 +327,9 @@ function JobRecommendations() {
   }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: 'grey.50', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
       {/* Header */}
+      <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
       <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
         <Button
           startIcon={<ArrowBack />}
@@ -367,10 +405,12 @@ function JobRecommendations() {
           {error}
         </Alert>
       )}
+      </Box>
 
-      <Grid container spacing={0} sx={{ height: 'calc(100vh - 200px)' }}>
+      <Box sx={{ flex: 1, px: 4, pb: 4, minHeight: 0, overflow: 'hidden' }}>
+      <Grid container spacing={0} sx={{ height: '100%' }}>
         {/* Sidebar - Candidates List */}
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, md: 4 }} sx={{ height: '100%' }}>
           <CardSection sx={{ height: '100%', overflow: 'hidden' }}>
             <Box sx={{
               px: 1,
@@ -391,7 +431,7 @@ function JobRecommendations() {
                   </Box>
                 ) : (
                   <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                    ({filteredRecommendations.length} of {recommendations.length})
+                    ({filteredRecommendations.length + pipelineOnlyCandidates.length} of {recommendations.length + pipelineOnlyCandidates.length})
                   </Typography>
                 )}
               </Box>
@@ -414,15 +454,22 @@ function JobRecommendations() {
                 borderRadius: '3px'
               }
             }}>
+              {/* AI Matches section */}
+              {(filteredRecommendations.length > 0 || loading) && (
+                <Box sx={{ px: 2, py: 0.75, backgroundColor: 'rgba(0,0,0,0.04)', borderBottom: '1px solid', borderColor: 'grey.200' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                    AI Matches
+                  </Typography>
+                </Box>
+              )}
               {loading ? (
-                // Skeleton loaders while loading
                 [...Array(6)].map((_, index) => (
                   <Box key={index} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'grey.200' }}>
                     <Skeleton variant="text" width="60%" height={24} />
                     <Skeleton variant="text" width="40%" height={20} />
                   </Box>
                 ))
-              ) : filteredRecommendations.length === 0 ? (
+              ) : filteredRecommendations.length === 0 && pipelineOnlyCandidates.length === 0 ? (
                 <EmptyState
                   title="No candidates found"
                   subtitle={searchQuery ? 'Try adjusting your search' : 'No matching candidates available'}
@@ -458,12 +505,54 @@ function JobRecommendations() {
                   </SelectableListItem>
                 ))
               )}
+
+              {/* MLG Recommended section — manually-recommended candidates not in ML results */}
+              {!loading && pipelineOnlyCandidates.length > 0 && (
+                <>
+                  <Box sx={{ px: 2, py: 0.75, backgroundColor: 'rgba(0,0,0,0.04)', borderBottom: '1px solid', borderColor: 'grey.200' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                      MLG Recommended
+                    </Typography>
+                  </Box>
+                  {pipelineOnlyCandidates.map(candidate => (
+                    <SelectableListItem
+                      key={candidate.candidate_id}
+                      selected={selectedCandidate?.candidate_id === candidate.candidate_id}
+                      onClick={() => handleCandidateSelect(candidate)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {candidate.full_name || 'Unknown'}
+                          </Typography>
+                          {candidate.location && (
+                            <Typography variant="body2" color="text.secondary">
+                              {candidate.location}
+                            </Typography>
+                          )}
+                          {recommendedCandidates.has(candidate.candidate_id) && (
+                            <Chip
+                              label={recommendedCandidates.get(candidate.candidate_id).status}
+                              size="small"
+                              color={
+                                recommendedCandidates.get(candidate.candidate_id).status === 'applied' ? 'primary' :
+                                recommendedCandidates.get(candidate.candidate_id).status === 'pending' ? 'warning' : 'default'
+                              }
+                              sx={{ mt: 0.5 }}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+                    </SelectableListItem>
+                  ))}
+                </>
+              )}
             </Box>
           </CardSection>
         </Grid>
 
         {/* Main Content - Candidate Details */}
-        <Grid size={{ xs: 12, md: 8 }}>
+        <Grid size={{ xs: 12, md: 8 }} sx={{ height: '100%' }}>
           <DetailPanelContainer selected={selectedCandidate} emptyText="Select a candidate to view details">
                 {selectedCandidate && (<>
                 {/* Candidate Header */}
@@ -508,7 +597,7 @@ function JobRecommendations() {
                           size="small"
                           disabled={isProcessing}
                           onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : handleRecommendJob}
-                          sx={{ opacity: isAlreadyRecommended ? 0.65 : 1 }}
+                          sx={isAlreadyRecommended ? { opacity: 0.65, fontSize: '0.75rem', py: 0.5, px: 1.5 } : {}}
                         >
                           {isProcessing
                             ? (isAlreadyRecommended ? 'Removing...' : 'Recommending...')
@@ -624,70 +713,105 @@ function JobRecommendations() {
                   </Box>
                 )}
 
-                <Divider />
+                {recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id) && (
+                  <>
+                    <Divider />
 
-                {/* Review Decision Section */}
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      Review Decision
-                    </Typography>
-                    <Chip
-                      label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
-                      size="small"
-                      color={
-                        selectedCandidate.review_status === 'Approved' ? 'success' :
-                        selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
-                      }
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="Mark as approved">
-                      <span>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Approved')}
-                        >
-                          Approve
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Mark as rejected">
-                      <span>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
-                        >
-                          Reject
-                        </Button>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Reset to pending">
-                      <span>
-                        <Button
-                          variant="outlined"
-                          disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
-                          onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
-                        >
-                          Pending
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </Box>
-                  {reviewError && (
-                    <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
-                      {reviewError}
-                    </Alert>
-                  )}
-                </Box>
+                    {/* Review Decision Section — ML matches only */}
+                    <Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          Review Decision
+                        </Typography>
+                        <Chip
+                          label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
+                          size="small"
+                          color={
+                            selectedCandidate.review_status === 'Approved' ? 'success' :
+                            selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
+                          }
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Mark as approved">
+                          <span>
+                            <Button
+                              variant="contained"
+                              color="success"
+                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
+                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Approved')}
+                            >
+                              Approve
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Mark as rejected">
+                          <span>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
+                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
+                            >
+                              Reject
+                            </Button>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Reset to pending">
+                          <span>
+                            <Button
+                              variant="outlined"
+                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
+                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
+                            >
+                              Pending
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      </Box>
+                      {reviewError && (
+                        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
+                          {reviewError}
+                        </Alert>
+                      )}
+                    </Box>
+                  </>
+                )}
+
+                {recommendedCandidates.has(selectedCandidate.candidate_id) && (() => {
+                  const rec = recommendedCandidates.get(selectedCandidate.candidate_id);
+                  return (
+                    <>
+                      <Divider />
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Pipeline Status</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Chip
+                            label={rec.status}
+                            color={rec.status === 'applied' ? 'primary' : rec.status === 'pending' ? 'warning' : 'default'}
+                            size="small"
+                          />
+                          {rec.status === 'pending' && (
+                            <Button
+                              variant="contained"
+                              color="success"
+                              disabled={applyLoading}
+                              onClick={() => handleMarkApplied(selectedCandidate.candidate_id)}
+                            >
+                              Mark as Applied
+                            </Button>
+                          )}
+                        </Box>
+                        {applyError && <Alert severity="error" sx={{ mt: 1 }}>{applyError}</Alert>}
+                      </Box>
+                    </>
+                  );
+                })()}
                 </>)}
           </DetailPanelContainer>
         </Grid>
       </Grid>
+      </Box>
 
       <Snackbar
         open={recommendSnackbar.open}

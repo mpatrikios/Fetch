@@ -151,15 +151,46 @@ async def get_job_recommendations(
 ):
     """
     Return all recommendations for a specific job (by recruiter).
-    Used to populate button state on the JobRecommendations page.
+    Enriched with candidate profile fields so the sidebar can show
+    manually-recommended candidates who are not in the ML results.
     """
-    job_mongo_id = f"{company_name}_{job_title}"
     collection = mongo_connection.candidate_jobs_collection
+    candidates_col = mongo_connection.candidates_collection
+
+    job_doc = mongo_connection.job_descriptions_collection.find_one(
+        {"companyName": company_name, "JobTitle": job_title},
+        {"_id": 1}
+    )
+    if not job_doc:
+        return {"success": True, "recommendations": []}
+
+    job_mongo_id = str(job_doc["_id"])
     docs = list(collection.find(
         {"job_mongo_id": job_mongo_id},
-        {"_id": 1, "candidate_id": 1}
+        {"_id": 1, "candidate_id": 1, "status": 1}
     ))
-    entries = [{"rec_id": str(d["_id"]), "candidate_id": d["candidate_id"]} for d in docs]
+    entries = []
+    for d in docs:
+        entry = {
+            "rec_id": str(d["_id"]),
+            "candidate_id": d["candidate_id"],
+            "status": d.get("status", "recommended"),
+        }
+        try:
+            profile = candidates_col.find_one(
+                {"_id": ObjectId(d["candidate_id"])},
+                {"full_name": 1, "email": 1, "location": 1, "Summary": 1, "Skills": 1, "clifton_strengths": 1}
+            )
+            if profile:
+                entry["full_name"] = profile.get("full_name", "")
+                entry["email"] = profile.get("email", "")
+                entry["location"] = profile.get("location", "")
+                entry["summary"] = profile.get("Summary", "")
+                entry["skills"] = profile.get("Skills", [])
+                entry["clifton_strengths"] = profile.get("clifton_strengths", [])
+        except Exception:
+            pass
+        entries.append(entry)
     return {"success": True, "recommendations": entries}
 
 
