@@ -53,8 +53,6 @@ function JobRecommendations() {
   const [recommendedCandidates, setRecommendedCandidates] = useState(new Map());
   // Enriched pipeline entries from candidate_jobs (used to show manually-recommended candidates)
   const [pipelineProfiles, setPipelineProfiles] = useState([]);
-  const [applyLoading, setApplyLoading] = useState(false);
-  const [applyError, setApplyError] = useState('');
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const loadRecommendedCandidates = useCallback(async () => {
@@ -289,25 +287,6 @@ function JobRecommendations() {
       setRecommendSnackbar({ open: true, message: 'Failed to remove recommendation.', severity: 'error' });
     } finally {
       setRecommendingId(null);
-    }
-  };
-
-  const handleMarkApplied = async (candidateId) => {
-    const rec = recommendedCandidates.get(candidateId);
-    if (!rec) return;
-    try {
-      setApplyLoading(true);
-      setApplyError('');
-      await candidateJobsAPI.updateStatus(candidateId, rec.rec_id, 'applied');
-      setRecommendedCandidates(prev => {
-        const next = new Map(prev);
-        next.set(candidateId, { ...rec, status: 'applied' });
-        return next;
-      });
-    } catch (err) {
-      setApplyError('Failed to update status. Please try again.');
-    } finally {
-      setApplyLoading(false);
     }
   };
 
