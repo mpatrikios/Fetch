@@ -71,6 +71,8 @@ export const clientAPI = {
   getDetails: (clientId) => api.get(`/clients/${clientId}`),
   updateClient: (clientId, clientData) => api.put(`/clients/${clientId}/update`, clientData),
   activate: (clientId) => api.post(`/clients/${clientId}/activate`),
+  create: (clientData) => api.post('/clients', clientData),
+  deleteClient: (clientId) => api.delete(`/clients/${clientId}`),
 };
 
 export const cliftonStrengthsAPI = {

@@ -25,7 +25,9 @@ router = APIRouter(dependencies=[Depends(get_current_mlg_recruiter)])
 # API endpoint to list candidates with basic info
 @router.get("/candidates", response_model=CandidateListResponse)
 async def list_candidates(
-    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all")
+    status: Optional[str] = Query("all", description="Filter by candidate status: pending, all"),
+    limit: int = Query(500, ge=1, le=10000),
+    offset: int = Query(0, ge=0)
 ):
     try:
         # Build query filter based on status parameter
@@ -57,11 +59,11 @@ async def list_candidates(
                 "clifton_strengths": 1,
                 "recruiter_notes": 1,
                 "status": 1,
-                "profile_embedding": 1,
+                "profile_embedding": {"$slice": 1},
                 "resume_blob_path": 1,
                 "clifton_blob_path": 1
             }
-        ).sort("full_name", 1).limit(100))
+        ).sort("full_name", 1).skip(offset).limit(limit))
         
         formatted_candidates = []
         for candidate in candidates:

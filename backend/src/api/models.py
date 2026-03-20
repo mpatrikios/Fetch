@@ -1,5 +1,5 @@
 # Pydantic models for API responses related to candidates, jobs, and matching results.
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Literal, Optional, Dict, Any
 from datetime import datetime
 
@@ -340,3 +340,25 @@ class ClientDetailsResponse(BaseModel):
     """Response for single client details"""
     success: bool
     client: ClientDetails
+
+
+class ClientCreateRequest(BaseModel):
+    company_name: str = Field(..., min_length=1, max_length=200)
+    contact_email: Optional[str] = Field(None, max_length=200)
+    contact_number: Optional[str] = Field(None, max_length=50)
+    contact_recruiter: Optional[str] = Field(None, max_length=200)
+    locations: Optional[List[str]] = None
+
+    @field_validator('company_name', mode='before')
+    @classmethod
+    def validate_company_name(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+        if not v:
+            raise ValueError('company_name must not be blank')
+        return v
+
+class ClientCreateResponse(BaseModel):
+    success: bool
+    client_id: str
+    message: str

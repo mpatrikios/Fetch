@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form, Depends, Query
 from fastapi.concurrency import run_in_threadpool
 from typing import List
 from datetime import datetime, timezone
@@ -293,7 +293,10 @@ async def finalize_job(body: JobFinalizeRequest):
 
 # Endpoint to list job descriptions
 @router.get("/jobs", response_model=JobListResponse)
-async def list_jobs():
+async def list_jobs(
+    limit: int = Query(500, ge=1, le=10000),
+    offset: int = Query(0, ge=0)
+):
     try:
         jobs = list(mongo_connection.job_descriptions_collection.find(
             {"profile_embedding": {"$exists": True}, "companyName": {"$exists": True, "$ne": None}},
@@ -305,7 +308,7 @@ async def list_jobs():
                 "Skills": {"$slice": 10},
                 "last_match_generated_at": 1
             }
-        ).limit(100))
+        ).skip(offset).limit(limit))
 
         formatted_jobs = []
         for job in jobs:
