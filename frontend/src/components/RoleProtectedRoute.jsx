@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { canAccessDashboard } from '../utils/api';
 
 function RoleProtectedRoute({ children, requiredRole }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -15,7 +16,7 @@ function RoleProtectedRoute({ children, requiredRole }) {
 
   if (requiredRole && user?.role !== requiredRole) {
     // Redirect non-MLG recruiters back to appropriate dashboard
-    if (user?.status === 'completed_onboarding') {
+    if (canAccessDashboard(user)) {
       return <Navigate to="/dashboard" replace />;
     } else {
       return <Navigate to="/onboarding" replace />;

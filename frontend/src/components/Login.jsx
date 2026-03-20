@@ -11,7 +11,7 @@ import {
   Card
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../utils/api';
+import { authAPI, canAccessDashboard } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 
 function Login() {
@@ -32,7 +32,7 @@ function Login() {
         const user = JSON.parse(storedUser);
         if (user.role === 'mlg-recruiter') {
           navigate('/mlg-dashboard');
-        } else if (user.status === 'completed_onboarding') {
+        } else if (canAccessDashboard(user)) {
           navigate('/dashboard');
         } else {
           navigate('/onboarding');
@@ -67,7 +67,7 @@ function Login() {
         // Normal routing based on role
         if (userRole === 'mlg-recruiter') {
           navigate('/mlg-dashboard');
-        } else if (response.data.user.status === 'completed_onboarding') {
+        } else if (canAccessDashboard(response.data.user)) {
           navigate('/dashboard');
         } else {
           navigate('/onboarding');

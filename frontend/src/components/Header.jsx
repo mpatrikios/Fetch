@@ -1,6 +1,7 @@
 import { AppBar, Toolbar, Button, Box, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { canAccessDashboard } from '../utils/api';
 import logo from '../assets/logo.png';
 
 // Shared navigation button styles
@@ -31,7 +32,7 @@ function Header() {
           onClick={() => {
             if (!isAuthenticated) navigate('/login');
             else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
-            else if (user?.status === 'completed_onboarding') navigate('/dashboard');
+            else if (canAccessDashboard(user)) navigate('/dashboard');
             else navigate('/onboarding');
           }}
           onKeyDown={(e) => {
@@ -39,7 +40,8 @@ function Header() {
               e.preventDefault();
               if (!isAuthenticated) navigate('/login');
               else if (user?.role === 'mlg-recruiter') navigate('/mlg-dashboard');
-              else navigate('/dashboard');
+              else if (canAccessDashboard(user)) navigate('/dashboard');
+              else navigate('/onboarding');
             }
           }}
           sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, cursor: 'pointer' }}

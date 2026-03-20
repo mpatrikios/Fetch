@@ -15,7 +15,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { useNavigate } from 'react-router-dom';
-import { authAPI } from '../utils/api';
+import { authAPI, canAccessDashboard } from '../utils/api';
 import DocumentUpload from './DocumentUpload';
 import CalendlyEmbed from './CalendlyEmbed';
 
@@ -60,7 +60,13 @@ function Onboarding() {
     try {
       const response = await authAPI.getCurrentUser();
       setUser(response.data);
-      
+
+      // Redirect immediately if the user already has dashboard access
+      if (canAccessDashboard(response.data)) {
+        navigate('/dashboard');
+        return;
+      }
+
       // Determine current step based on user status
       const statusToStepMap = {
         'registered': 0,
@@ -69,7 +75,7 @@ function Onboarding() {
         'uploaded_results': 3,
         'completed_onboarding': 4
       };
-      
+
       const currentStepIndex = statusToStepMap[response.data.status] || 0;
       setCurrentStep(currentStepIndex);
       
