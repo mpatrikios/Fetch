@@ -119,7 +119,7 @@ function Jobs() {
 
   const loadPushedCandidates = useCallback(async (company, title) => {
     try {
-      const res = await candidateJobsAPI.getJobRecommendations(company, title);
+      const res = await candidateJobsAPI.getJobRecommendations(company, title, jobDetails.mongo_id);
       const map = new Map(
         (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
       );
