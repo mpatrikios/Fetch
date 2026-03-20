@@ -14,7 +14,7 @@ import { Box } from '@mui/material';
  *   See Calendly InlineWidget documentation for supported settings (e.g., colors, visibility of details).
  * @returns {JSX.Element} The Calendly embed widget.
  */
-function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {} }) {
+function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {}, onEventScheduled }) {
   const defaultPageSettings = {
     backgroundColor: 'ffffff',
     hideEventTypeDetails: false,
@@ -41,6 +41,7 @@ function CalendlyEmbed({ url, user = null, prefill = {}, pageSettings = {} }) {
           height: '600px',
           width: '100%'
         }}
+        onEventScheduled={onEventScheduled}
       />
     </Box>
   );

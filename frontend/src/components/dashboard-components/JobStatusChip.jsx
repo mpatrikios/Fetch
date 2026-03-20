@@ -3,6 +3,8 @@ import { Chip } from '@mui/material';
 function JobStatusChip({ status }) {
   const getStatusColor = (status) => {
     switch (status) {
+      case 'applied':
+        return 'success';
       case 'pending':
         return 'warning';
       case 'interview':

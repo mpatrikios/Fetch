@@ -5,14 +5,18 @@ import {
   Paper,
   Box,
   Chip,
-  Alert
+  Alert,
+  Divider,
+  Button
 } from '@mui/material';
 import { Star } from '@mui/icons-material';
 import { CardSection, SectionHeader, DarkButton } from '../common-components/StyledComponents';
 import { profileAPI } from '../../utils/api';
+import CalendlyEmbed from '../CalendlyEmbed';
 
-function RecommendedJobs({ recommendedJobs, onRefresh }) {
+function RecommendedJobs({ recommendedJobs, onRefresh, user }) {
   const [interestSent, setInterestSent] = useState({});
+  const [showCalendly, setShowCalendly] = useState({});
   const [error, setError] = useState('');
 
   const handleExpressInterest = async (job) => {
@@ -21,11 +25,16 @@ function RecommendedJobs({ recommendedJobs, onRefresh }) {
       setInterestSent(prev => ({ ...prev, [recId]: 'loading' }));
       await profileAPI.expressInterest(recId);
       setInterestSent(prev => ({ ...prev, [recId]: 'done' }));
-      if (onRefresh) onRefresh();
+      setShowCalendly(prev => ({ ...prev, [recId]: true }));
     } catch (err) {
       setError('Failed to express interest. Please try again.');
       setInterestSent(prev => ({ ...prev, [recId]: null }));
     }
+  };
+
+  const handleCalendlyDone = (recId) => {
+    setShowCalendly(prev => ({ ...prev, [recId]: false }));
+    if (onRefresh) onRefresh();
   };
 
   return (
@@ -85,6 +94,23 @@ function RecommendedJobs({ recommendedJobs, onRefresh }) {
                       {isDone ? 'Interest Sent' : isLoading ? 'Sending...' : 'Express Interest'}
                     </DarkButton>
                   </Box>
+
+                  {showCalendly[recId] && (
+                    <>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        Schedule a follow-up call to complete your application:
+                      </Typography>
+                      <CalendlyEmbed
+                        url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL}
+                        user={user}
+                        onEventScheduled={() => handleCalendlyDone(recId)}
+                      />
+                      <Button size="small" onClick={() => handleCalendlyDone(recId)} sx={{ mt: 1 }}>
+                        Done
+                      </Button>
+                    </>
+                  )}
                 </Paper>
               </Grid>
             );
