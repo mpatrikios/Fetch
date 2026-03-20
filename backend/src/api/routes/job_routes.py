@@ -374,7 +374,7 @@ async def get_job_details_by_company_and_title(company_name: str, job_title: str
 # Endpoint to get full job details
 @router.get("/jobs/{job_id}", response_model=JobDetailsResponse)
 async def get_job_details_by_id(job_id: str):
-    """Get full job details including all fields"""
+    """Get one job's details including all fields"""
     validate_object_id(job_id)
     try:
         job = mongo_connection.job_descriptions_collection.find_one({
