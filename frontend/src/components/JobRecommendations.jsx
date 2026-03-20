@@ -18,12 +18,11 @@ import { ArrowBack, OpenInNew, Refresh as RefreshIcon, History as HistoryIcon } 
 import { useNavigate, useParams } from 'react-router-dom';
 import { matchingAPI, candidateJobsAPI, jobAPI } from '../utils/api';
 import {
-  SectionHeader,
   CardSection,
   SelectableListItem,
   DarkButton
 } from './common-components/StyledComponents';
-import { SearchField, EmptyState, ConfirmationDialog, SkillChips, DetailPanelContainer } from './common-components/SharedComponents';
+import { SearchField, EmptyState, ConfirmationDialog, SkillChips, DetailPanelContainer, PageHeader } from './common-components/SharedComponents';
 
 
 function JobRecommendations() {
@@ -309,75 +308,68 @@ function JobRecommendations() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
       {/* Header */}
       <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/jobs')}
-          sx={{ color: 'text.secondary' }}
-        >
-          Back to Jobs
-        </Button>
-        <SectionHeader variant="h4" component="h1" sx={{ mb: 0, flexGrow: 1 }}>
-          Recommendations for {decodedTitle}
-        </SectionHeader>
-        {generatedAt && (
-          <Typography variant="body2" color="text.secondary">
-            Generated {new Date(generatedAt).toLocaleString()}
-          </Typography>
-        )}
-        <Button
-          onClick={handleRegenerate}
-          disabled={loading}
-          startIcon={<RefreshIcon />}
-          variant="outlined"
-          size="small"
-        >
-          Regenerate
-        </Button>
-
-        {/* History button */}
-        {history.length > 0 && (
-          <Button
-            onClick={(e) => setHistoryAnchorEl(e.currentTarget)}
-            startIcon={<HistoryIcon />}
-            variant="outlined"
-            size="small"
-            disabled={loading}
-          >
-            History ({history.length})
-          </Button>
-        )}
-
-        {/* History popover */}
-        <Menu
-          anchorEl={historyAnchorEl}
-          open={Boolean(historyAnchorEl)}
-          onClose={() => setHistoryAnchorEl(null)}
-          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        >
-          {history.map((entry, index) => {
-            const isActiveEntry = entry.match_id === activeMatchId || (activeMatchId === null && index === 0);
-            return (
-              <MenuItem
-                key={entry.match_id}
-                selected={isActiveEntry}
-                onClick={() => handleSelectHistoricalMatch(entry.match_id)}
-                sx={{ minWidth: 260 }}
+      <PageHeader
+        title={`Recommendations for ${decodedTitle}`}
+        onBack={() => navigate('/jobs')}
+        backLabel="Back to Jobs"
+        rightActions={
+          <>
+            {generatedAt && (
+              <Typography variant="body2" color="text.secondary">
+                Generated {new Date(generatedAt).toLocaleString()}
+              </Typography>
+            )}
+            <Button
+              onClick={handleRegenerate}
+              disabled={loading}
+              startIcon={<RefreshIcon />}
+              variant="outlined"
+              size="small"
+            >
+              Regenerate
+            </Button>
+            {history.length > 0 && (
+              <Button
+                onClick={(e) => setHistoryAnchorEl(e.currentTarget)}
+                startIcon={<HistoryIcon />}
+                variant="outlined"
+                size="small"
+                disabled={loading}
               >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: isActiveEntry ? 700 : 400 }}>
-                    {index === 0 ? 'Latest — ' : ''}{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date'}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {entry.total_matches} candidates
-                  </Typography>
-                </Box>
-              </MenuItem>
-            );
-          })}
-        </Menu>
-      </Box>
+                History ({history.length})
+              </Button>
+            )}
+            <Menu
+              anchorEl={historyAnchorEl}
+              open={Boolean(historyAnchorEl)}
+              onClose={() => setHistoryAnchorEl(null)}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              {history.map((entry, index) => {
+                const isActiveEntry = entry.match_id === activeMatchId || (activeMatchId === null && index === 0);
+                return (
+                  <MenuItem
+                    key={entry.match_id}
+                    selected={isActiveEntry}
+                    onClick={() => handleSelectHistoricalMatch(entry.match_id)}
+                    sx={{ minWidth: 260 }}
+                  >
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: isActiveEntry ? 700 : 400 }}>
+                        {index === 0 ? 'Latest — ' : ''}{entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {entry.total_matches} candidates
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                );
+              })}
+            </Menu>
+          </>
+        }
+      />
 
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>

@@ -10,17 +10,12 @@ import {
   Chip,
   List,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField
 } from '@mui/material';
-import { ArrowBack, LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
+import { LocationOn, FilterListOff, Business, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { clientAPI, parseDelimitedString, getUniqueValues } from '../utils/api';
 import {
-  SectionHeader,
   CardSection,
   SelectableListItem
 } from './common-components/StyledComponents';
@@ -31,7 +26,9 @@ import {
   EmptyState,
   FilterIconButton,
   ConfirmationDialog,
-  DetailPanelContainer
+  DetailPanelContainer,
+  PageHeader,
+  ClosableDialog
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
 
@@ -271,18 +268,7 @@ function Clients() {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'grey.50', overflow: 'hidden' }}>
       <Box sx={{ p: 4, pb: 0, flexShrink: 0 }}>
       {/* Header */}
-      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate('/mlg-dashboard')}
-          sx={{ color: 'text.secondary' }}
-        >
-          Back
-        </Button>
-        <SectionHeader variant="h4" component="h1" sx={{ mb: 0 }}>
-          MLG Manage Clients
-        </SectionHeader>
-      </Box>
+      <PageHeader title="MLG Manage Clients" onBack={() => navigate('/mlg-dashboard')} />
 
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>
@@ -622,90 +608,87 @@ function Clients() {
       />
 
       {/* Edit Client Dialog */}
-      <Dialog
+      <ClosableDialog
         open={showEditDialog}
         onClose={(event, reason) => {
-          if (saving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) {
-            return;
-          }
+          if (saving && (reason === 'backdropClick' || reason === 'escapeKeyDown')) return;
           setShowEditDialog(false);
         }}
-        maxWidth="sm"
-        fullWidth
+        title="Edit Client"
+        dividers={false}
+        actions={
+          <>
+            <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveClient}
+              variant="contained"
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle>Edit Client</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label="Company Name"
-              fullWidth
-              value={editFormData.company_name}
-              onChange={(e) => handleEditFormChange('company_name', e.target.value)}
-            />
-            <TextField
-              label="Status"
-              fullWidth
-              value={editFormData.status}
-              onChange={(e) => handleEditFormChange('status', e.target.value)}
-            />
-            <TextField
-              label="Contact Email"
-              fullWidth
-              value={editFormData.contact_email}
-              onChange={(e) => handleEditFormChange('contact_email', e.target.value)}
-            />
-            <TextField
-              label="Contact Phone"
-              fullWidth
-              value={editFormData.contact_number}
-              onChange={(e) => handleEditFormChange('contact_number', e.target.value)}
-            />
-            <TextField
-              label="Contact Recruiter"
-              fullWidth
-              value={editFormData.contact_recruiter}
-              onChange={(e) => handleEditFormChange('contact_recruiter', e.target.value)}
-            />
-            <TextField
-              label="Summary"
-              fullWidth
-              multiline
-              minRows={3}
-              value={editFormData.summary}
-              onChange={(e) => handleEditFormChange('summary', e.target.value)}
-            />
-            <TextField
-              label="Locations"
-              fullWidth
-              multiline
-              minRows={2}
-              value={editFormData.locations}
-              onChange={(e) => handleEditFormChange('locations', e.target.value)}
-              helperText="Separate locations with semicolons"
-            />
-            <TextField
-              label="Intake Call Notes"
-              fullWidth
-              multiline
-              minRows={3}
-              value={editFormData.intake_call_notes}
-              onChange={(e) => handleEditFormChange('intake_call_notes', e.target.value)}
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowEditDialog(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveClient}
-            variant="contained"
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField
+            label="Company Name"
+            fullWidth
+            value={editFormData.company_name}
+            onChange={(e) => handleEditFormChange('company_name', e.target.value)}
+          />
+          <TextField
+            label="Status"
+            fullWidth
+            value={editFormData.status}
+            onChange={(e) => handleEditFormChange('status', e.target.value)}
+          />
+          <TextField
+            label="Contact Email"
+            fullWidth
+            value={editFormData.contact_email}
+            onChange={(e) => handleEditFormChange('contact_email', e.target.value)}
+          />
+          <TextField
+            label="Contact Phone"
+            fullWidth
+            value={editFormData.contact_number}
+            onChange={(e) => handleEditFormChange('contact_number', e.target.value)}
+          />
+          <TextField
+            label="Contact Recruiter"
+            fullWidth
+            value={editFormData.contact_recruiter}
+            onChange={(e) => handleEditFormChange('contact_recruiter', e.target.value)}
+          />
+          <TextField
+            label="Summary"
+            fullWidth
+            multiline
+            minRows={3}
+            value={editFormData.summary}
+            onChange={(e) => handleEditFormChange('summary', e.target.value)}
+          />
+          <TextField
+            label="Locations"
+            fullWidth
+            multiline
+            minRows={2}
+            value={editFormData.locations}
+            onChange={(e) => handleEditFormChange('locations', e.target.value)}
+            helperText="Separate locations with semicolons"
+          />
+          <TextField
+            label="Intake Call Notes"
+            fullWidth
+            multiline
+            minRows={3}
+            value={editFormData.intake_call_notes}
+            onChange={(e) => handleEditFormChange('intake_call_notes', e.target.value)}
+          />
+        </Box>
+      </ClosableDialog>
     </Box>
   );
 }

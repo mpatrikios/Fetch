@@ -16,8 +16,9 @@ import {
   Chip,
   CircularProgress
 } from '@mui/material';
-import { CardSection, DetailPanel } from './StyledComponents';
-import { Search, Clear } from '@mui/icons-material';
+import { CardSection, DetailPanel, SectionHeader } from './StyledComponents';
+import { Search, Clear, ArrowBack } from '@mui/icons-material';
+import CloseIcon from '@mui/icons-material/Close';
 
 /**
  * Expandable text display with "Read more/Show less" toggle
@@ -343,3 +344,43 @@ export const FilterIconButton = ({
     </IconButton>
   );
 };
+
+/**
+ * Dialog with a built-in close (X) icon button in the title
+ */
+export const ClosableDialog = ({
+  open, onClose, title, children, actions,
+  maxWidth = 'sm', fullWidth = true, dividers = true
+}) => (
+  <Dialog open={open} onClose={onClose} maxWidth={maxWidth} fullWidth={fullWidth}>
+    <DialogTitle>
+      {title}
+      <IconButton
+        onClick={onClose}
+        sx={{ position: 'absolute', right: 8, top: 8, color: (t) => t.palette.grey[500] }}
+      >
+        <CloseIcon />
+      </IconButton>
+    </DialogTitle>
+    {dividers
+      ? <DialogContent dividers>{children}</DialogContent>
+      : <DialogContent>{children}</DialogContent>
+    }
+    {actions && <DialogActions>{actions}</DialogActions>}
+  </Dialog>
+);
+
+/**
+ * Page header with back button, title, and optional right-side actions
+ */
+export const PageHeader = ({ title, onBack, backLabel = 'Back', rightActions }) => (
+  <Box sx={{ mb: 4, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+    <Button startIcon={<ArrowBack />} onClick={onBack} sx={{ color: 'text.secondary' }}>
+      {backLabel}
+    </Button>
+    <SectionHeader variant="h4" component="h1" sx={{ mb: 0, flexGrow: 1 }}>
+      {title}
+    </SectionHeader>
+    {rightActions}
+  </Box>
+);
