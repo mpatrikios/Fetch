@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCalendlyEventListener } from 'react-calendly';
 import {
   Container,
   Box,
@@ -35,11 +36,6 @@ const onboardingSteps = [
     status: 'uploaded_results',
     description: 'Upload your completed Clifton Strengths Assessment results so we can start matching you with opportunities!'
   },
-  {
-    label: 'Schedule follow-up call',
-    status: 'completed_onboarding',
-    description: ''
-  }
 ];
 
 function Onboarding() {
@@ -50,7 +46,16 @@ function Onboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [showIntakeCalendly, setShowIntakeCalendly] = useState(false);
-  const [showFollowupCalendly, setShowFollowupCalendly] = useState(false);
+  useCalendlyEventListener({
+    onEventScheduled: async () => {
+      try {
+        await authAPI.updateStatus('scheduled_intake');
+        await fetchUserData();
+      } catch (err) {
+        console.error('Failed to update status after scheduling:', err);
+      }
+    },
+  });
 
   useEffect(() => {
     fetchUserData();
@@ -64,10 +69,9 @@ function Onboarding() {
       // Determine current step based on user status
       const statusToStepMap = {
         'registered': 0,
-        'uploaded_resume': 1,  // When resume uploaded, move to step 1 (schedule intake)
+        'onboarding': 1,
         'scheduled_intake': 2,
-        'uploaded_results': 3,
-        'completed_onboarding': 4
+        'completed_onboarding': 3
       };
       
       const currentStepIndex = statusToStepMap[response.data.status] || 0;
@@ -87,28 +91,9 @@ function Onboarding() {
 
   const handleResumeUploadSuccess = async () => {
     try {
-      // Update status to uploaded_resume
       await authAPI.updateStatus('onboarding');
       setShowResumeUpload(false);
       await fetchUserData();
-    } catch (err) {
-      console.error('Failed to update status:', err);
-    }
-  };
-
-  const handleMockWebhook = async (eventType) => {
-    try {
-      let newStatus;
-      if (eventType === 'intake') {
-        newStatus = 'scheduled_intake';
-      } else if (eventType === 'followup') {
-        newStatus = 'completed_onboarding';
-      }
-      
-      if (newStatus) {
-        await authAPI.updateStatus(newStatus);
-        await fetchUserData();
-      }
     } catch (err) {
       console.error('Failed to update status:', err);
     }
@@ -198,7 +183,7 @@ function Onboarding() {
           </Typography>
           
           <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
-            {currentStep} of 4 Steps Complete
+            {currentStep} of 3 Steps Complete
           </Typography>
 
           <Stepper activeStep={currentStep} orientation="vertical">
@@ -238,25 +223,10 @@ function Onboarding() {
                             Hide Scheduler
                           </Button>
                           {import.meta.env.VITE_CALENDLY_INTAKE_URL ? (
-                            <Box>
-                              <CalendlyEmbed 
-                                url={import.meta.env.VITE_CALENDLY_INTAKE_URL}
-                                user={user}
-                              />
-                              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                  For testing: Simulate scheduling confirmation
-                                </Typography>
-                                <Button 
-                                  variant="outlined" 
-                                  size="small"
-                                  color="secondary"
-                                  onClick={() => handleMockWebhook('intake')}
-                                >
-                                  Mock POST API Call
-                                </Button>
-                              </Box>
-                            </Box>
+                            <CalendlyEmbed
+                              url={import.meta.env.VITE_CALENDLY_INTAKE_URL}
+                              user={user}
+                            />
                           ) : (
                             <Alert severity="error" sx={{ mb: 2 }}>
                               The intake call scheduling link is not configured. Please contact support or try again later.
@@ -276,55 +246,6 @@ function Onboarding() {
                         acceptedFileTypes=".pdf,.doc,.docx"
                         uploadType="cliftonstrengths"
                       />
-                    </Box>
-                  )}
-                  {index === currentStep && index === 3 && (
-                    <Box mt={2}>
-                      {!showFollowupCalendly ? (
-                        <Button 
-                          variant="contained" 
-                          size="small"
-                          onClick={() => setShowFollowupCalendly(true)}
-                        >
-                          Schedule Follow-up Call
-                        </Button>
-                      ) : (
-                        <Box>
-                          <Button 
-                            variant="text" 
-                            size="small"
-                            onClick={() => setShowFollowupCalendly(false)}
-                            sx={{ mb: 2 }}
-                          >
-                            Hide Scheduler
-                          </Button>
-                          {import.meta.env.VITE_CALENDLY_FOLLOWUP_URL ? (
-                            <Box>
-                              <CalendlyEmbed 
-                                url={import.meta.env.VITE_CALENDLY_FOLLOWUP_URL}
-                                user={user}
-                              />
-                              <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                                <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-                                  For testing: Simulate scheduling confirmation
-                                </Typography>
-                                <Button 
-                                  variant="outlined" 
-                                  size="small"
-                                  color="secondary"
-                                  onClick={() => handleMockWebhook('followup')}
-                                >
-                                  Mock POST API Call
-                                </Button>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Alert severity="error" sx={{ mb: 2 }}>
-                              The follow-up call scheduling link is not configured. Please contact support or try again later.
-                            </Alert>
-                          )}
-                        </Box>
-                      )}
                     </Box>
                   )}
                 </StepContent>
