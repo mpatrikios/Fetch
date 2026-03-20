@@ -13,7 +13,7 @@ from src.database.connection import mongo_connection
 from src.api.models import CandidateListResponse
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
-from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs, pending_candidates_filter, non_rejected_candidates_filter
+from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs, pending_candidates_filter, non_rejected_candidates_filter, anonymize_candidate_in_matches
 from src.services.storage.blob_storage import get_blob_storage
 from src.services.document_processing.document_service import DocumentService
 from src.services.email_service import send_email
@@ -333,7 +333,7 @@ async def search_candidates(q: str = Query(..., min_length=1)):
 async def delete_candidate(candidate_id: str):
     """
     Permanently delete a candidate and their associated blobs from Azure Storage.
-    Historical match documents referencing this candidate are left intact.
+    Anonymizes PII in any historical match documents referencing this candidate.
     """
     validate_object_id(candidate_id)
 
@@ -346,5 +346,6 @@ async def delete_candidate(candidate_id: str):
 
     delete_document_blobs(cand, ["resume_blob_path", "clifton_blob_path"], candidate_id)
     mongo_connection.candidates_collection.delete_one({"_id": ObjectId(candidate_id)})
+    anonymize_candidate_in_matches(candidate_id)
     logger.info(f"Candidate {candidate_id} deleted")
     return {"success": True, "message": "Candidate deleted successfully"}

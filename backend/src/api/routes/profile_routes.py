@@ -21,7 +21,7 @@ from src.api.models import (
     AccountDeleteResponse,
 )
 from src.services.embeddings.generate_embeddings import embed_candidate_location
-from src.api.routes.helpers import extract_clifton_names
+from src.api.routes.helpers import extract_clifton_names, delete_document_blobs, anonymize_candidate_in_matches
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -246,7 +246,8 @@ async def delete_account(
     """
     Delete (soft delete) the authenticated user's account.
     Requires password confirmation and explicit acknowledgment.
-    Anonymizes PII but keeps record for audit purposes.
+    Anonymizes PII both in the candidate record and in any historical match documents.
+    Also deletes raw document blobs from Azure Storage.
     """
     try:
         if not delete_request.confirm_deletion:
@@ -257,10 +258,10 @@ async def delete_account(
 
         user_id = ObjectId(current_user["_id"])
 
-        # Verify password
+        # Fetch password hash and blob paths before anonymizing
         user = mongo_connection.candidates_collection.find_one(
             {"_id": user_id},
-            {"password": 1, "email": 1}
+            {"password": 1, "email": 1, "resume_blob_path": 1, "clifton_blob_path": 1}
         )
 
         if not user:
@@ -298,6 +299,12 @@ async def delete_account(
 
         if result.modified_count == 0:
             raise HTTPException(status_code=500, detail="Failed to delete account")
+
+        # Delete raw document blobs from Azure Storage
+        delete_document_blobs(user, ["resume_blob_path", "clifton_blob_path"], str(user_id))
+
+        # Anonymize PII in historical match documents
+        anonymize_candidate_in_matches(str(user_id))
 
         logger.warning(f"Account soft-deleted for original email: {original_email}")
 
