@@ -150,7 +150,10 @@ def embed_job_description_location(job_doc):
     locations = job_doc.get("Locations", [])
     
     # Handle multiple locations - use the first one for primary embedding
-    if isinstance(locations, list) and locations:
+    if not locations:
+        logger.warning(f"No locations found for job description {job_doc.get('_id')}")
+        return
+    if isinstance(locations, list):
         primary_location = locations[0]
     else:
         primary_location = str(locations) if locations else ""

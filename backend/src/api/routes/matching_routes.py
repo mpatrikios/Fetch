@@ -57,7 +57,7 @@ async def find_matches(request: MatchRequest):
     """
     try:
         # Retrieve job description
-        job_doc = get_job_description(request.company_name, request.job_title)
+        job_doc = get_job_description(request.job_id)
         if not job_doc:
             raise HTTPException(
                 status_code=404, 

@@ -69,7 +69,7 @@ function App() {
               }
             />
             <Route
-              path="/jobs/:company/:title/matches"
+              path="/jobs/:company/:title/:jobId/matches"
               element={
                 <RoleProtectedRoute requiredRole="mlg-recruiter">
                   <JobRecommendations />

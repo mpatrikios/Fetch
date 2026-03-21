@@ -97,10 +97,11 @@ export const jobAPI = {
     });
   },
   list: () => api.get('/jobs'),
-  getDetails: (company, title) => api.get(`/jobs/${encodeURIComponent(company)}/${encodeURIComponent(title)}`),
+  getDetailsByTitle: (companyName, jobTitle) => api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`),
+  getDetailsById: (jobId) => api.get(`/jobs/${jobId}`),
   getCompanies: () => api.get('/companies'),
   updateJob: (jobId, jobData) => api.put(`/jobs/${jobId}/update`, jobData),
-  deleteJob: (jobId) => api.delete(`/jobs/${jobId}`),
+  deleteJob: (jobId, companyName) => api.delete(`/jobs/${jobId}`, { params: { company_name: companyName } }),
   uploadCultureDocument: (jobId, file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -115,10 +116,11 @@ export const jobAPI = {
 
 // Matching endpoints
 export const matchingAPI = {
-  findMatches: (companyName, jobTitle, topK = null, useCohort = true, config = {}) =>
+  findMatches: (companyName, jobTitle, jobId, topK = null, useCohort = true, config = {}) =>
     api.post('/matches/find', {
       company_name: companyName,
       job_title: jobTitle,
+      job_id: jobId,
       ...(topK !== null && { top_k: topK }),
       use_cohort: useCohort,
     }, config),
@@ -142,8 +144,8 @@ export const candidateJobsAPI = {
     api.delete(`/candidates/${candidateId}/recommendations/${recId}`),
   updateStatus: (candidateId, recId, status) =>
     api.put(`/candidates/${candidateId}/recommendations/${recId}/status`, { status }),
-  getJobRecommendations: (companyName, jobTitle) =>
-    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/recommendations`),
+  getJobRecommendations: (companyName, jobTitle, jobId) =>
+    api.get(`/jobs/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}/recommendations`),
 };
 
 // Profile endpoints (candidate self-service)

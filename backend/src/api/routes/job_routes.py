@@ -7,6 +7,9 @@ import uuid
 import logging
 
 from bson import ObjectId
+from bson.errors import InvalidId
+from src.api.utils import validate_object_id
+
 from src.database.insert_to_mongo import insert_job_description, get_job_description
 from src.database.connection import mongo_connection
 from src.services.document_processing.azure_job_description_parser import (
@@ -136,36 +139,23 @@ async def upload_job_description(
         mongo_result = insert_job_description(standardized_data)
         if not mongo_result.get("success"):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
-
-        # Link job title to the client's postedJobs list
-        try:
-            mongo_connection.clients_collection.update_one(
-                {"companyName": company_name},
-                {"$addToSet": {"postedJobs": job_title}}
-            )
-        except Exception as e:
-            logger.error(f"Failed to update client postedJobs for {company_name}: {e}")
-
+        mongo_id = mongo_result.get("document_id")
+        if not mongo_id:
+            raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
         # Retrieve the inserted job description
-        job_docs = get_job_description(company_name, job_title)
-        if not job_docs:
-            raise HTTPException(status_code=500, detail="Failed to retrieve job after insertion")
-
-        job_doc = job_docs[0] if isinstance(job_docs, list) else job_docs
-
+        job_doc = get_job_description(mongo_id)
         # Upload original document to Azure Blob Storage
         blob_stored = False
         try:
             with open(tmp_file_path, "rb") as f:
                 file_bytes = f.read()
             blob_storage = get_blob_storage()
-            document_id = str(job_doc.get("_id"))
-            blob_path = f"job-descriptions/{document_id}/{file.filename}"
+            blob_path = f"job-descriptions/{mongo_id}/{file.filename}"
             blob_content_type = get_content_type(file.filename)
             blob_url = blob_storage.upload_blob(blob_path, file_bytes, blob_content_type)
 
             mongo_connection.job_descriptions_collection.update_one(
-                {"_id": job_doc["_id"]},
+                {"_id": ObjectId(mongo_id)},
                 {"$set": {
                     "description_blob_path": blob_path,
                     "description_blob_url": blob_url,
@@ -174,7 +164,7 @@ async def upload_job_description(
             )
             blob_stored = True
         except Exception as e:
-            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}: {e}")
+            logger.error(f"Blob storage upload failed for job {company_name}/{job_title}/{mongo_id}: {e}")
 
         openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not openai_api_key:
@@ -183,7 +173,7 @@ async def upload_job_description(
             try:
                 await run_in_threadpool(embed_job_description_profile, job_doc)
                 await run_in_threadpool(embed_job_description_location, job_doc)
-                job_doc = get_job_description(company_name, job_title)
+                job_doc = get_job_description(mongo_id)
             except Exception as e:
                 logger.error(f"Embedding generation failed: {e}")
         
@@ -204,7 +194,8 @@ async def upload_job_description(
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
                 has_embeddings="profile_embedding" in job_doc,
-                job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}"
+                job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}",
+                mongo_id=mongo_id,
             )
         )
         
@@ -239,21 +230,25 @@ async def finalize_job(body: JobFinalizeRequest):
     mongo_result = insert_job_description(mongo_doc)
     if not mongo_result.get("success"):
         raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
-
+    mongo_id = mongo_result.get("document_id")
+    if not mongo_id:
+        raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
     # Link job title to the client's postedJobs list
+    postedJob = {
+        "JobTitle": body.title.strip(),
+        "job_id": mongo_id
+    }
     try:
         mongo_connection.clients_collection.update_one(
             {"companyName": body.company_name},
-            {"$addToSet": {"postedJobs": body.title.strip()}}
+            {"$addToSet": {"postedJobs": postedJob}}
         )
     except Exception as e:
         logger.error(f"Failed to update client postedJobs for {body.company_name}: {e}")
 
-    job_doc = get_job_description(body.company_name, body.title.strip())
+    job_doc = get_job_description(mongo_id)
     if not job_doc:
         raise HTTPException(status_code=500, detail="Failed to retrieve job after insertion")
-    if isinstance(job_doc, list):
-        job_doc = job_doc[0]
 
     if body.blob_path and body.blob_filename:
         try:
@@ -271,9 +266,9 @@ async def finalize_job(body: JobFinalizeRequest):
         try:
             await run_in_threadpool(embed_job_description_profile, job_doc)
             await run_in_threadpool(embed_job_description_location, job_doc)
-            refreshed = get_job_description(body.company_name, body.title.strip())
+            refreshed = get_job_description(mongo_id)
             if refreshed:
-                job_doc = refreshed[0] if isinstance(refreshed, list) else refreshed
+                job_doc = refreshed
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
 
@@ -287,6 +282,7 @@ async def finalize_job(body: JobFinalizeRequest):
             skills=job_doc.get("Skills", [])[:10],
             has_embeddings="profile_embedding" in job_doc,
             job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}",
+            mongo_id=mongo_id
         )
     )
 
@@ -333,18 +329,63 @@ async def list_jobs(
         logger.error(f"Failed to fetch jobs: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to get full job details
-@router.get("/jobs/{company_name}/{job_title}", response_model=JobDetailsResponse)
-async def get_job_details(company_name: str, job_title: str):
-    """Get full job details including all fields"""
+@router.get("/jobs/{company_name}/{job_title}", response_model=List[JobDetailsResponse])
+async def get_job_details_by_company_and_title(company_name: str, job_title: str):
+    """Get all jobs with shared company name and job title"""
     try:
-        job = mongo_connection.job_descriptions_collection.find_one({
+        jobs = mongo_connection.job_descriptions_collection.find({
             "companyName": company_name,
             "JobTitle": job_title
         })
+    except Exception as e:
+        logger.error(f"Failed to fetch job by company and title: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not jobs:
+        raise HTTPException(status_code=404, detail=f"Job {company_name}_{job_title} not found")
+    
+    job_details_list = []
+    for job in jobs:
+        job_details_list.append(
+            JobDetailsResponse(
+                success=True,
+                job=JobDetails(
+                    job_id=f"{job.get('companyName')}_{job.get('JobTitle')}",
+                    mongo_id=str(job.get("_id")),
+                    company=job.get("companyName", ""),
+                    title=job.get("JobTitle", ""),
+                    summary=job.get("Summary"),
+                    locations=job.get("Locations", []),
+                    skills=job.get("Skills", []),
+                    responsibilities=job.get("Responsibilities", []),
+                    min_years=job.get("MinYears"),
+                    culture_index=job.get("CultureIndex"),
+                    qualifications=job.get("Qualifications", []),
+                    clifton_strengths=[str(s.get("name")) if isinstance(s, dict) and s.get("name") else str(s) for s in job.get("clifton_strengths", []) if s],
+                    has_embeddings="profile_embedding" in job,
+                    has_description=bool(job.get("description_blob_path")),
+                    last_match_generated_at=job.get("last_match_generated_at"),
+                    suggested_clifton_strengths=job.get("suggested_clifton_strengths", []),
+                    culture_strengths_status=job.get("culture_strengths_status"),
+                    culture_doc_filename=job.get("culture_doc_filename"),
+                )
+            )
+        )
+    return job_details_list
+
+
+# Endpoint to get full job details
+@router.get("/jobs/{job_id}", response_model=JobDetailsResponse)
+async def get_job_details_by_id(job_id: str):
+    """Get one job's details including all fields"""
+    validate_object_id(job_id)
+    try:
+        job = mongo_connection.job_descriptions_collection.find_one({
+            "_id": ObjectId(job_id)
+        })
 
         if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
+            raise HTTPException(status_code=404, detail=f"Job ID: {job_id} not found")
 
         return JobDetailsResponse(
             success=True,
@@ -552,7 +593,7 @@ async def update_job(job_id: str, job_data: dict):
 
 
 @router.delete("/jobs/{job_id}")
-async def delete_job(job_id: str):
+async def delete_job(job_id: str, company_name: str):
     """
     Delete a job description and its associated blobs from Azure Storage.
     Also deletes all match documents for this job.
@@ -583,6 +624,16 @@ async def delete_job(job_id: str):
     )
 
     logger.info(f"Job {job_id} deleted")
+
+    client = mongo_connection.clients_collection.find_one(
+        {"companyName": company_name}, {"postedJobs": 1}
+    )
+    if client and client.get("postedJobs"):
+        mongo_connection.clients_collection.update_one(
+            {"_id": client["_id"]},
+            {"$pull": {"postedJobs": {"job_id": job_id}}}
+        )
+        logger.info(f"Job {job_id} removed from client {company_name}'s profile")
     return {"success": True, "message": "Job deleted successfully"}
 
 

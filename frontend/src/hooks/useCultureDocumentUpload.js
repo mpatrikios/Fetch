@@ -58,7 +58,7 @@ export function useCultureDocumentUpload({ jobDetails, setJobDetails, showSucces
     setCliftonSaving(true);
     try {
       await jobAPI.updateCliftonStrengths(jobDetails.mongo_id, pendingStrengths);
-      const res = await jobAPI.getDetails(jobDetails.company, jobDetails.title);
+      const res = await jobAPI.getDetailsById(jobDetails.mongo_id);
       setJobDetails(res.data.job);
       setCultureDialogOpen(false);
       showSuccess('CliftonStrengths confirmed and culture embedding generated');

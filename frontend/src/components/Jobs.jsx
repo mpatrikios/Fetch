@@ -119,7 +119,7 @@ function Jobs() {
 
   const loadPushedCandidates = useCallback(async (company, title) => {
     try {
-      const res = await candidateJobsAPI.getJobRecommendations(company, title);
+      const res = await candidateJobsAPI.getJobRecommendations(company, title, jobDetails.mongo_id);
       const map = new Map(
         (res.data.recommendations || []).map(({ candidate_id, rec_id }) => [candidate_id, rec_id])
       );
@@ -180,7 +180,7 @@ function Jobs() {
   };
 
   const handleJobSelect = useCallback(async (job) => {
-    if (selectedJob?.job_id === job.job_id) return;
+    if (selectedJob?.mongo_id === job.mongo_id) return;
 
     setSelectedJob(job);
     setDetailsLoading(true);
@@ -192,7 +192,7 @@ function Jobs() {
     setRecommendedCandidates(new Map());
 
     try {
-      const response = await jobAPI.getDetails(job.company, job.title);
+      const response = await jobAPI.getDetailsById(job.mongo_id);
       setJobDetails(response.data.job);
     } catch (err) {
       console.error('Load job details error:', err);
@@ -277,7 +277,7 @@ function Jobs() {
 
   const handleFindRecommendations = () => {
     if (!jobDetails) return;
-    navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/matches`);
+    navigate(`/jobs/${encodeURIComponent(jobDetails.company)}/${encodeURIComponent(jobDetails.title)}/${encodeURIComponent(jobDetails.mongo_id)}/matches`);
   };
 
   const handleEditClick = () => {
@@ -337,7 +337,7 @@ function Jobs() {
       }));
 
       setJobs(prev => prev.map(j =>
-        j.job_id === jobDetails.job_id
+        j.mongo_id === jobDetails.mongo_id
           ? { ...j, locations: locationsArray, skills: skillsArray.slice(0, 10) }
           : j
       ));
@@ -368,12 +368,23 @@ function Jobs() {
       });
       setShowAddJob(false);
       setCompanyName('');
+      setSelectedJob(null);
       return;
     }
-    setShowAddJob(false);
-    setCompanyName('');
-    await loadJobs();
-    showSuccess('Job uploaded successfully!');
+    if (data?.job?.mongo_id) {
+      try {
+        const response = await jobAPI.getDetailsById(data.job.mongo_id);
+        setJobDetails(response.data.job);
+        setJobs(prev => [response.data.job, ...prev]);
+        setShowAddJob(false);
+        setCompanyName('');
+        setSelectedJob(response.data.job);
+        showSuccess('Job uploaded successfully!');
+      } catch (err) {
+        setError('Failed to fetch job details.');
+      }
+
+    }
   };
 
   const handleFinalizeJob = async () => {
@@ -406,13 +417,12 @@ function Jobs() {
       setReviewSaving(false);
     }
   };
-
   const handleDeleteJob = async () => {
     if (!jobDetails?.mongo_id) return;
     try {
       setDeleting(true);
-      await jobAPI.deleteJob(jobDetails.mongo_id);
-      setJobs(prev => prev.filter(j => j.job_id !== jobDetails.job_id));
+      await jobAPI.deleteJob(jobDetails.mongo_id, jobDetails.company);
+      setJobs(prev => prev.filter(j => j.mongo_id !== jobDetails.mongo_id));
       setSelectedJob(null);
       setJobDetails(null);
       setShowDeleteDialog(false);
@@ -530,8 +540,8 @@ function Jobs() {
               ) : (
                 filteredJobs.map((job, index) => (
                   <SelectableListItem
-                    key={job.job_id || index}
-                    selected={selectedJob?.job_id === job.job_id}
+                    key={job.mongo_id || index}
+                    selected={selectedJob?.mongo_id === job.mongo_id}
                     onClick={() => handleJobSelect(job)}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>

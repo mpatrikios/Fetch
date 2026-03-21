@@ -117,6 +117,7 @@ async def update_client(client_id: str, client_data: ClientUpdateRequest):
             "summary": "summary",
             "locations": "locations",
             "intake_call_notes": "intakeCallNotes",
+            "posted_jobs": "postedJobs"
         }
 
         # Only include fields that were explicitly provided (not None)

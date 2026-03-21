@@ -32,6 +32,7 @@ import {
   ClosableDialog
 } from './common-components/SharedComponents';
 import { useAutoHideMessage } from '../hooks/useAutoHideMessage';
+import DocumentUpload from './DocumentUpload';
 
 function Clients() {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ function Clients() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [locationMenuAnchor, setLocationMenuAnchor] = useState(null);
+  const [showAddJob, setShowAddJob] = useState(false);
   // Initialize statusFilter from URL query param
   const searchParams = new URLSearchParams(location.search);
   const initialStatus = searchParams.get('status') || '';
@@ -140,6 +142,7 @@ function Clients() {
     setSelectedClient(client);
     setDetailsLoading(true);
     setClientDetails(null);
+    setShowAddJob(false);
 
     try {
       const response = await clientAPI.getDetails(client.id);
@@ -334,6 +337,34 @@ function Clients() {
       setShowDeleteDialog(false);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleJobUploadSuccess = async (newJob) => {
+    try {
+      setShowAddJob(false);
+      if (!newJob || !newJob.title || !newJob.mongo_id) {
+        setError('Uploaded job is missing required job title and job ID.');
+        return;
+      }
+      const jobData = {
+        JobTitle: newJob.title,
+        job_id: newJob.mongo_id
+      };
+      const jobUpdatePayload = {
+        posted_jobs: [...(clientDetails.posted_jobs || []), jobData]
+      };
+      await clientAPI.updateClient(clientDetails.id, jobUpdatePayload);
+
+      let response = await clientAPI.getDetails(clientDetails.id);
+      setClientDetails(response.data.client);
+      setSelectedClient(prev => ({ ...prev, posted_jobs: response.data.client.posted_jobs }));
+      setClients(prev => prev.map(c =>
+        c.id === clientDetails.id ? { ...c, posted_jobs_count: response.data.client.posted_jobs.length } : c
+      ));
+      showSuccess('Job uploaded successfully!');
+    } catch (err) {
+      console.error('Failed to reload client after upload:', clientDetails.id, err);
     }
   };
 
@@ -663,14 +694,31 @@ function Clients() {
 
                 {/* Posted Jobs Section */}
                 <Box>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                    Posted Jobs ({clientDetails?.posted_jobs?.length || 0})
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Posted Jobs ({clientDetails?.posted_jobs?.length || 0})
+                    </Typography>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => setShowAddJob(true)}
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        color: 'primary.main',
+                        '&:hover': {
+                          backgroundColor: 'primary.light',
+                        }
+                      }}
+                    >
+                      + Add New Job
+                    </Button>
+                  </Box>
                   {clientDetails?.posted_jobs?.length > 0 ? (
                     <List disablePadding>
                       {clientDetails.posted_jobs.map((job, index) => (
                         <SelectableListItem
-                          key={index}
+                          key={job.job_id || index}
                           sx={{
                             py: 0.5,
                             px: 1,
@@ -682,10 +730,10 @@ function Clients() {
                             }
                           }}
                           onClick={() => navigate('/jobs', {
-                            state: { selectedJobTitle: job, selectedCompany: clientDetails.company_name }
+                            state: { selectedJobTitle: job.JobTitle, selectedCompany: clientDetails.company_name }
                           })}
                         >
-                          {job}
+                          {job.JobTitle}
                         </SelectableListItem>
                       ))}
                     </List>
@@ -896,6 +944,32 @@ function Clients() {
           />
         </Box>
       </ClosableDialog>
+      
+      {/* Add Job Dialog */}
+      <Dialog
+        open={showAddJob}
+        onClose={() => setShowAddJob(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Add Job
+          <IconButton
+            aria-label="close"
+            onClick={() => setShowAddJob(false)}
+            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <DocumentUpload
+            uploadType="job_description"
+            companyName={clientDetails?.company_name || 'Unknown Company'}
+            onSuccess={(data) => handleJobUploadSuccess(data?.job)}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

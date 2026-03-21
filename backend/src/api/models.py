@@ -92,6 +92,9 @@ class AccountDeleteResponse(BaseModel):
 
 
 # Job Models
+class PostedJob(BaseModel):
+    JobTitle: str
+    job_id: str
 class JobInfo(BaseModel):
     company: str
     title: str
@@ -99,7 +102,7 @@ class JobInfo(BaseModel):
     skills: List[str] = []
     has_embeddings: bool = False
     job_id: str
-    mongo_id: Optional[str] = None
+    mongo_id: str
     last_match_generated_at: Optional[str] = None
 
 class JobResponse(BaseModel):
@@ -157,6 +160,7 @@ class JobPartialParseResponse(BaseModel):
 class JobFinalizeRequest(BaseModel):
     company_name: str
     title: str
+    job_id: str
     summary: Optional[str] = None
     locations: List[str] = []
     skills: List[str] = []
@@ -190,7 +194,8 @@ class CliftonStrengthsUpdateResponse(BaseModel):
 class MatchRequest(BaseModel):
     company_name: str
     job_title: str
-    top_k: Optional[int] = None
+    job_id: str
+    top_k: Optional[int] = 10
     use_cohort: Optional[bool] = True
 
 class MatchScores(BaseModel):
@@ -312,7 +317,7 @@ class ClientDetails(BaseModel):
     contact_recruiter: Optional[str] = None
     summary: Optional[str] = None
     locations: List[str] = []
-    posted_jobs: List[str] = []
+    posted_jobs: List[PostedJob] = []
     intake_call_notes: Optional[str] = None
     activated_at: Optional[str] = None
 
@@ -327,6 +332,7 @@ class ClientUpdateRequest(BaseModel):
     summary: Optional[str] = None
     locations: Optional[List[str]] = None
     intake_call_notes: Optional[str] = None
+    posted_jobs: Optional[List[PostedJob]] = None
 
 
 class ClientListResponse(BaseModel):

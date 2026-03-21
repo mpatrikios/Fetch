@@ -27,9 +27,10 @@ import { SearchField, EmptyState, ConfirmationDialog, SkillChips, DetailPanelCon
 
 function JobRecommendations() {
   const navigate = useNavigate();
-  const { company, title } = useParams();
+  const { company, title, jobId } = useParams();
   const decodedCompany = decodeURIComponent(company);
   const decodedTitle = decodeURIComponent(title);
+  const decodedJobId = decodeURIComponent(jobId);
 
   const [recommendations, setRecommendations] = useState([]);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
@@ -56,7 +57,7 @@ function JobRecommendations() {
 
   const loadRecommendedCandidates = useCallback(async () => {
     try {
-      const res = await candidateJobsAPI.getJobRecommendations(decodedCompany, decodedTitle);
+      const res = await candidateJobsAPI.getJobRecommendations(decodedCompany, decodedTitle, decodedJobId);
       const entries = res.data.recommendations || [];
       const map = new Map(
         entries.map(({ candidate_id, rec_id, status }) => [candidate_id, { rec_id, status }])
@@ -66,11 +67,11 @@ function JobRecommendations() {
     } catch (err) {
       // Non-critical — silently ignore
     }
-  }, [decodedCompany, decodedTitle]);
+  }, [decodedCompany, decodedTitle, decodedJobId]);
 
   const loadJobDetails = useCallback(async () => {
     try {
-      const res = await jobAPI.getDetails(decodedCompany, decodedTitle);
+      const res = await jobAPI.getDetailsById(decodedJobId);
       const job = res.data.job;
       setJobMongoId(job.mongo_id || job.job_id || `${decodedCompany}_${decodedTitle}`);
       setJobLocation(job.locations?.[0] || '');
@@ -79,7 +80,7 @@ function JobRecommendations() {
       // Non-critical — use fallback values
       setJobMongoId(`${decodedCompany}_${decodedTitle}`);
     }
-  }, [decodedCompany, decodedTitle]);
+  }, [decodedCompany, decodedTitle, decodedJobId]);
 
   const loadHistory = useCallback(async (signal) => {
     try {
@@ -90,7 +91,7 @@ function JobRecommendations() {
     } catch (err) {
       // Non-critical — silently ignore
     }
-  }, [decodedCompany, decodedTitle]);
+  }, [decodedCompany, decodedTitle, decodedJobId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -119,6 +120,7 @@ function JobRecommendations() {
         const response = await matchingAPI.findMatches(
           decodedCompany,
           decodedTitle,
+          decodedJobId,
           null,  // top_k — dynamic (30% of pool, capped at 40)
           true,  // use_cohort=true hides scores and rankings
           { signal }
@@ -145,13 +147,13 @@ function JobRecommendations() {
     loadRecommendedCandidates();
 
     return () => controller.abort();
-  }, [decodedCompany, decodedTitle, loadHistory, loadJobDetails, loadRecommendedCandidates]);
+  }, [decodedCompany, decodedTitle, decodedJobId, loadHistory, loadJobDetails, loadRecommendedCandidates]);
 
   const handleRegenerate = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, null, true);
+      const response = await matchingAPI.findMatches(decodedCompany, decodedTitle, decodedJobId, null, true);
       setRecommendations(response.data.matches || []);
       setMongoMatchId(response.data.mongo_match_id || null);
       setGeneratedAt(response.data.created_at || null);
@@ -164,7 +166,7 @@ function JobRecommendations() {
     } finally {
       setLoading(false);
     }
-  }, [decodedCompany, decodedTitle, loadHistory]);
+  }, [decodedCompany, decodedTitle, decodedJobId, loadHistory]);
 
   const handleSelectHistoricalMatch = useCallback(async (matchId) => {
     setHistoryAnchorEl(null);

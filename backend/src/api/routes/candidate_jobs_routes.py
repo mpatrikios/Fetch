@@ -143,10 +143,11 @@ async def remove_recommendation(
     return {"success": True, "message": "Recommendation removed"}
 
 
-@router.get("/jobs/{company_name}/{job_title}/recommendations")
+@router.get("/jobs/{company_name}/{job_title}/{job_id}/recommendations")
 async def get_job_recommendations(
     company_name: str,
     job_title: str,
+    job_id: str,
     current_user: Dict = Depends(get_current_mlg_recruiter),
 ):
     """
@@ -158,16 +159,13 @@ async def get_job_recommendations(
     candidates_col = mongo_connection.candidates_collection
 
     job_doc = mongo_connection.job_descriptions_collection.find_one(
-        {"companyName": company_name, "JobTitle": job_title},
-        {"_id": 1}
+        {"_id": ObjectId(job_id)}
     )
     if not job_doc:
         return {"success": True, "recommendations": []}
-
-    job_mongo_id = str(job_doc["_id"])
     docs = list(collection.find(
-        {"job_mongo_id": job_mongo_id},
-        {"_id": 1, "candidate_id": 1, "status": 1}
+        {"job_mongo_id": job_id},
+        {"_id": 1, "candidate_id": 1}
     ))
     entries = []
     for d in docs:
