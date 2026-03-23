@@ -22,7 +22,7 @@ import CalendlyEmbed from './CalendlyEmbed';
 const onboardingSteps = [
   {
     label: 'Create profile, upload resume',
-    status: 'uploaded_resume',
+    status: 'onboarding',
     description: ''
   },
   {
@@ -32,7 +32,7 @@ const onboardingSteps = [
   },
   {
     label: 'Upload Clifton Strengths results',
-    status: 'uploaded_results',
+    status: 'uploaded_documents',
     description: 'Upload your completed Clifton Strengths Assessment results so we can start matching you with opportunities!'
   },
   {
@@ -70,9 +70,9 @@ function Onboarding() {
       // Determine current step based on user status
       const statusToStepMap = {
         'registered': 0,
-        'uploaded_resume': 1,  // When resume uploaded, move to step 1 (schedule intake)
+        'onboarding': 1,  // When resume uploaded, move to step 1 (schedule intake)
         'scheduled_intake': 2,
-        'uploaded_results': 3,
+        'uploaded_documents': 3,
         'completed_onboarding': 4
       };
 
@@ -80,7 +80,7 @@ function Onboarding() {
       setCurrentStep(currentStepIndex);
       
       // Show resume upload if status is not yet uploaded_resume
-      if (!response.data.status || response.data.status === 'registered') {
+      if (response.data.status === 'registered') {
         setShowResumeUpload(true);
       }
     } catch (err) {
@@ -123,7 +123,7 @@ function Onboarding() {
   const handleCliftonUploadSuccess = async () => {
     try {
       // Update status to uploaded_results when CliftonStrengths upload succeeds
-      await authAPI.updateStatus('completed_onboarding');
+      await authAPI.updateStatus('uploaded_documents');
       await fetchUserData();
     } catch (err) {
       console.error('Failed to update status after CliftonStrengths upload:', err);
