@@ -21,3 +21,4 @@ dist/
 backend/seed_candidates.py
 backend/testing_jobs/
 backend/src/testing_resumes/
+backend/mlg_testing/
