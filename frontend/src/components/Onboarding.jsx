@@ -122,7 +122,7 @@ function Onboarding() {
 
   const handleCliftonUploadSuccess = async () => {
     try {
-      // Update status to uploaded_results when CliftonStrengths upload succeeds
+      // Update status to uploaded_documents when CliftonStrengths upload succeeds
       await authAPI.updateStatus('uploaded_documents');
       await fetchUserData();
     } catch (err) {
