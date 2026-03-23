@@ -80,7 +80,7 @@ function Onboarding() {
       setCurrentStep(currentStepIndex);
       
       // Show resume upload if status is not yet uploaded_resume
-      if (response.data.status === 'registered') {
+      if (!response.data.status || response.data.status === 'registered') {
         setShowResumeUpload(true);
       }
     } catch (err) {
