@@ -617,7 +617,8 @@ function JobRecommendations() {
                             const gapIndicators = [
                               'gap', 'risk', 'concern', 'lack', 'missing',
                               'however', 'although', 'caveat', 'limitation',
-                              'not clear', 'not highlight', 'unclear', 'weakness'
+                              'not clear', 'not highlight', 'unclear', 'weakness',
+                              'weak', 'no demonstrated', 'no evident', 'no explicit mention'
                             ];
                             const isGap = gapIndicators.some(indicator => lowerPoint.includes(indicator));
                             return (

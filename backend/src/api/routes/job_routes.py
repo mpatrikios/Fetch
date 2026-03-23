@@ -193,12 +193,12 @@ async def upload_job_description(
                 title=job_doc.get("JobTitle", ""),
                 locations=job_doc.get("Locations", []),
                 skills=job_doc.get("Skills", [])[:10],
-                has_embeddings="profile_embedding" in job_doc,
+                has_embeddings="profile_embedding" in job_doc and "culture_embedding" in job_doc,
                 job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}",
                 mongo_id=mongo_id,
             )
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -280,7 +280,7 @@ async def finalize_job(body: JobFinalizeRequest):
             title=job_doc.get("JobTitle", ""),
             locations=job_doc.get("Locations", []),
             skills=job_doc.get("Skills", [])[:10],
-            has_embeddings="profile_embedding" in job_doc,
+            has_embeddings="profile_embedding" in job_doc and "culture_embedding" in job_doc,
             job_id=f"{job_doc.get('companyName')}_{job_doc.get('JobTitle')}",
             mongo_id=mongo_id
         )
@@ -313,7 +313,7 @@ async def list_jobs(
                 "title": job.get("JobTitle"),
                 "locations": job.get("Locations", []),
                 "skills": job.get("Skills", []),
-                "has_embeddings": "profile_embedding" in job,
+                "has_embeddings": "profile_embedding" in job and "culture_embedding" in job,
                 "job_id": f"{job.get('companyName')}_{job.get('JobTitle')}",
                 "mongo_id": str(job.get("_id")),
                 "last_match_generated_at": job.get("last_match_generated_at")
@@ -362,7 +362,7 @@ async def get_job_details_by_company_and_title(company_name: str, job_title: str
                     culture_index=job.get("CultureIndex"),
                     qualifications=job.get("Qualifications", []),
                     clifton_strengths=[str(s.get("name")) if isinstance(s, dict) and s.get("name") else str(s) for s in job.get("clifton_strengths", []) if s],
-                    has_embeddings="profile_embedding" in job,
+                    has_embeddings="profile_embedding" in job and "culture_embedding" in job,
                     has_description=bool(job.get("description_blob_path")),
                     last_match_generated_at=job.get("last_match_generated_at"),
                     suggested_clifton_strengths=job.get("suggested_clifton_strengths", []),
