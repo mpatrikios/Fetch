@@ -240,6 +240,7 @@ async def update_status(
         "registered",
         "onboarding",
         "scheduled_intake",
+        "uploaded_documents",
         "completed_onboarding",
     ]
     

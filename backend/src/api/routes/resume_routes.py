@@ -56,7 +56,7 @@ async def upload_resume(
                     "resume_blob_url": blob_url,
                     "resume_filename": file.filename,
                     "resume_uploaded_at": datetime.now(timezone.utc),
-                    "status": "uploaded_resume",
+                    "status": "onboarding"
                 }
             }
         )
