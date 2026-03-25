@@ -162,8 +162,7 @@ def get_job_description(job_id: str) -> Dict[str, Any] | None:
     Retrieve job description document(s) from MongoDB by companyName and optionally JobTitle.
     
     Args:
-        company_name: The company name
-        job_title: The job title (optional)
+        job_id: The MongoDB ObjectId string of the job description document
         
     Returns:
         Dictionary containing the job description document, list of documents, or None if not found
