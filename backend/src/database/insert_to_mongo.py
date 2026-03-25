@@ -304,7 +304,7 @@ def insert_match(match_data: Dict[str, Any]):
         else:
             identifier = f"{company_name} - {job_title}"
             
-        logging.info(f"New match created for job ID {identifier}")
+        logging.info(f"New match created for this job: {identifier}")
         
         return {
             "success": True,
