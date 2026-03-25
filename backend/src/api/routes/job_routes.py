@@ -142,6 +142,20 @@ async def upload_job_description(
         mongo_id = mongo_result.get("document_id")
         if not mongo_id:
             raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
+        
+        postedJob = {
+            "JobTitle": job_title,
+            "job_id": mongo_id
+        }
+        try:
+            mongo_connection.clients_collection.update_one(
+                {"companyName": company_name},
+                {"$addToSet": {"postedJobs": postedJob}},
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to update client postedJobs for {company_name}: {e}")
+
         # Retrieve the inserted job description
         job_doc = get_job_description(mongo_id)
         # Upload original document to Azure Blob Storage
@@ -233,7 +247,7 @@ async def finalize_job(body: JobFinalizeRequest):
     mongo_id = mongo_result.get("document_id")
     if not mongo_id:
         raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
-    # Link job title to the client's postedJobs list
+
     postedJob = {
         "JobTitle": body.title.strip(),
         "job_id": mongo_id
@@ -241,7 +255,8 @@ async def finalize_job(body: JobFinalizeRequest):
     try:
         mongo_connection.clients_collection.update_one(
             {"companyName": body.company_name},
-            {"$addToSet": {"postedJobs": postedJob}}
+            {"$addToSet": {"postedJobs": postedJob}},
+            upsert=True
         )
     except Exception as e:
         logger.error(f"Failed to update client postedJobs for {body.company_name}: {e}")

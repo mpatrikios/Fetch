@@ -267,6 +267,7 @@ class MatchHistoryResponse(BaseModel):
     success: bool
     company_name: str
     job_title: str
+    job_id: str
     history: List[MatchHistoryEntry]
 
 
