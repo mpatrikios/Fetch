@@ -136,12 +136,12 @@ async def find_matches(request: MatchRequest):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
 
         mongo_match_id = mongo_result.get("document_id")
-        set_job_match_generated(request.company_name, request.job_title)
+        set_job_match_generated(request.job_id, request.company_name, request.job_title)
 
         # Return response with matches
         return MatchResponse(
             success=True,
-            job_id=f"{request.company_name}_{request.job_title}",
+            job_id=request.job_id,
             company_name=request.company_name,
             job_title=request.job_title,
             total_matches=len(formatted_matches),

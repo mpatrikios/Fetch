@@ -243,10 +243,11 @@ def get_match(company_name: str, job_title: str, job_id: str) -> Dict[str, Any] 
         return None
 
 
-def set_job_match_generated(company_name: str, job_title: str) -> None:
+def set_job_match_generated(job_id: str, company_name: str, job_title: str) -> None:
     from datetime import datetime, timezone
+    validate_object_id(job_id)
     job_descriptions_collection.update_one(
-        {"companyName": company_name, "JobTitle": job_title},
+        { "_id": ObjectId(job_id), "companyName": company_name, "JobTitle": job_title},
         {"$set": {"last_match_generated_at": datetime.now(timezone.utc).isoformat()}}
     )
 
