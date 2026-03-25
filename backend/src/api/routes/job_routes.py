@@ -150,7 +150,13 @@ async def upload_job_description(
         try:
             mongo_connection.clients_collection.update_one(
                 {"companyName": company_name},
-                {"$addToSet": {"postedJobs": postedJob}},
+                {
+                    "$setOnInsert": {
+                        "status": "active",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    "$addToSet": {"postedJobs": postedJob}
+                },
                 upsert=True
             )
         except Exception as e:
