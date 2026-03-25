@@ -84,7 +84,7 @@ function JobRecommendations() {
 
   const loadHistory = useCallback(async (signal) => {
     try {
-      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle, { signal });
+      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle, decodedJobId, { signal });
       if (!signal?.aborted) {
         setHistory(res.data.history || []);
       }
@@ -104,7 +104,7 @@ function JobRecommendations() {
 
         // 1. Try loading from database first
         try {
-          const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
+          const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, decodedJobId, { signal });
           setRecommendations(stored.data.matches || []);
           setMongoMatchId(stored.data.mongo_match_id || null);
           setGeneratedAt(stored.data.created_at || null);

@@ -351,15 +351,6 @@ function Clients() {
         setError('Uploaded job is missing required job title and job ID.');
         return;
       }
-      const jobData = {
-        JobTitle: newJob.title,
-        job_id: newJob.mongo_id
-      };
-      const jobUpdatePayload = {
-        posted_jobs: [...(clientDetails.posted_jobs || []), jobData]
-      };
-      await clientAPI.updateClient(clientDetails.id, jobUpdatePayload);
-
       let response = await clientAPI.getDetails(clientDetails.id);
       setClientDetails(response.data.client);
       setSelectedClient(prev => ({ ...prev, posted_jobs: response.data.client.posted_jobs }));

@@ -128,10 +128,10 @@ export const matchingAPI = {
     api.patch(`/matches/${matchId}/candidates/${candidateId}/review`, {
       review_status: reviewStatus,
     }, config),
-  getStoredMatches: (companyName, jobTitle, config = {}) =>
-    api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
-  getMatchHistory: (companyName, jobTitle, config = {}) =>
-    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
+  getStoredMatches: (companyName, jobTitle, jobId, config = {}) =>
+    api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}`, config),
+  getMatchHistory: (companyName, jobTitle, jobId, config = {}) =>
+    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}`, config),
   getMatchById: (matchId, config = {}) =>
     api.get(`/matches/${matchId}`, config),
 };

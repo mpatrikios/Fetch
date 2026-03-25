@@ -57,11 +57,12 @@ async def find_matches(request: MatchRequest):
     """
     try:
         # Retrieve job description
+        validate_object_id(request.job_id)
         job_doc = get_job_description(request.job_id)
         if not job_doc:
             raise HTTPException(
                 status_code=404, 
-                detail=f"Job not found: {request.company_name} - {request.job_title}"
+                detail=f"Job not found: {request.company_name} - {request.job_title} - {request.job_id}"
             )
         
         # Check if job has embeddings
@@ -74,7 +75,7 @@ async def find_matches(request: MatchRequest):
         # Collect rejected candidate IDs from all prior match runs for this job
         rejected_ids = set()
         prior_matches = mongo_connection.matches_collection.find(
-            {"companyName": request.company_name, "JobTitle": request.job_title},
+            {"companyName": request.company_name, "JobTitle": request.job_title, "JobId": request.job_id},
             {"candidates.candidate_id": 1, "candidates.review_status": 1}
         )
         for doc in prior_matches:
@@ -135,12 +136,12 @@ async def find_matches(request: MatchRequest):
             raise HTTPException(status_code=500, detail=f"Database error: {mongo_result.get('error')}")
 
         mongo_match_id = mongo_result.get("document_id")
-        set_job_match_generated(request.company_name, request.job_title)
+        set_job_match_generated(request.job_id, request.company_name, request.job_title)
 
         # Return response with matches
         return MatchResponse(
             success=True,
-            job_id=f"{request.company_name}_{request.job_title}",
+            job_id=request.job_id,
             company_name=request.company_name,
             job_title=request.job_title,
             total_matches=len(formatted_matches),
@@ -196,18 +197,19 @@ async def update_candidate_review(
     )
 
 
-@router.get("/matches/stored/{company_name}/{job_title}", response_model=MatchResponse)
-async def get_stored_matches(company_name: str, job_title: str):
+@router.get("/matches/stored/{company_name}/{job_title}/{job_id}", response_model=MatchResponse)
+async def get_stored_matches(company_name: str, job_title: str, job_id: str):
     """
     Retrieve the most recently saved match list for a job from the database.
     Returns 404 if no matches have been generated yet for this job.
     """
     try:
-        match_doc = get_match(company_name, job_title)
+        validate_object_id(job_id)
+        match_doc = get_match(company_name, job_title, job_id)
         if not match_doc:
             raise HTTPException(
                 status_code=404,
-                detail=f"No stored matches found for: {company_name} - {job_title}"
+                detail=f"No stored matches found for: {company_name} - {job_title} - {job_id}"
             )
 
         candidates_list = [c for c in match_doc.get("candidates", []) if c is not None]
@@ -219,7 +221,7 @@ async def get_stored_matches(company_name: str, job_title: str):
 
         return MatchResponse(
             success=True,
-            job_id=f"{company_name}_{job_title}",
+            job_id=job_id,
             company_name=company_name,
             job_title=job_title,
             total_matches=len(matches),
@@ -236,15 +238,17 @@ async def get_stored_matches(company_name: str, job_title: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/matches/history/{company_name}/{job_title}", response_model=MatchHistoryResponse)
-async def get_match_history(company_name: str, job_title: str):
+@router.get("/matches/history/{company_name}/{job_title}/{job_id}", response_model=MatchHistoryResponse)
+async def get_match_history(company_name: str, job_title: str, job_id: str):
     """List all historical match runs for a job (summary only — no candidate data)."""
     try:
-        history = get_all_matches(company_name, job_title)
+        validate_object_id(job_id)
+        history = get_all_matches(company_name, job_title, job_id)
         return MatchHistoryResponse(
             success=True,
             company_name=company_name,
             job_title=job_title,
+            job_id=job_id,
             history=history,
         )
     except Exception as e:
@@ -257,6 +261,7 @@ async def get_match_by_id(match_id: str):
     """Retrieve a specific historical match document by its MongoDB _id."""
     try:
         try:
+            validate_object_id(match_id)
             oid = ObjectId(match_id)
         except InvalidId:
             raise HTTPException(status_code=400, detail=f"Invalid match ID: {match_id}")
@@ -274,7 +279,7 @@ async def get_match_by_id(match_id: str):
 
         return MatchResponse(
             success=True,
-            job_id=f"{match_doc.get('companyName')}_{match_doc.get('JobTitle')}",
+            job_id=match_doc.get("JobId", ""),
             company_name=match_doc.get("companyName", ""),
             job_title=match_doc.get("JobTitle", ""),
             total_matches=len(matches),
