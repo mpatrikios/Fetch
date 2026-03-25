@@ -122,6 +122,7 @@ async def find_matches(request: MatchRequest):
                     "summary": match.get("explanation", {}).get("summary", "No summary available")
                 },
                 "clifton_strengths": clifton_strengths,
+                "missing_clifton": not bool(clifton_strengths),
                 "skills": candidate.get("Skills", [])[:10],
                 "review_status": None,
                 "reviewed_at": None,

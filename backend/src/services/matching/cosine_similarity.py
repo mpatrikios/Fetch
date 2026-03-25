@@ -125,11 +125,10 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
     job_culture_vec = np.array(job_doc.get("culture_embedding", []), dtype=float) if job_doc.get("culture_embedding") else None
     job_coords = job_doc.get("location_coordinates")
 
-    # Find candidates with both profile and culture embeddings
+    # Find candidates with a profile embedding (culture embedding is optional)
     candidates_cursor = db["Candidates"].find(
         {
-            "profile_embedding": {"$exists": True, "$ne": []},
-            "culture_embedding": {"$exists": True, "$ne": []}
+            "profile_embedding": {"$exists": True, "$ne": []}
         }
     )
 

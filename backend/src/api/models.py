@@ -226,6 +226,7 @@ class MatchResult(BaseModel):
     scores: Optional[MatchScores] = None
     explanation: MatchExplanation
     clifton_strengths: List[str] = []
+    missing_clifton: bool = False
     skills: List[str] = []
     review_status: Optional[str] = None
     reviewed_at: Optional[str] = None
