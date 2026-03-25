@@ -6,6 +6,7 @@ from typing import Tuple
 from fastapi import HTTPException
 from bson import ObjectId
 from bson.errors import InvalidId
+import magic
 
 logger = logging.getLogger(__name__)
 
@@ -56,19 +57,33 @@ def cleanup_temp_file(file_path: str) -> None:
         logger.warning(f"Failed to cleanup temp file {file_path}: {e}")
 
 # function for validating document file types
-def validate_document_file(filename: str) -> Tuple[bool, str]:
+def validate_document_file(filename: str | None) -> Tuple[bool, str]:
     """
-    Validate that a file is an acceptable document format.
-    
+    Validate that the file's type is acceptable based on its content, not extension.
+    Acceptable file types are PDF, DOC, and DOCX.
     Args:
         filename: Name of the file to validate
         
     Returns:
         Tuple of (is_valid, file_extension)
     """
-    allowed_extensions = ('.pdf', '.doc', '.docx')
-    file_extension = os.path.splitext(filename.lower())[1]
+    if not filename:
+        return False, "unknown"
     
-    is_valid = file_extension in allowed_extensions
-    return is_valid, file_extension
-
+    is_valid = False
+    file_content_type = "unknown"
+    allowed_file_types = ('.pdf', '.doc', '.docx')
+    try:
+        import magic
+        file_content_type = magic.from_file(filename)
+        if file_content_type not in allowed_file_types:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file content type: {file_content_type}. Only PDF, DOC, and DOCX files are allowed."
+            )
+        is_valid = True
+    except HTTPException:
+        raise 
+    except Exception as e:
+        logger.error(f"Failed to check file content type: {e}")
+    return is_valid, file_content_type
