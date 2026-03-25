@@ -125,13 +125,10 @@ async def remove_recommendation(
 ):
     """Remove a job recommendation for a candidate."""
 
-    try:
-        validate_object_id(rec_id)
-        validate_object_id(candidate_id)
-        collection = mongo_connection.candidate_jobs_collection
-        object_id = ObjectId(rec_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid recommendation ID")
+    validate_object_id(rec_id)
+    validate_object_id(candidate_id)
+    collection = mongo_connection.candidate_jobs_collection
+    object_id = ObjectId(rec_id)
 
     result = collection.delete_one({
         "_id": object_id,
