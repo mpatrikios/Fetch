@@ -126,8 +126,8 @@ def _process_acceptance(candidate_id: str, tmp_file_path: str, email: str, candi
     try:
         DocumentService.parse_and_embed_resume(candidate_id, tmp_file_path, email)
 
-        mongo_connection.candidates_collection.update_one(
-            {"_id": ObjectId(candidate_id)},
+        update_result = mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id), "status": "processing"},
             {
                 "$set": {
                     "status": "accepted",
@@ -136,7 +136,10 @@ def _process_acceptance(candidate_id: str, tmp_file_path: str, email: str, candi
                 "$unset": {"parsing_error": ""},
             }
         )
-        logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
+        if update_result.matched_count == 0:
+            logger.warning(f"Candidate {candidate_id} status was changed externally during processing; skipping accepted update")
+        else:
+            logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
 
         if email:
             subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
@@ -193,10 +196,17 @@ async def accept_candidate(candidate_id: str, background_tasks: BackgroundTasks)
             tmp_file_path = tmp.name
 
         # Mark as processing immediately so the UI can reflect progress
-        mongo_connection.candidates_collection.update_one(
-            {"_id": ObjectId(candidate_id)},
+        update_result = mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id), "status": current_status},
             {"$set": {"status": "processing", "processing_started_at": datetime.now(timezone.utc)}}
         )
+        if update_result.matched_count == 0:
+            if tmp_file_path:
+                cleanup_temp_file(tmp_file_path)
+            raise HTTPException(
+                status_code=409,
+                detail="Candidate status changed while initiating acceptance. Please refresh and try again.",
+            )
 
         email = candidate.get("email", "")
         candidate_name = candidate.get("full_name", "Candidate")
