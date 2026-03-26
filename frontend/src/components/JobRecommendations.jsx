@@ -753,7 +753,7 @@ function JobRecommendations() {
                         <DarkButton
                           size="small"
                           disabled={isProcessing}
-                          onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : handleRecommendJob}
+                          onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : () => handleRecommendJob()}
                           sx={isAlreadyRecommended ? { opacity: 0.65, fontSize: '0.75rem', py: 0.5, px: 1.5 } : {}}
                         >
                           {isProcessing
