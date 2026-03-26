@@ -139,7 +139,7 @@ class DocumentService:
         Returns: temporary file path
         """
         # Validate file type
-        is_valid, _ = validate_document_file(file.filename)
+        is_valid, _ = await validate_document_file(file)
         
         if not is_valid:
             raise HTTPException(
