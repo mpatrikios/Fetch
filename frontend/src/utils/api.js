@@ -185,6 +185,11 @@ export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
+// Calendly endpoints
+export const calendlyAPI = {
+  getUpcoming: () => api.get('/calendly/upcoming'),
+};
+
 // Document download endpoints
 export const documentAPI = {
   getResumeDownloadUrl: (candidateId) => api.get(`/documents/resume/${candidateId}/download`),

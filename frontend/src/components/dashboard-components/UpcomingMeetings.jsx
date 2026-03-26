@@ -1,35 +1,39 @@
-import { Box, Typography, Button, List, ListItem, ListItemText, Chip } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Box, Typography, Button, List, ListItem, ListItemText, Chip, CircularProgress } from '@mui/material';
 import { CalendarToday, VideoCall, CalendarMonth } from '@mui/icons-material';
 import { CardSection, SectionHeader } from '../common-components/StyledComponents';
+import { calendlyAPI } from '../../utils/api';
+
+function formatDateTime(isoString) {
+  const date = new Date(isoString);
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  const isToday = date.toDateString() === today.toDateString();
+  const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+  const dateLabel = isToday
+    ? 'Today'
+    : isTomorrow
+    ? 'Tomorrow'
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  const timeLabel = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return { dateLabel, timeLabel };
+}
 
 function UpcomingMeetings() {
-  // MOCK DATA TODO: Replace with real data fetching logic
-  const meetings = [
-    {
-      id: 1,
-      title: "Client Interview - TechCorp",
-      time: "10:00 AM",
-      date: "Today",
-      type: "calendly",
-      participant: "John Smith"
-    },
-    {
-      id: 2,
-      title: "Candidate Screening",
-      time: "2:00 PM",
-      date: "Today",
-      type: "google",
-      participant: "Sarah Johnson"
-    },
-    {
-      id: 3,
-      title: "Weekly Team Sync",
-      time: "9:00 AM",
-      date: "Tomorrow",
-      type: "google",
-      participant: "MLG Team"
-    }
-  ];
+  const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    calendlyAPI.getUpcoming()
+      .then((res) => setMeetings(res.data))
+      .catch(() => setError('Could not load meetings.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <CardSection sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -38,58 +42,77 @@ function UpcomingMeetings() {
         <SectionHeader variant="h6" sx={{ mb: 0, flexGrow: 1 }}>
           Upcoming Meetings
         </SectionHeader>
-        <Button size="small" variant="outlined" startIcon={<CalendarMonth />}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<CalendarMonth />}
+          onClick={() => window.open('https://calendly.com/app/scheduled_events', '_blank')}
+        >
           View Calendar
         </Button>
       </Box>
 
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {meetings.length > 0 ? (
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <CircularProgress size={32} />
+          </Box>
+        ) : error ? (
+          <Box sx={{ textAlign: 'center', mt: 4 }}>
+            <Typography variant="body2" color="text.secondary">{error}</Typography>
+          </Box>
+        ) : meetings.length > 0 ? (
           <List sx={{ p: 0 }}>
-            {meetings.map((meeting) => (
-              <ListItem
-                key={meeting.id}
-                sx={{
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  borderRadius: 2,
-                  mb: 1,
-                  backgroundColor: 'grey.50'
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-                  <VideoCall sx={{ color: 'text.secondary' }} />
-                </Box>
-                <ListItemText
-                  primary={
-                    <Typography variant="subtitle2" sx={{ fontFamily: 'Montserrat, sans-serif' }}>
-                      {meeting.title}
-                    </Typography>
-                  }
-                  secondary={
-                    <>
-                      <Typography variant="caption" color="text.secondary" component="span">
-                        {meeting.date} at {meeting.time}
-                      </Typography>
-                      <br />
-                      <Typography variant="caption" color="text.secondary" component="span">
-                        with {meeting.participant}
-                      </Typography>
-                    </>
-                  }
-                  secondaryTypographyProps={{ component: 'div' }}
-                />
-                <Chip
-                  label={meeting.type === 'calendly' ? 'Calendly' : 'Google Calendar'}
-                  size="small"
+            {meetings.map((meeting) => {
+              const { dateLabel, timeLabel } = formatDateTime(meeting.start_time);
+              return (
+                <ListItem
+                  key={meeting.id}
+                  onClick={() => window.open(meeting.event_url, '_blank')}
                   sx={{
-                    backgroundColor: 'action.hover',
-                    color: 'text.primary',
-                    fontSize: '0.7rem'
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: 2,
+                    mb: 1,
+                    backgroundColor: 'grey.50',
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: 'action.hover' },
                   }}
-                />
-              </ListItem>
-            ))}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                    <VideoCall sx={{ color: 'text.secondary' }} />
+                  </Box>
+                  <ListItemText
+                    primary={
+                      <Typography variant="subtitle2" sx={{ fontFamily: 'Montserrat, sans-serif' }}>
+                        {meeting.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <>
+                        <Typography variant="caption" color="text.secondary" component="span">
+                          {dateLabel} at {timeLabel}
+                        </Typography>
+                        <br />
+                        <Typography variant="caption" color="text.secondary" component="span">
+                          with {meeting.participant}
+                        </Typography>
+                      </>
+                    }
+                    secondaryTypographyProps={{ component: 'div' }}
+                  />
+                  <Chip
+                    label="Calendly"
+                    size="small"
+                    sx={{
+                      backgroundColor: 'action.hover',
+                      color: 'text.primary',
+                      fontSize: '0.7rem',
+                    }}
+                  />
+                </ListItem>
+              );
+            })}
           </List>
         ) : (
           <Box sx={{ textAlign: 'center', mt: 4 }}>
