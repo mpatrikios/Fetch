@@ -233,9 +233,11 @@ function JobRecommendations() {
           : c;
       setRecommendations(prev => prev.map(updateFn));
       setSelectedCandidate(prev => (prev ? updateFn(prev) : prev));
+      return true;
     } catch (err) {
       console.error('Review update error:', err);
       setReviewError('Failed to update review status. Please try again.');
+      return false;
     } finally {
       setReviewLoading(false);
     }
@@ -244,15 +246,16 @@ function JobRecommendations() {
   const handleApproveAndRecommend = async () => {
     if (!selectedCandidate) return;
     const candidateId = selectedCandidate.candidate_id;
-    await handleReviewUpdate(candidateId, 'Approved');
-    if (!recommendedCandidates.has(candidateId)) {
-      await handleRecommendJob();
+    const alreadyRecommended = recommendedCandidates.has(candidateId);
+    const success = await handleReviewUpdate(candidateId, 'Approved');
+    if (success && !alreadyRecommended) {
+      await handleRecommendJob(candidateId);
     }
   };
 
-  const handleRecommendJob = async () => {
-    if (!selectedCandidate) return;
-    const candidateId = selectedCandidate.candidate_id;
+  const handleRecommendJob = async (candidateIdArg) => {
+    const candidateId = candidateIdArg ?? selectedCandidate?.candidate_id;
+    if (!candidateId) return;
     setRecommendingId(candidateId);
     try {
       const res = await candidateJobsAPI.recommendJob(candidateId, {
@@ -685,12 +688,15 @@ function JobRecommendations() {
                 <Divider />
 
                 {/* Actions Section */}
+                {(() => {
+                  const isMlMatch = recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id);
+                  return (
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="h6" sx={{ fontWeight: 600 }}>
                       Actions
                     </Typography>
-                    {recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id) && (
+                    {isMlMatch && (
                       <Chip
                         label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
                         size="small"
@@ -701,14 +707,14 @@ function JobRecommendations() {
                       />
                     )}
                   </Box>
-                  {recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id) ? (
+                  {isMlMatch ? (
                     <Box sx={{ display: 'flex', gap: 1 }}>
                       <Tooltip title="Approve and recommend this job to the candidate">
                         <span>
                           <Button
                             variant="contained"
                             color="success"
-                            disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
+                            disabled={!selectedCandidate.candidate_id || reviewLoading || (selectedCandidate.review_status === 'Approved' && recommendedCandidates.has(selectedCandidate.candidate_id))}
                             onClick={handleApproveAndRecommend}
                           >
                             Approve
@@ -765,6 +771,8 @@ function JobRecommendations() {
                     </Alert>
                   )}
                 </Box>
+                  );
+                })()}
 
                 </>)}
           </DetailPanelContainer>
