@@ -104,6 +104,12 @@ class DocumentService:
             except Exception as e:
                 logger.warning(f"Fallback parser failed for {file_path}: {e}")
 
+        if not standardized_data.get("Skills"):
+            raise ValueError(
+                "No skills found in this resume after parsing. "
+                "Please ask the candidate to update their profile with skills before re-accepting."
+            )
+
         # Log only metadata about the standardization step
         logger.info(
             "Resume standardization completed",
