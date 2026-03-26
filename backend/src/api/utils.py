@@ -6,7 +6,6 @@ from typing import Tuple
 from fastapi import HTTPException
 from bson import ObjectId
 from bson.errors import InvalidId
-import magic
 
 logger = logging.getLogger(__name__)
 
