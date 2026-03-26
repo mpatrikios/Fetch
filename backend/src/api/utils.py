@@ -68,22 +68,23 @@ def validate_document_file(filename: str | None) -> Tuple[bool, str]:
         Tuple of (is_valid, file_extension)
     """
     if not filename:
-        return False, "unknown"
-    
-    is_valid = False
-    file_content_type = "unknown"
-    allowed_file_types = ('.pdf', '.doc', '.docx')
-    try:
-        import magic
-        file_content_type = magic.from_file(filename)
-        if file_content_type not in allowed_file_types:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file content type: {file_content_type}. Only PDF, DOC, and DOCX files are allowed."
-            )
-        is_valid = True
-    except HTTPException:
-        raise 
-    except Exception as e:
-        logger.error(f"Failed to check file content type: {e}")
-    return is_valid, file_content_type
+        raise HTTPException(
+            status_code=400,
+            detail="No file provided. Please upload a PDF, DOC, or DOCX file."
+        )
+
+    import filetype
+    allowed_mime_types = (
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+
+    file_type = filetype.guess(filename)
+    if not file_type or file_type.mime not in allowed_mime_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {filename}. Only PDF, DOC, and DOCX files are supported."
+        )
+
+    return True, file_type.mime
