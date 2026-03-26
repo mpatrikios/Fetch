@@ -1,6 +1,5 @@
 # API routes for candidate management (list, reject, accept, send assessments)
-from fastapi import APIRouter, HTTPException, Query, Depends
-from fastapi.concurrency import run_in_threadpool
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Depends
 import os
 import tempfile
 import logging
@@ -10,7 +9,7 @@ from typing import Optional
 from bson import ObjectId
 
 from src.database.connection import mongo_connection
-from src.api.models import CandidateListResponse
+from src.api.models import CandidateListResponse, UpdateCandidateProfileRequest, UpdateNotesRequest
 from src.api.auth_utils import get_current_mlg_recruiter
 from src.api.utils import cleanup_temp_file, validate_object_id
 from src.api.routes.helpers import extract_clifton_names, ensure_updated, delete_document_blobs, pending_candidates_filter, non_rejected_candidates_filter, anonymize_candidate_in_matches
@@ -122,37 +121,12 @@ async def reject_candidate(candidate_id: str):
         logger.error(f"Failed to reject candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# API endpoint to accept a candidate — triggers resume parsing and embedding generation
-@router.put("/candidates/{candidate_id}/accept")
-async def accept_candidate(candidate_id: str):
-    validate_object_id(candidate_id)
-
-    # Look up candidate and verify resume exists
-    candidate = mongo_connection.candidates_collection.find_one({"_id": ObjectId(candidate_id)})
-    if not candidate:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-
-    resume_blob_path = candidate.get("resume_blob_path")
-    if not resume_blob_path:
-        raise HTTPException(status_code=400, detail="No resume uploaded for this candidate")
-
-    tmp_file_path = None
+def _process_acceptance(candidate_id: str, tmp_file_path: str, email: str, candidate_name: str):
+    """Background task: parse resume, generate embeddings, update status, send email."""
     try:
-        # Download resume from blob storage and save to temp file
-        blob_storage = get_blob_storage()
-        file_bytes = blob_storage.download_blob(resume_blob_path)
+        DocumentService.parse_and_embed_resume(candidate_id, tmp_file_path, email)
 
-        suffix = os.path.splitext(candidate.get("resume_filename", ".pdf"))[1]
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(file_bytes)
-            tmp_file_path = tmp.name
-
-        # Parse resume, upsert data, and generate embeddings (blocking — offload to threadpool)
-        email = candidate.get("email", "")
-        await run_in_threadpool(DocumentService.parse_and_embed_resume, candidate_id, tmp_file_path, email)
-
-        # Set accepted status and timestamp
-        result = mongo_connection.candidates_collection.update_one(
+        mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {
                 "$set": {
@@ -162,12 +136,8 @@ async def accept_candidate(candidate_id: str):
                 "$unset": {"parsing_error": ""},
             }
         )
-        ensure_updated(result, "Candidate")
-
         logger.info(f"Candidate {candidate_id} accepted and resume parsed successfully")
 
-        # Send acceptance email (non-blocking — failure does not block the accept)
-        candidate_name = candidate.get("full_name", "Candidate")
         if email:
             subject = "[ACCEPTANCE SUBJECT PLACEHOLDER]"  # user to fill in
             body_html = f"""
@@ -177,27 +147,62 @@ async def accept_candidate(candidate_id: str):
             """
             body_text = f"Hi {candidate_name},\n\n[EMAIL BODY PLACEHOLDER]\n\nBest,\nThe MLG Team"
             try:
-                await run_in_threadpool(send_email, email, subject, body_html, body_text)
+                send_email(email, subject, body_html, body_text)
                 logger.info(f"Acceptance email sent to candidate {candidate_id} at {email}")
             except Exception as email_err:
-                # Log email sending failure but do not block overall acceptance flow
                 logger.error(f"Failed to send acceptance email to candidate {candidate_id} at {email}: {email_err}")
 
-        return {"success": True, "message": "Candidate accepted and resume processed successfully"}
-
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to accept candidate {candidate_id}: {e}")
-        # Store parsing error so recruiter can see what went wrong and retry
+        logger.error(f"Background acceptance processing failed for candidate {candidate_id}: {e}")
         mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
             {"$set": {"parsing_error": str(e)}}
         )
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if tmp_file_path:
-            cleanup_temp_file(tmp_file_path)
+        cleanup_temp_file(tmp_file_path)
+
+
+# API endpoint to accept a candidate — triggers resume parsing and embedding generation in the background
+@router.put("/candidates/{candidate_id}/accept")
+async def accept_candidate(candidate_id: str, background_tasks: BackgroundTasks):
+    validate_object_id(candidate_id)
+
+    candidate = mongo_connection.candidates_collection.find_one({"_id": ObjectId(candidate_id)})
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    resume_blob_path = candidate.get("resume_blob_path")
+    if not resume_blob_path:
+        raise HTTPException(status_code=400, detail="No resume uploaded for this candidate")
+
+    try:
+        # Download resume synchronously so the temp file exists when the background task runs
+        blob_storage = get_blob_storage()
+        file_bytes = blob_storage.download_blob(resume_blob_path)
+
+        suffix = os.path.splitext(candidate.get("resume_filename", ".pdf"))[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(file_bytes)
+            tmp_file_path = tmp.name
+
+        # Mark as processing immediately so the UI can reflect progress
+        mongo_connection.candidates_collection.update_one(
+            {"_id": ObjectId(candidate_id)},
+            {"$set": {"status": "processing", "processing_started_at": datetime.now(timezone.utc)}}
+        )
+
+        email = candidate.get("email", "")
+        candidate_name = candidate.get("full_name", "Candidate")
+        background_tasks.add_task(_process_acceptance, candidate_id, tmp_file_path, email, candidate_name)
+
+        logger.info(f"Acceptance initiated for candidate {candidate_id} — processing in background")
+        return {"success": True, "message": "Candidate acceptance initiated — processing in background"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to initiate acceptance for candidate {candidate_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # API endpoint to send assessment to candidate (placeholder)
 @router.post("/candidates/{candidate_id}/send-assessment")
@@ -241,22 +246,19 @@ async def send_assessment(candidate_id: str):
 
 # API endpoint to update candidate profile (for MLG recruiters)
 @router.put("/candidates/{candidate_id}/profile")
-async def update_candidate_profile(candidate_id: str, profile_data: dict):
-    # Validate ObjectId format
+async def update_candidate_profile(candidate_id: str, profile_data: UpdateCandidateProfileRequest):
     validate_object_id(candidate_id)
 
     try:
-        # Extract allowed fields from the request
         update_fields = {}
-
-        if "full_name" in profile_data:
-            update_fields["full_name"] = profile_data["full_name"]
-        if "location" in profile_data:
-            update_fields["location"] = profile_data["location"]
-        if "summary" in profile_data:
-            update_fields["Summary"] = profile_data["summary"]
-        if "skills" in profile_data:
-            update_fields["Skills"] = profile_data["skills"]
+        if profile_data.full_name is not None:
+            update_fields["full_name"] = profile_data.full_name
+        if profile_data.location is not None:
+            update_fields["location"] = profile_data.location
+        if profile_data.summary is not None:
+            update_fields["Summary"] = profile_data.summary
+        if profile_data.skills is not None:
+            update_fields["Skills"] = profile_data.skills
 
         if not update_fields:
             raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -280,12 +282,11 @@ async def update_candidate_profile(candidate_id: str, profile_data: dict):
 
 # API endpoint to update candidate notes
 @router.put("/candidates/{candidate_id}/notes")
-async def update_candidate_notes(candidate_id: str, notes_data: dict):
-    # Validate ObjectId format
+async def update_candidate_notes(candidate_id: str, notes_data: UpdateNotesRequest):
     validate_object_id(candidate_id)
-    
+
     try:
-        notes = notes_data.get("notes", "")
+        notes = notes_data.notes
         
         result = mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
