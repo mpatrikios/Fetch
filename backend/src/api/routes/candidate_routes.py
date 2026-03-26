@@ -156,7 +156,7 @@ def _process_acceptance(candidate_id: str, tmp_file_path: str, email: str, candi
         logger.error(f"Background acceptance processing failed for candidate {candidate_id}: {e}")
         mongo_connection.candidates_collection.update_one(
             {"_id": ObjectId(candidate_id)},
-            {"$set": {"parsing_error": str(e)}}
+            {"$set": {"parsing_error": str(e), "status": "processing_failed", "processing_failed_at": datetime.now(timezone.utc)}}
         )
     finally:
         cleanup_temp_file(tmp_file_path)
@@ -175,6 +175,13 @@ async def accept_candidate(candidate_id: str, background_tasks: BackgroundTasks)
     if not resume_blob_path:
         raise HTTPException(status_code=400, detail="No resume uploaded for this candidate")
 
+    current_status = candidate.get("status")
+    if current_status == "processing":
+        return {"success": True, "message": "Candidate acceptance is already in progress"}
+    if current_status == "accepted":
+        return {"success": True, "message": "Candidate has already been accepted"}
+
+    tmp_file_path = None
     try:
         # Download resume synchronously so the temp file exists when the background task runs
         blob_storage = get_blob_storage()
@@ -201,6 +208,8 @@ async def accept_candidate(candidate_id: str, background_tasks: BackgroundTasks)
     except HTTPException:
         raise
     except Exception as e:
+        if tmp_file_path:
+            cleanup_temp_file(tmp_file_path)
         logger.error(f"Failed to initiate acceptance for candidate {candidate_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
