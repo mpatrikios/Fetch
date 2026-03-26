@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
+  Chip,
   Grid,
   Typography,
   CircularProgress,
@@ -101,9 +102,13 @@ function Candidates() {
   const statusLabels = {
     pending: 'Pending',
     registered: 'Registered',
+    onboarding: 'Onboarding',
+    processing: 'Processing',
+    processing_failed: 'Processing Failed',
     accepted: 'Accepted',
     rejected: 'Rejected',
     scheduled_intake: 'Scheduled Intake',
+    uploaded_documents: 'Uploaded Documents',
     completed_assessment: 'Completed Assessment',
     uploaded_results: 'Uploaded Results',
     uploaded_resume: 'Uploaded Resume',
@@ -144,16 +149,23 @@ function Candidates() {
     setSelectedCandidateStatus('');
   };
 
-  // Get status indicator - only blue dot for pending, nothing for accepted
-  const getStatusIndicator = (status) => {
-    if (status === 'accepted') {
-      return null; // No indicator for accepted candidates
-    }
-    // Blue dot for pending/unprocessed candidates
-    return { 
-      type: 'dot',
-      color: 'primary.main'
+  const getStatusChipProps = (status) => {
+    const colorMap = {
+      pending: 'default',
+      registered: 'default',
+      onboarding: 'info',
+      processing: 'info',
+      processing_failed: 'error',
+      accepted: 'success',
+      rejected: 'error',
+      scheduled_intake: 'warning',
+      uploaded_documents: 'info',
+      completed_assessment: 'warning',
+      uploaded_results: 'info',
+      uploaded_resume: 'info',
+      completed_onboarding: 'success',
     };
+    return { color: colorMap[status] ?? 'default', size: 'small' };
   };
 
   const loadCandidates = async () => {
@@ -287,7 +299,7 @@ function Candidates() {
     showError('');
     try {
       await candidateAPI.accept(selectedCandidate.id);
-      showSuccess(`${selectedCandidate.full_name} has been accepted.`);
+      showSuccess(`Acceptance initiated — ${selectedCandidate.full_name} will be marked accepted once processing finishes.`);
       setSelectedCandidate(null);
       setCandidateDetails(null);
       loadCandidates();
@@ -306,44 +318,50 @@ function Candidates() {
     }
   };
 
+  // Send assessment step — throws a normalized Error on failure
+  const sendAssessmentStep = async (candidateId) => {
+    try {
+      await candidateAPI.sendAssessment(candidateId);
+    } catch (err) {
+      console.error('Send assessment error:', err);
+      const detail = err.response?.data?.detail;
+      throw new Error(detail
+        ? `Failed to send CliftonStrengths assessment: ${detail}`
+        : 'Failed to send CliftonStrengths assessment. Please try again.');
+    }
+  };
+
+  // Accept step — throws a normalized Error on failure
+  // Assessment is sent FIRST (see caller) so the candidate is never left
+  // marked "accepted" without having received the assessment.
+  const acceptStep = async (candidateId) => {
+    try {
+      await candidateAPI.accept(candidateId);
+    } catch (err) {
+      console.error('Accept candidate error:', err);
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 404) {
+        throw new Error('Candidate not found. Please refresh the page and try again.');
+      } else if (err.response?.status === 400) {
+        throw new Error(detail || 'Cannot accept candidate: a required field is missing.');
+      } else {
+        throw new Error(detail
+          ? `Assessment sent, but failed to accept candidate: ${detail}`
+          : 'Assessment sent, but failed to accept candidate. Please try accepting again.');
+      }
+    }
+  };
+
   // Accept candidate and send CliftonStrengths assessment.
-  // Assessment is sent FIRST — if it fails, accept is never called so the
-  // candidate is not left marked "accepted" without receiving the assessment.
   // TODO: integrate with actual assessment sending logic (email, clifton code, etc.)
   const handleAcceptAndSendAssessment = async () => {
     if (!selectedCandidate) return;
     setAcceptingWithAssessment(true);
     showError('');
     try {
-      // Step 1: Send assessment — if this fails, accept is never called
-      try {
-        await candidateAPI.sendAssessment(selectedCandidate.id);
-      } catch (err) {
-        console.error('Send assessment error:', err);
-        const detail = err.response?.data?.detail;
-        throw new Error(detail
-          ? `Failed to send CliftonStrengths assessment: ${detail}`
-          : 'Failed to send CliftonStrengths assessment. Please try again.');
-      }
-
-      // Step 2: Accept only after assessment is confirmed sent
-      try {
-        await candidateAPI.accept(selectedCandidate.id);
-      } catch (err) {
-        console.error('Accept candidate error:', err);
-        const detail = err.response?.data?.detail;
-        if (err.response?.status === 404) {
-          throw new Error('Candidate not found. Please refresh the page and try again.');
-        } else if (err.response?.status === 400) {
-          throw new Error(detail || 'Cannot accept candidate: a required field is missing.');
-        } else {
-          throw new Error(detail
-            ? `Assessment sent, but failed to accept candidate: ${detail}`
-            : 'Assessment sent, but failed to accept candidate. Please try accepting again.');
-        }
-      }
-
-      showSuccess(`${selectedCandidate.full_name} has been accepted and CliftonStrengths assessment sent successfully!`);
+      await sendAssessmentStep(selectedCandidate.id);
+      await acceptStep(selectedCandidate.id);
+      showSuccess(`Acceptance initiated — ${selectedCandidate.full_name} will be marked accepted once processing finishes. CliftonStrengths assessment sent.`);
       setSelectedCandidate(null);
       setCandidateDetails(null);
       loadCandidates();
@@ -575,39 +593,29 @@ function Candidates() {
                   subtitle={searchQuery || selectedLocation || selectedCandidateStatus ? 'Try adjusting your search or filters' : 'No candidates available'}
                 />
               ) : (
-                filteredCandidates.map((candidate, index) => {
-                  const statusIndicator = getStatusIndicator(candidate.status);
-                  
-                  return (
-                    <SelectableListItem
-                      key={candidate.id || index}
-                      selected={selectedCandidate?.id === candidate.id}
-                      onClick={() => handleCandidateSelect(candidate)}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {candidate.full_name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {candidate.email}
-                          </Typography>
-                        </Box>
-                        {statusIndicator && (
-                          <Box 
-                            sx={{ 
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              backgroundColor: statusIndicator.color,
-                              ml: 1
-                            }} 
-                          />
-                        )}
+                filteredCandidates.map((candidate, index) => (
+                  <SelectableListItem
+                    key={candidate.id || index}
+                    selected={selectedCandidate?.id === candidate.id}
+                    onClick={() => handleCandidateSelect(candidate)}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                          {candidate.full_name}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {candidate.email}
+                        </Typography>
                       </Box>
-                    </SelectableListItem>
-                  );
-                })
+                      <Chip
+                        label={statusLabels[candidate.status] ?? candidate.status ?? 'Pending'}
+                        {...getStatusChipProps(candidate.status ?? 'pending')}
+                        sx={{ ml: 1, flexShrink: 0 }}
+                      />
+                    </Box>
+                  </SelectableListItem>
+                ))
               )}
             </Box>
           </CardSection>
@@ -622,6 +630,10 @@ function Candidates() {
                     <Typography variant="h5" sx={{ fontWeight: 600 }}>
                       {candidateDetails?.full_name}
                     </Typography>
+                    <Chip
+                      label={statusLabels[candidateDetails?.status] ?? candidateDetails?.status ?? 'Pending'}
+                      {...getStatusChipProps(candidateDetails?.status ?? 'pending')}
+                    />
                     <IconButton
                       size="small"
                       onClick={handleEditClick}

@@ -3,6 +3,7 @@ import axios from 'axios';
 // Create axios instance with default config
 const api = axios.create({
   baseURL: '/api',
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,6 +34,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     } else if (error.response?.status === 500) {
+      // Log for debugging but still reject so call-site catch blocks receive the error
       console.error('Server error:', error.response.data);
     }
     return Promise.reject(error);

@@ -38,6 +38,17 @@ class CandidateListResponse(BaseModel):
     candidates: List[CandidateInfo]
 
 
+class UpdateCandidateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    location: Optional[str] = None
+    summary: Optional[str] = None
+    skills: Optional[List[str]] = None
+
+
+class UpdateNotesRequest(BaseModel):
+    notes: str = ""
+
+
 # Candidate Self-Service Profile Models
 class CandidateProfileResponse(BaseModel):
     """Candidate's view of their own profile - excludes
