@@ -150,7 +150,7 @@ def build_match_result_from_candidate(c: dict, live_candidate: Optional[dict] = 
             "summary": explanation_data.get("summary") or "No summary available",
         },
         clifton_strengths=c.get("clifton_strengths") or [],
-        missing_clifton=c.get("missing_clifton", False),
+        missing_clifton=c.get("missing_clifton") if "missing_clifton" in c else not bool(c.get("clifton_strengths")),
         skills=skills[:10],
         review_status=c.get("review_status"),
         reviewed_at=c.get("reviewed_at"),

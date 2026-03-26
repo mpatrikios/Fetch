@@ -97,9 +97,10 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 # Find top-k candidate matches for a job based on profile embeddings and location
 def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool = True, excluded_ids: set = None):
     """
-    Finds the top-k candidate matches for a given job document based on cosine similarity of profile and culture embeddings.
-    Only includes candidates within reasonable commute distance (80km).
-    Uses 50/50 weighting between profile and culture similarity.
+    Finds the top-k candidate matches for a given job document based on cosine similarity of profile and
+    (optionally) culture embeddings. Only includes candidates within reasonable commute distance (80km).
+    Candidates without a culture embedding are included with culture_similarity_score defaulted to 0.0.
+    Uses 70/30 weighting between profile and culture similarity.
 
     All similarity scores are normalized to the range [-1, 1] where:
     - 1.0 = excellent match
@@ -108,15 +109,16 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
 
     Args:
         db: The database connection object, expected to have a "Candidates" collection.
-        job_doc (dict): The job document containing "profile_embedding" and "culture_embedding" keys and optionally "location_coordinates".
+        job_doc (dict): The job document containing "profile_embedding" and optionally "culture_embedding"
+            keys and optionally "location_coordinates".
         top_k (int, optional): The number of top candidates to return. Defaults to 10.
         use_cohort (bool, optional): If True, randomizes the order of top_k candidates to reduce ranking bias. Defaults to True.
 
     Returns:
         list of dict: A list of dictionaries, each containing:
-            - "combined_similarity_score": The weighted 50/50 combination of normalized profile and culture similarity [-1, 1].
+            - "combined_similarity_score": The weighted 70/30 combination of normalized profile and culture similarity [-1, 1].
             - "profile_similarity_score": The normalized cosine similarity score for profile embeddings [-1, 1].
-            - "culture_similarity_score": The normalized cosine similarity score for culture embeddings [-1, 1].
+            - "culture_similarity_score": The normalized cosine similarity score for culture embeddings [-1, 1], or 0.0 if missing.
             - "candidate": The candidate document.
             - "explanation": An explanation of the match.
             - "distance_km": Distance in kilometers (if coordinates available).
@@ -125,10 +127,11 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
     job_culture_vec = np.array(job_doc.get("culture_embedding", []), dtype=float) if job_doc.get("culture_embedding") else None
     job_coords = job_doc.get("location_coordinates")
 
-    # Find candidates with a profile embedding (culture embedding is optional)
+    # Find candidates with a non-empty array profile embedding (excludes None, missing, and [])
+    # culture embedding is optional
     candidates_cursor = db["Candidates"].find(
         {
-            "profile_embedding": {"$exists": True, "$ne": []}
+            "profile_embedding": {"$type": "array", "$ne": []}
         }
     )
 
