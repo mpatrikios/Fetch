@@ -8,7 +8,7 @@ function UpcomingMeetings() {
     {
       id: 1,
       title: "Client Interview - TechCorp",
-      time: "10:00 AM",
+      time: "2:00 PM",
       date: "Today",
       type: "calendly",
       participant: "John Smith"
@@ -16,18 +16,18 @@ function UpcomingMeetings() {
     {
       id: 2,
       title: "Candidate Screening",
-      time: "2:00 PM",
+      time: "2:30 PM",
       date: "Today",
-      type: "google",
+      type: "calendly",
       participant: "Sarah Johnson"
     },
     {
       id: 3,
-      title: "Weekly Team Sync",
-      time: "9:00 AM",
+      title: "Candidate Screening",
+      time: "4:00 PM",
       date: "Tomorrow",
       type: "google",
-      participant: "MLG Team"
+      participant: "John Meyer"
     }
   ];
 
