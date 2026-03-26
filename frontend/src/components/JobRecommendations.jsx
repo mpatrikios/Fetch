@@ -659,7 +659,13 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     CliftonStrengths
                   </Typography>
-                  <SkillChips items={selectedCandidate.clifton_strengths} variant="strength" emptyText="No CliftonStrengths assessment completed" />
+                  <SkillChips
+                    items={selectedCandidate.clifton_strengths}
+                    variant="strength"
+                    emptyText={selectedCandidate.missing_clifton
+                      ? "No assessment uploaded — culture score defaulted to 0.0 in ranking."
+                      : "No CliftonStrengths assessment completed"}
+                  />
                 </Box>
 
                 <Divider />
