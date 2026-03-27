@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: fetch-backend
+    runtime: python
+    rootDir: backend
+    branch: user-testing
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: MONGODB_URL
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_BASE_URL
+        sync: false
+      - key: AZURE_OPENAI_EXPLANATION_BASE_URL
+        sync: false
+      - key: AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY
+        sync: false
+      - key: RESOURCE_KEY
+        sync: false
+      - key: AZURE_STORAGE_CONNECTION_STRING
+        sync: false
+      - key: AZURE_STORAGE_CONTAINER_NAME
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: GMAIL_SENDER_EMAIL
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: CALENDLY_ACCESS_TOKEN
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
