@@ -1,35 +1,22 @@
-import { Box, Typography, Button, List, ListItem, ListItemText, Chip } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Button, List, ListItemButton, ListItemText, Chip, Skeleton } from '@mui/material';
 import { CalendarToday, VideoCall, CalendarMonth } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { CardSection, SectionHeader } from '../common-components/StyledComponents';
+import { useMeetings } from '../../hooks/useMeetings';
+import MeetingsCalendarDialog from './MeetingsCalendarDialog';
 
 function UpcomingMeetings() {
-  // MOCK DATA TODO: Replace with real data fetching logic
-  const meetings = [
-    {
-      id: 1,
-      title: "Client Interview - TechCorp",
-      time: "2:00 PM",
-      date: "Today",
-      type: "calendly",
-      participant: "John Smith"
-    },
-    {
-      id: 2,
-      title: "Candidate Screening",
-      time: "2:30 PM",
-      date: "Today",
-      type: "calendly",
-      participant: "Sarah Johnson"
-    },
-    {
-      id: 3,
-      title: "Candidate Screening",
-      time: "4:00 PM",
-      date: "Tomorrow",
-      type: "google",
-      participant: "John Meyer"
-    }
-  ];
+  const navigate = useNavigate();
+  const { meetings, loading } = useMeetings();
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const handleMeetingClick = (meeting) => {
+    if (!meeting.candidate_id) return;
+    navigate('/candidates', { state: { selectedCandidateId: meeting.candidate_id } });
+  };
+
+  const upcoming = meetings.slice(0, 3);
 
   return (
     <CardSection sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -38,23 +25,33 @@ function UpcomingMeetings() {
         <SectionHeader variant="h6" sx={{ mb: 0, flexGrow: 1 }}>
           Upcoming Meetings
         </SectionHeader>
-        <Button size="small" variant="outlined" startIcon={<CalendarMonth />}>
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<CalendarMonth />}
+          onClick={() => setCalendarOpen(true)}
+        >
           View Calendar
         </Button>
       </Box>
 
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
-        {meetings.length > 0 ? (
+        {loading ? (
+          [1, 2, 3].map((i) => <Skeleton key={i} variant="rounded" height={64} sx={{ mb: 1 }} />)
+        ) : upcoming.length > 0 ? (
           <List sx={{ p: 0 }}>
-            {meetings.map((meeting) => (
-              <ListItem
-                key={meeting.id}
+            {upcoming.map((meeting) => (
+              <ListItemButton
+                key={meeting.event_id}
+                onClick={() => handleMeetingClick(meeting)}
+                disabled={!meeting.candidate_id}
                 sx={{
                   border: '1px solid',
                   borderColor: 'divider',
                   borderRadius: 2,
                   mb: 1,
-                  backgroundColor: 'grey.50'
+                  backgroundColor: 'grey.50',
+                  '&.Mui-disabled': { opacity: 0.65 },
                 }}
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
@@ -69,26 +66,34 @@ function UpcomingMeetings() {
                   secondary={
                     <>
                       <Typography variant="caption" color="text.secondary" component="span">
-                        {meeting.date} at {meeting.time}
+                        {new Date(meeting.start_time).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        {' at '}
+                        {new Date(meeting.start_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </Typography>
                       <br />
                       <Typography variant="caption" color="text.secondary" component="span">
-                        with {meeting.participant}
+                        with {meeting.invitee_name}
                       </Typography>
                     </>
                   }
                   secondaryTypographyProps={{ component: 'div' }}
                 />
-                <Chip
-                  label={meeting.type === 'calendly' ? 'Calendly' : 'Google Calendar'}
-                  size="small"
-                  sx={{
-                    backgroundColor: 'action.hover',
-                    color: 'text.primary',
-                    fontSize: '0.7rem'
-                  }}
-                />
-              </ListItem>
+                {meeting.join_url && (
+                  <Chip
+                    label="Join"
+                    size="small"
+                    component="a"
+                    href={meeting.join_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    clickable
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem' }}
+                  />
+                )}
+              </ListItemButton>
             ))}
           </List>
         ) : (
@@ -100,6 +105,12 @@ function UpcomingMeetings() {
           </Box>
         )}
       </Box>
+
+      <MeetingsCalendarDialog
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        meetings={meetings}
+      />
     </CardSection>
   );
 }

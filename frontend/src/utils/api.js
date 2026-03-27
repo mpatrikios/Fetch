@@ -184,6 +184,11 @@ export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
 };
 
+// Meeting endpoints
+export const meetingAPI = {
+  getUpcoming: () => api.get('/meetings/upcoming'),
+};
+
 // Document download endpoints
 export const documentAPI = {
   getResumeDownloadUrl: (candidateId) => api.get(`/documents/resume/${candidateId}/download`),
