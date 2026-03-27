@@ -46,7 +46,3 @@ uvicorn==0.27.0
 uvloop==0.22.1; platform_system != "Windows"
 watchfiles==1.1.1
 websockets==15.0.1
-gspread>=6.0
-google-auth>=2.0
-google-auth-oauthlib>=1.0
-google-api-python-client>=2.0

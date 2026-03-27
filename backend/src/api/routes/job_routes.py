@@ -54,7 +54,7 @@ async def upload_job_description(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File must have a filename")
     
-    is_valid, _ = validate_document_file(file.filename)
+    is_valid, _ = await validate_document_file(file)
     
     if not is_valid:
         raise HTTPException(
@@ -142,6 +142,26 @@ async def upload_job_description(
         mongo_id = mongo_result.get("document_id")
         if not mongo_id:
             raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
+        
+        postedJob = {
+            "JobTitle": job_title,
+            "job_id": mongo_id
+        }
+        try:
+            mongo_connection.clients_collection.update_one(
+                {"companyName": company_name},
+                {
+                    "$setOnInsert": {
+                        "status": "active",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    "$addToSet": {"postedJobs": postedJob}
+                },
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to update client postedJobs for {company_name}: {e}")
+
         # Retrieve the inserted job description
         job_doc = get_job_description(mongo_id)
         # Upload original document to Azure Blob Storage
@@ -233,7 +253,7 @@ async def finalize_job(body: JobFinalizeRequest):
     mongo_id = mongo_result.get("document_id")
     if not mongo_id:
         raise HTTPException(status_code=500, detail="Failed to retrieve job ID after insertion")
-    # Link job title to the client's postedJobs list
+
     postedJob = {
         "JobTitle": body.title.strip(),
         "job_id": mongo_id
@@ -241,7 +261,16 @@ async def finalize_job(body: JobFinalizeRequest):
     try:
         mongo_connection.clients_collection.update_one(
             {"companyName": body.company_name},
-            {"$addToSet": {"postedJobs": postedJob}}
+            {
+                "$setOnInsert": {
+                    "status": "active",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                },
+                "$addToSet": {
+                    "postedJobs": postedJob
+                }
+            },
+            upsert=True
         )
     except Exception as e:
         logger.error(f"Failed to update client postedJobs for {body.company_name}: {e}")
@@ -428,7 +457,7 @@ async def upload_culture_document(
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="File must have a filename")
-    is_valid, _ = validate_document_file(file.filename)
+    is_valid, _ = await validate_document_file(file)
     if not is_valid:
         raise HTTPException(status_code=400, detail="Invalid file type. Accepted formats: PDF, DOC, DOCX")
 

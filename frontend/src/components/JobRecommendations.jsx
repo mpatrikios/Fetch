@@ -84,7 +84,7 @@ function JobRecommendations() {
 
   const loadHistory = useCallback(async (signal) => {
     try {
-      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle, { signal });
+      const res = await matchingAPI.getMatchHistory(decodedCompany, decodedTitle, decodedJobId, { signal });
       if (!signal?.aborted) {
         setHistory(res.data.history || []);
       }
@@ -104,7 +104,7 @@ function JobRecommendations() {
 
         // 1. Try loading from database first
         try {
-          const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, { signal });
+          const stored = await matchingAPI.getStoredMatches(decodedCompany, decodedTitle, decodedJobId, { signal });
           setRecommendations(stored.data.matches || []);
           setMongoMatchId(stored.data.mongo_match_id || null);
           setGeneratedAt(stored.data.created_at || null);
@@ -233,17 +233,29 @@ function JobRecommendations() {
           : c;
       setRecommendations(prev => prev.map(updateFn));
       setSelectedCandidate(prev => (prev ? updateFn(prev) : prev));
+      return true;
     } catch (err) {
       console.error('Review update error:', err);
       setReviewError('Failed to update review status. Please try again.');
+      return false;
     } finally {
       setReviewLoading(false);
     }
   };
 
-  const handleRecommendJob = async () => {
+  const handleApproveAndRecommend = async () => {
     if (!selectedCandidate) return;
     const candidateId = selectedCandidate.candidate_id;
+    const alreadyRecommended = recommendedCandidates.has(candidateId);
+    const success = await handleReviewUpdate(candidateId, 'Approved');
+    if (success && !alreadyRecommended) {
+      await handleRecommendJob(candidateId);
+    }
+  };
+
+  const handleRecommendJob = async (candidateIdArg) => {
+    const candidateId = candidateIdArg ?? selectedCandidate?.candidate_id;
+    if (!candidateId) return;
     setRecommendingId(candidateId);
     try {
       const res = await candidateJobsAPI.recommendJob(candidateId, {
@@ -550,37 +562,17 @@ function JobRecommendations() {
                       </Typography>
                     )}
                   </Box>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'flex-end' }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      endIcon={<OpenInNew fontSize="small" />}
-                      onClick={() => navigate('/candidates', {
-                        state: { selectedCandidateId: selectedCandidate.candidate_id }
-                      })}
-                      sx={{ flexShrink: 0 }}
-                    >
-                      View Profile
-                    </Button>
-                    {(() => {
-                      const isAlreadyRecommended = recommendedCandidates.has(selectedCandidate.candidate_id);
-                      const isProcessing = recommendingId === selectedCandidate.candidate_id;
-                      return (
-                        <DarkButton
-                          size="small"
-                          disabled={isProcessing}
-                          onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : handleRecommendJob}
-                          sx={isAlreadyRecommended ? { opacity: 0.65, fontSize: '0.75rem', py: 0.5, px: 1.5 } : {}}
-                        >
-                          {isProcessing
-                            ? (isAlreadyRecommended ? 'Removing...' : 'Recommending...')
-                            : isAlreadyRecommended
-                              ? 'Already Recommended'
-                              : 'Recommend this Job'}
-                        </DarkButton>
-                      );
-                    })()}
-                  </Box>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    endIcon={<OpenInNew fontSize="small" />}
+                    onClick={() => navigate('/candidates', {
+                      state: { selectedCandidateId: selectedCandidate.candidate_id }
+                    })}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    View Profile
+                  </Button>
                 </Box>
 
                 <Divider />
@@ -659,7 +651,13 @@ function JobRecommendations() {
                   <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                     CliftonStrengths
                   </Typography>
-                  <SkillChips items={selectedCandidate.clifton_strengths} variant="strength" emptyText="No CliftonStrengths assessment completed" />
+                  <SkillChips
+                    items={selectedCandidate.clifton_strengths}
+                    variant="strength"
+                    emptyText={selectedCandidate.missing_clifton
+                      ? "No assessment uploaded — culture score defaulted to 0.0 in ranking."
+                      : "No CliftonStrengths assessment completed"}
+                  />
                 </Box>
 
                 <Divider />
@@ -687,70 +685,94 @@ function JobRecommendations() {
                   </Box>
                 )}
 
-                {recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id) && (
-                  <>
-                    <Divider />
+                <Divider />
 
-                    {/* Review Decision Section — ML matches only */}
-                    <Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          Review Decision
-                        </Typography>
-                        <Chip
-                          label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
-                          size="small"
-                          color={
-                            selectedCandidate.review_status === 'Approved' ? 'success' :
-                            selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
-                          }
-                        />
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title="Mark as approved">
-                          <span>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Approved'}
-                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Approved')}
-                            >
-                              Approve
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title="Mark as rejected">
-                          <span>
-                            <Button
-                              variant="contained"
-                              color="error"
-                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
-                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
-                            >
-                              Reject
-                            </Button>
-                          </span>
-                        </Tooltip>
-                        <Tooltip title="Reset to pending">
-                          <span>
-                            <Button
-                              variant="outlined"
-                              disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
-                              onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
-                            >
-                              Pending
-                            </Button>
-                          </span>
-                        </Tooltip>
-                      </Box>
-                      {reviewError && (
-                        <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
-                          {reviewError}
-                        </Alert>
-                      )}
+                {/* Actions Section */}
+                {(() => {
+                  const isMlMatch = recommendations.some(r => r.candidate_id === selectedCandidate.candidate_id);
+                  return (
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      Actions
+                    </Typography>
+                    {isMlMatch && (
+                      <Chip
+                        label={`Status: ${selectedCandidate.review_status || 'Pending'}`}
+                        size="small"
+                        color={
+                          selectedCandidate.review_status === 'Approved' ? 'success' :
+                          selectedCandidate.review_status === 'Rejected' ? 'error' : 'default'
+                        }
+                      />
+                    )}
+                  </Box>
+                  {isMlMatch ? (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="Approve and recommend this job to the candidate">
+                        <span>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            disabled={!selectedCandidate.candidate_id || reviewLoading || (selectedCandidate.review_status === 'Approved' && recommendedCandidates.has(selectedCandidate.candidate_id))}
+                            onClick={handleApproveAndRecommend}
+                          >
+                            Approve
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Mark as rejected">
+                        <span>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Rejected'}
+                            onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Rejected')}
+                          >
+                            Reject
+                          </Button>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Reset to pending">
+                        <span>
+                          <Button
+                            variant="outlined"
+                            disabled={!selectedCandidate.candidate_id || reviewLoading || selectedCandidate.review_status === 'Pending' || !selectedCandidate.review_status}
+                            onClick={() => handleReviewUpdate(selectedCandidate.candidate_id, 'Pending')}
+                          >
+                            Pending
+                          </Button>
+                        </span>
+                      </Tooltip>
                     </Box>
-                  </>
-                )}
+                  ) : (
+                    (() => {
+                      const isAlreadyRecommended = recommendedCandidates.has(selectedCandidate.candidate_id);
+                      const isProcessing = recommendingId === selectedCandidate.candidate_id;
+                      return (
+                        <DarkButton
+                          size="small"
+                          disabled={isProcessing}
+                          onClick={isAlreadyRecommended ? () => setConfirmDialogOpen(true) : () => handleRecommendJob()}
+                          sx={isAlreadyRecommended ? { opacity: 0.65, fontSize: '0.75rem', py: 0.5, px: 1.5 } : {}}
+                        >
+                          {isProcessing
+                            ? (isAlreadyRecommended ? 'Removing...' : 'Recommending...')
+                            : isAlreadyRecommended
+                              ? 'Already Recommended'
+                              : 'Recommend this Job'}
+                        </DarkButton>
+                      );
+                    })()
+                  )}
+                  {reviewError && (
+                    <Alert severity="error" sx={{ mt: 2 }} onClose={() => setReviewError('')}>
+                      {reviewError}
+                    </Alert>
+                  )}
+                </Box>
+                  );
+                })()}
 
                 </>)}
           </DetailPanelContainer>

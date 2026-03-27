@@ -3,8 +3,10 @@ This file is responsible for interfacing with MongoDB to insert and update docum
 """
 from typing import Dict, Any, List
 import logging
-from .connection import mongo_connection
 
+from src.api.utils import validate_object_id
+from .connection import mongo_connection
+from bson import ObjectId
 # Get database and collections from centralized connection
 database = mongo_connection.database
 candidates_collection = mongo_connection.candidates_collection
@@ -25,9 +27,9 @@ def upsert_candidate(candidate_data: Dict[str, Any], user_id: str = None) -> Dic
         Dictionary with operation result
     """
     try:
-        from bson import ObjectId
         
         if user_id:
+            validate_object_id(user_id)
             # Use user_id for authenticated users
             filter_query = {"_id": ObjectId(user_id)}
         else:
@@ -86,10 +88,11 @@ def get_candidate(full_name: str = None, user_id: str = None) -> Dict[str, Any] 
     Returns:
         Dictionary containing the candidate document or None if not found
     """
+
+    identifier = "Unknown"
     try:
-        from bson import ObjectId
-        
         if user_id:
+            validate_object_id(user_id)
             # Use user_id for authenticated users
             query = {"_id": ObjectId(user_id)}
             identifier = user_id
@@ -159,18 +162,17 @@ def get_job_description(job_id: str) -> Dict[str, Any] | None:
     Retrieve job description document(s) from MongoDB by companyName and optionally JobTitle.
     
     Args:
-        company_name: The company name
-        job_title: The job title (optional)
+        job_id: The MongoDB ObjectId string of the job description document
         
     Returns:
         Dictionary containing the job description document, list of documents, or None if not found
     """
     try:
-        from bson import ObjectId
+        validate_object_id(job_id)
         query = {"_id": ObjectId(job_id)}
         job_description = job_descriptions_collection.find_one(query)
         if job_description:
-            logging.info(f"Retrieved job description: {job_description.get('companyName', 'Unknown company name')} - {job_description.get('JobTitle', 'Unknown job title')}")
+            logging.info(f"Retrieved job description: {job_description.get('companyName', 'Unknown company name')} - {job_description.get('JobTitle', 'Unknown job title')} - {job_id}")
             return job_description
     except Exception as e:
         logging.error(f"Error retrieving job description for {job_id}: {str(e)}")
@@ -191,7 +193,7 @@ def update_match_review(match_id: str, candidate_id: str, review_status: str, re
         Dictionary with operation result
     """
     try:
-        from bson import ObjectId
+        validate_object_id(match_id)
         from datetime import datetime, timezone
 
         reviewed_at = datetime.now(timezone.utc).isoformat()
@@ -219,14 +221,15 @@ def update_match_review(match_id: str, candidate_id: str, review_status: str, re
         return {"success": False, "error": str(e)}
 
 
-def get_match(company_name: str, job_title: str) -> Dict[str, Any] | None:
+def get_match(company_name: str, job_title: str, job_id: str) -> Dict[str, Any] | None:
     """
     Retrieve the most recent match document for a given company and job title.
     Returns None if no matches have been saved yet.
     """
     try:
+        validate_object_id(job_id)
         match = matches_collection.find_one(
-            {"companyName": company_name, "JobTitle": job_title},
+            { "JobId": job_id,"companyName": company_name, "JobTitle": job_title},
             sort=[("created_at", -1)]
         )
         if match:
@@ -240,21 +243,22 @@ def get_match(company_name: str, job_title: str) -> Dict[str, Any] | None:
         return None
 
 
-def set_job_match_generated(company_name: str, job_title: str) -> None:
+def set_job_match_generated(job_id: str, company_name: str, job_title: str) -> None:
     from datetime import datetime, timezone
+    validate_object_id(job_id)
     job_descriptions_collection.update_one(
-        {"companyName": company_name, "JobTitle": job_title},
+        { "_id": ObjectId(job_id), "companyName": company_name, "JobTitle": job_title},
         {"$set": {"last_match_generated_at": datetime.now(timezone.utc).isoformat()}}
     )
 
 
-def get_all_matches(company_name: str, job_title: str) -> List[Dict[str, Any]]:
+def get_all_matches(company_name: str, job_title: str, job_id: str) -> List[Dict[str, Any]]:
     """
     Retrieve all historical matches for a given company and job title.
     Computes total_matches server-side to avoid projecting the full candidates array.
     """
     pipeline = [
-        {"$match": {"companyName": company_name, "JobTitle": job_title}},
+        {"$match": {"companyName": company_name, "JobTitle": job_title, "JobId": job_id}},
         {"$sort": {"created_at": -1}},
         {
             "$project": {
@@ -300,7 +304,7 @@ def insert_match(match_data: Dict[str, Any]):
         else:
             identifier = f"{company_name} - {job_title}"
             
-        logging.info(f"New match created: {identifier}")
+        logging.info(f"New match created for this job: {identifier}")
         
         return {
             "success": True,

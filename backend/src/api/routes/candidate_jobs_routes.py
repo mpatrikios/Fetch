@@ -64,6 +64,7 @@ async def recommend_job(
     Returns 409 if the same candidate+job pair already exists.
     """
     validate_object_id(candidate_id)
+    validate_object_id(body.job_mongo_id)
     collection = mongo_connection.candidate_jobs_collection
 
     # Duplicate check
@@ -123,13 +124,11 @@ async def remove_recommendation(
     current_user: Dict = Depends(get_current_mlg_recruiter),
 ):
     """Remove a job recommendation for a candidate."""
+
+    validate_object_id(rec_id)
     validate_object_id(candidate_id)
     collection = mongo_connection.candidate_jobs_collection
-
-    try:
-        object_id = ObjectId(rec_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid recommendation ID")
+    object_id = ObjectId(rec_id)
 
     result = collection.delete_one({
         "_id": object_id,

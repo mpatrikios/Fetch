@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,6 +33,7 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     } else if (error.response?.status === 500) {
+      // Log for debugging but still reject so call-site catch blocks receive the error
       console.error('Server error:', error.response.data);
     }
     return Promise.reject(error);
@@ -128,10 +129,10 @@ export const matchingAPI = {
     api.patch(`/matches/${matchId}/candidates/${candidateId}/review`, {
       review_status: reviewStatus,
     }, config),
-  getStoredMatches: (companyName, jobTitle, config = {}) =>
-    api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
-  getMatchHistory: (companyName, jobTitle, config = {}) =>
-    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}`, config),
+  getStoredMatches: (companyName, jobTitle, jobId, config = {}) =>
+    api.get(`/matches/stored/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}`, config),
+  getMatchHistory: (companyName, jobTitle, jobId, config = {}) =>
+    api.get(`/matches/history/${encodeURIComponent(companyName)}/${encodeURIComponent(jobTitle)}/${encodeURIComponent(jobId)}`, config),
   getMatchById: (matchId, config = {}) =>
     api.get(`/matches/${matchId}`, config),
 };

@@ -38,6 +38,17 @@ class CandidateListResponse(BaseModel):
     candidates: List[CandidateInfo]
 
 
+class UpdateCandidateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    location: Optional[str] = None
+    summary: Optional[str] = None
+    skills: Optional[List[str]] = None
+
+
+class UpdateNotesRequest(BaseModel):
+    notes: str = ""
+
+
 # Candidate Self-Service Profile Models
 class CandidateProfileResponse(BaseModel):
     """Candidate's view of their own profile - excludes
@@ -226,6 +237,7 @@ class MatchResult(BaseModel):
     scores: Optional[MatchScores] = None
     explanation: MatchExplanation
     clifton_strengths: List[str] = []
+    missing_clifton: bool = False
     skills: List[str] = []
     review_status: Optional[str] = None
     reviewed_at: Optional[str] = None
@@ -267,6 +279,7 @@ class MatchHistoryResponse(BaseModel):
     success: bool
     company_name: str
     job_title: str
+    job_id: str
     history: List[MatchHistoryEntry]
 
 
