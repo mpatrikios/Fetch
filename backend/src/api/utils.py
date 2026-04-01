@@ -3,7 +3,7 @@ import os
 import tempfile
 import logging
 from typing import Tuple
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 from bson import ObjectId
 from bson.errors import InvalidId
 
@@ -56,35 +56,18 @@ def cleanup_temp_file(file_path: str) -> None:
         logger.warning(f"Failed to cleanup temp file {file_path}: {e}")
 
 # function for validating document file types
-async def validate_document_file(file: UploadFile) -> Tuple[bool, str]:
+def validate_document_file(filename: str) -> Tuple[bool, str]:
     """
-    Validate that the file's type is acceptable based on its content, not extension.
-    Acceptable file types are PDF, DOC, and DOCX.
+    Validate that a file is an acceptable document format.
+
     Args:
-        file: FastAPI UploadFile object
-        
+        filename: Name of the file to validate
+
     Returns:
         Tuple of (is_valid, file_extension)
     """
-    if not file:
-        raise HTTPException(
-            status_code=400,
-            detail="No file provided. Please upload a PDF, DOC, or DOCX file."
-        )
+    allowed_extensions = ('.pdf', '.doc', '.docx')
+    file_extension = os.path.splitext(filename.lower())[1]
 
-    import filetype
-    allowed_mime_types = (
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
-    content = await file.read(261)
-    file_type = filetype.guess(content)
-    await file.seek(0)
-    if not file_type or file_type.mime not in allowed_mime_types:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {file.filename}. Only PDF, DOC, and DOCX files are supported."
-        )
-
-    return True, file_type.mime
+    is_valid = file_extension in allowed_extensions
+    return is_valid, file_extension
