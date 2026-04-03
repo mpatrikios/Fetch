@@ -473,7 +473,7 @@ async def upload_culture_document(
             raise HTTPException(status_code=422, detail=str(e))
 
         try:
-            suggestions = await run_in_threadpool(suggest_clifton_strengths, culture_text)
+            suggestions = await run_in_threadpool(suggest_clifton_strengths, culture_text, tmp_file_path)
         except Exception as e:
             logger.error(f"Clifton suggestions failed for job {job_id}: {e}")
             suggestions = []
