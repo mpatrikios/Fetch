@@ -54,23 +54,14 @@ async def upload_job_description(
     if not file.filename:
         raise HTTPException(status_code=400, detail="File must have a filename")
     
-    is_valid, _ = await validate_document_file(file)
-    
-    if not is_valid:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid file type. Accepted formats: PDF, DOC, DOCX"
-        )
+    is_valid, tmp_file_path, _, _ = await validate_document_file(file)
     
     # Validate company name is picked by user
     if not company_name:
         raise HTTPException(status_code=400, detail="Company name is required")
     
     # try block to process the document with Azure Content Understanding
-    tmp_file_path = None
     try:
-        tmp_file_path = await save_upload_file_tmp(file)
-        
         subscription_key = os.getenv("AZURE_CONTENT_UNDERSTANDING_SUBSCRIPTION_KEY")
         if not subscription_key:
             raise HTTPException(status_code=500, detail="Azure API key not configured")
@@ -457,16 +448,11 @@ async def upload_culture_document(
 
     if not file.filename:
         raise HTTPException(status_code=400, detail="File must have a filename")
-    is_valid, _ = await validate_document_file(file)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid file type. Accepted formats: PDF, DOC, DOCX")
+    is_valid, tmp_file_path, _, _ = await validate_document_file(file)
 
     get_job_or_404(job_id)
 
-    tmp_file_path = None
     try:
-        tmp_file_path = await save_upload_file_tmp(file)
-
         try:
             culture_text = await run_in_threadpool(extract_text_from_culture_doc, tmp_file_path)
         except RuntimeError as e:

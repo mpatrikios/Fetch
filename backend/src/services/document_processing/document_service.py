@@ -145,16 +145,7 @@ class DocumentService:
         Returns: temporary file path
         """
         # Validate file type
-        is_valid, _ = await validate_document_file(file)
-        
-        if not is_valid:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid file type. Accepted formats: PDF, DOC, DOCX"
-            )
-        
-        # Save to temporary location
-        tmp_file_path = await save_upload_file_tmp(file)
+        is_valid, tmp_file_path, _, _ = await validate_document_file(file)
         return tmp_file_path
     
     @staticmethod
