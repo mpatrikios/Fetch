@@ -11,7 +11,7 @@ from src.api.utils import save_upload_file_tmp, cleanup_temp_file, validate_docu
 from src.services.document_processing.azure_resume_parser import AzureContentUnderstandingClient, Settings
 from src.services.document_processing.resume_standardizing import standardize_resume
 from src.services.document_processing.fallback_resume_parser import fallback_parse
-from src.services.embeddings.generate_embeddings import embed_candidate_profile, embed_candidate_location
+from src.services.embeddings.generate_embeddings import embed_candidate_profile, embed_candidate_location, embed_candidate_role
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +132,7 @@ class DocumentService:
             if openai_api_key:
                 try:
                     embed_candidate_profile(candidate_doc)
+                    embed_candidate_role(candidate_doc)
                     embed_candidate_location(candidate_doc)
                 except Exception as e:
                     logger.error(f"Embedding generation failed for candidate {candidate_id}: {e}")

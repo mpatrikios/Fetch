@@ -112,6 +112,7 @@ async def find_matches(request: MatchRequest):
                 "scores": {
                     "combined": round(match["combined_similarity_score"], 3),
                     "profile": round(match["profile_similarity_score"], 3),
+                    "role": round(match.get("role_similarity_score", 0.0), 3),
                     "culture": round(match["culture_similarity_score"], 3)
                 },
                 "explanation": {

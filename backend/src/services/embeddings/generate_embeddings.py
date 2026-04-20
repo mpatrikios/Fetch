@@ -132,6 +132,31 @@ def embed_candidate_culture(candidate_doc):
         return
     insert_embedding(candidate_doc["_id"], "Candidates", "culture_embedding", embedding)
 
+# generate and store candidate role embeddings (experience role titles only)
+def embed_candidate_role(candidate_doc):
+    roles = [exp.get('role') for exp in (candidate_doc.get('Experience') or []) if exp and exp.get('role')]
+    if not roles:
+        logger.warning(f"No experience roles found for candidate {candidate_doc.get('_id')} — skipping role embedding")
+        return
+    text = " ".join(roles)
+    embedding = generate_embedding(text)
+    if embedding is None:
+        logger.error(f"Failed to generate role embedding for candidate {candidate_doc.get('_id')}")
+        return
+    insert_embedding(candidate_doc["_id"], "Candidates", "role_embedding", embedding)
+
+# generate and store job description role embeddings (job title only)
+def embed_job_description_role(job_doc):
+    text = (job_doc.get('JobTitle') or '').strip()
+    if not text:
+        logger.warning(f"No JobTitle found for job {job_doc.get('_id')} — skipping role embedding")
+        return
+    embedding = generate_embedding(text)
+    if embedding is None:
+        logger.error(f"Failed to generate role embedding for job {job_doc.get('_id')}")
+        return
+    insert_embedding(job_doc["_id"], "JobDescriptions", "role_embedding", embedding)
+
 # generate and store job description profile embeddings
 def embed_job_description_profile(job_doc):
     text = f"{job_doc.get('JobTitle', '')} " + \

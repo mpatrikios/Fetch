@@ -21,6 +21,7 @@ from src.services.embeddings.generate_embeddings import (
     embed_job_description_profile,
     embed_job_description_location,
     embed_job_description_culture,
+    embed_job_description_role,
 )
 from src.services.document_processing.culture_document_parser import (
     extract_text_from_culture_doc,
@@ -192,6 +193,7 @@ async def upload_job_description(
         else:
             try:
                 await run_in_threadpool(embed_job_description_profile, job_doc)
+                await run_in_threadpool(embed_job_description_role, job_doc)
                 await run_in_threadpool(embed_job_description_location, job_doc)
                 job_doc = get_job_description(mongo_id)
             except Exception as e:
@@ -294,6 +296,7 @@ async def finalize_job(body: JobFinalizeRequest):
     if os.getenv("AZURE_OPENAI_API_KEY"):
         try:
             await run_in_threadpool(embed_job_description_profile, job_doc)
+            await run_in_threadpool(embed_job_description_role, job_doc)
             await run_in_threadpool(embed_job_description_location, job_doc)
             refreshed = get_job_description(mongo_id)
             if refreshed:
@@ -591,10 +594,12 @@ async def update_job(job_id: str, job_data: dict):
         # Regenerate embeddings if content-relevant fields changed
         embedding_fields = {"Summary", "Skills", "Responsibilities", "Qualifications"}
         location_fields = {"Locations"}
+        role_fields = {"JobTitle"}
         needs_profile_embedding = bool(embedding_fields & set(update_fields.keys()))
         needs_location_embedding = bool(location_fields & set(update_fields.keys()))
+        needs_role_embedding = bool(role_fields & set(update_fields.keys()))
 
-        if needs_profile_embedding or needs_location_embedding:
+        if needs_profile_embedding or needs_location_embedding or needs_role_embedding:
             try:
                 job_doc = mongo_connection.job_descriptions_collection.find_one(
                     {"_id": ObjectId(job_id)}
@@ -604,6 +609,8 @@ async def update_job(job_id: str, job_data: dict):
                     if openai_api_key:
                         if needs_profile_embedding:
                             embed_job_description_profile(job_doc)
+                        if needs_role_embedding:
+                            embed_job_description_role(job_doc)
                         if needs_location_embedding:
                             embed_job_description_location(job_doc)
                     else:

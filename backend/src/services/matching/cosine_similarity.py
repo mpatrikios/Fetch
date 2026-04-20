@@ -97,10 +97,10 @@ def normalize_similarity_score(raw_score: float, baseline: float = 0.75, scale: 
 # Find top-k candidate matches for a job based on profile embeddings and location
 def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool = True, excluded_ids: set = None):
     """
-    Finds the top-k candidate matches for a given job document based on cosine similarity of profile and
-    (optionally) culture embeddings. Only includes candidates within reasonable commute distance (80km).
-    Candidates without a culture embedding are included with culture_similarity_score defaulted to 0.0.
-    Uses 70/30 weighting between profile and culture similarity.
+    Finds the top-k candidate matches for a given job document based on cosine similarity of profile,
+    role title, and (optionally) culture embeddings. Only includes candidates within reasonable commute
+    distance (80km). Candidates without a culture or role embedding are included with those scores
+    defaulted to 0.0. Uses 60/30/10 weighting between profile, role, and culture similarity.
 
     All similarity scores are normalized to the range [-1, 1] where:
     - 1.0 = excellent match
@@ -116,8 +116,9 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
 
     Returns:
         list of dict: A list of dictionaries, each containing:
-            - "combined_similarity_score": The weighted 70/30 combination of normalized profile and culture similarity [-1, 1].
+            - "combined_similarity_score": The weighted 60/30/10 combination of normalized profile, role, and culture similarity [-1, 1].
             - "profile_similarity_score": The normalized cosine similarity score for profile embeddings [-1, 1].
+            - "role_similarity_score": The normalized cosine similarity score for role embeddings [-1, 1], or 0.0 if missing.
             - "culture_similarity_score": The normalized cosine similarity score for culture embeddings [-1, 1], or 0.0 if missing.
             - "candidate": The candidate document.
             - "explanation": An explanation of the match.
@@ -125,6 +126,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
     """
     job_profile_vec = np.array(job_doc["profile_embedding"], dtype=float)
     job_culture_vec = np.array(job_doc.get("culture_embedding", []), dtype=float) if job_doc.get("culture_embedding") else None
+    job_role_vec = np.array(job_doc.get("role_embedding", []), dtype=float) if job_doc.get("role_embedding") else None
     job_coords = job_doc.get("location_coordinates")
 
     # Find candidates with a non-empty array profile embedding (excludes None, missing, and [])
@@ -160,9 +162,16 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
             raw_culture_similarity = cosine_similarity(job_culture_vec, cand_culture_vec)
             culture_similarity = normalize_similarity_score(raw_culture_similarity)
 
-        # Calculate combined score (70/30 weighting: profile / culture)
-        combined_similarity = (profile_similarity * 0.7) + (culture_similarity * 0.3)
-        
+        # Calculate role similarity
+        role_similarity = 0.0
+        if job_role_vec is not None and cand.get("role_embedding"):
+            cand_role_vec = np.array(cand["role_embedding"], dtype=float)
+            raw_role_similarity = cosine_similarity(job_role_vec, cand_role_vec)
+            role_similarity = normalize_similarity_score(raw_role_similarity)
+
+        # Calculate combined score (60/30/10 weighting: profile / role / culture)
+        combined_similarity = (profile_similarity * 0.6) + (role_similarity * 0.3) + (culture_similarity * 0.1)
+
         # Calculate distance if coordinates available
         distance_km = None
         if job_coords and cand.get("location_coordinates"):
@@ -172,6 +181,7 @@ def profile_matching_candidate(db, job_doc, top_k: int = None, use_cohort: bool 
         scored.append({
             "combined_similarity_score": combined_similarity,
             "profile_similarity_score": profile_similarity,
+            "role_similarity_score": role_similarity,
             "culture_similarity_score": culture_similarity,
             "distance_km": distance_km,
             "candidate": cand,
