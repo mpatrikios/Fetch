@@ -1,7 +1,6 @@
-import json
 import logging
-import sys
 import time
+from src.services.document_processing.azure_resume_parser import guess_content_type
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
@@ -93,30 +92,27 @@ class AzureContentUnderstandingClient:
         if Path(file_location).exists():
             with open(file_location, "rb") as file:
                 data = file.read()
-            headers = {"Content-Type": "application/octet-stream"}
-        elif "https://" in file_location or "http://" in file_location:
-            data = {"url": file_location}
-            headers = {"Content-Type": "application/json"}
-        else:
-            raise ValueError("File location must be a valid path or URL.")
-
-        headers.update(self._headers)
-        if isinstance(data, dict):
+            headers = {"Content-Type": guess_content_type(file_location)}
+            headers.update(self._headers)
             response = requests.post(
-                url=self._get_analyze_url(
-                    self._endpoint, self._api_version, analyzer_id
-                ),
-                headers=headers,
-                json=data,
-            )
-        else:
-            response = requests.post(
-                url=self._get_analyze_url(
+                url=self._get_analyze_binary_url(
                     self._endpoint, self._api_version, analyzer_id
                 ),
                 headers=headers,
                 data=data,
             )
+        elif "https://" in file_location or "http://" in file_location:
+            headers = {"Content-Type": "application/json"}
+            headers.update(self._headers)
+            response = requests.post(
+                url=self._get_analyze_url(
+                    self._endpoint, self._api_version, analyzer_id
+                ),
+                headers=headers,
+                json={"url": file_location},
+            )
+        else:
+            raise ValueError("File location must be a valid path or URL.")
 
         response.raise_for_status()
         self._logger.info(
@@ -185,6 +181,9 @@ class AzureContentUnderstandingClient:
     def _get_analyze_url(self, endpoint: str, api_version: str, analyzer_id: str):
         return f"{endpoint}/contentunderstanding/analyzers/{analyzer_id}:analyze?api-version={api_version}&stringEncoding=utf16"
 
+    def _get_analyze_binary_url(self, endpoint: str, api_version: str, analyzer_id: str):
+        return f"{endpoint}/contentunderstanding/analyzers/{analyzer_id}:analyzeBinary?api-version={api_version}&stringEncoding=utf16"
+
     def _get_headers(
         self, subscription_key: str | None, api_token: str | None, x_ms_useragent: str
     ) -> dict[str, str]:
@@ -227,7 +226,7 @@ def azure_job_description_parser(pdf_path: str) -> dict[str, Any] | None:
 
     settings = Settings(
         endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
-        api_version="2025-05-01-preview",
+        api_version="2025-11-01",
         # Either subscription_key or aad_token must be provided. Subscription Key is more prioritized.
         subscription_key=subscription_key,
         aad_token=None,

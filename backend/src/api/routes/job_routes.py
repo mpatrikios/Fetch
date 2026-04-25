@@ -7,8 +7,6 @@ import uuid
 import logging
 
 from bson import ObjectId
-from bson.errors import InvalidId
-from src.api.utils import validate_object_id
 
 from src.database.insert_to_mongo import insert_job_description, get_job_description
 from src.database.connection import mongo_connection
@@ -78,7 +76,7 @@ async def upload_job_description(
         
         settings = JDSettings(
             endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
-            api_version="2025-05-01-preview",
+            api_version="2025-11-01",
             subscription_key=subscription_key,
             aad_token=None,
             analyzer_id="job_description_parser_v1", # Predefined analyzer for job descriptions, change is schema changes

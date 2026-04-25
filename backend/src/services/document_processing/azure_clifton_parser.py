@@ -2,18 +2,7 @@
 This file is responsible for interfacing with Azure Content Understanding
 to parse CliftonStrengths assessment documents. It takes a pdf file and outputs JSON data. 
 """
-import json
 import logging
-import sys
-import time
-from datetime import datetime
-from collections.abc import Callable
-from pathlib import Path
-from typing import Any, cast
-from dataclasses import dataclass
-
-import requests
-
 import os
 from dotenv import load_dotenv
 
@@ -32,7 +21,7 @@ def azure_clifton_parser(pdf_path: str) -> dict:
     try:
         settings = Settings(
                     endpoint="https://fetch-contentunderstanding.services.ai.azure.com/",
-                    api_version="2025-05-01-preview",
+                    api_version="2025-11-01",
                     subscription_key=subscription_key,
                     aad_token=None,
                     analyzer_id="clifton_strengths_parser",  # Your Azure CliftonStrengths model name

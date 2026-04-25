@@ -73,18 +73,26 @@ async def validate_document_file(file: UploadFile) -> Tuple[bool, str]:
         )
 
     import filetype
-    allowed_mime_types = (
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
     content = await file.read(261)
     file_type = filetype.guess(content)
     await file.seek(0)
-    if not file_type or file_type.mime not in allowed_mime_types:
+
+    detected_mime = file_type.mime if file_type else None
+    ext = os.path.splitext(file.filename or "")[1].lower()
+
+    # filetype.guess() identifies .docx as application/zip (OOXML container) and
+    # .doc as application/x-cfb / application/vnd.ms-office (OLE2 container).
+    # Cross-check the container type against the extension to accept Office docs.
+    is_valid = (
+        detected_mime == 'application/pdf'
+        or (ext == '.docx' and detected_mime == 'application/zip')
+        or (ext == '.doc' and detected_mime in ('application/x-cfb', 'application/vnd.ms-office'))
+    )
+
+    if not is_valid:
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported file type: {file.filename}. Only PDF, DOC, and DOCX files are supported."
         )
 
-    return True, file_type.mime
+    return True, detected_mime or ''

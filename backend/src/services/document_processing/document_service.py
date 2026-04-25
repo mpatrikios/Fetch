@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Centralized Azure Content Understanding configuration
 AZURE_CU_ENDPOINT = "https://fetch-contentunderstanding.services.ai.azure.com/"
-AZURE_CU_API_VERSION = "2025-05-01-preview"
+AZURE_CU_API_VERSION = "2025-11-01"
 RESUME_ANALYZER_ID = "resume_parser_v3"
 
 class DocumentService:
